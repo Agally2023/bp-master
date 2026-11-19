@@ -5,11 +5,20 @@ const uuid = () => crypto.randomUUID();
 const P = 'bpm_', BUCKET = 'bpm-report-images';   // all BP Master tables/buckets are prefixed (the Supabase project is shared with another app)
 
 class DemoDB {
-  constructor() { this.mode = 'demo'; this.t = {}; this.user = null; this.batchesL = []; this.reports = []; this.sections = []; this.images = []; this.auditL = []; }
+  constructor() { this.mode = 'demo'; this.t = {}; this.user = null; this.batchesL = []; this.reports = []; this.users = [{ id: 'demo', email: 'admin@demo.local', full_name: 'Demo admin', role: 'admin', active: true, status: 'active', requested_at: '2026-11-01T08:00:00Z' }, { id: 'u2', email: 'auditor.one@example.com', full_name: 'Auditor One', role: 'auditor', active: false, status: 'pending', requested_at: '2026-11-18T09:30:00Z' }, { id: 'u3', email: 'auditor.two@example.com', full_name: 'Auditor Two', role: 'auditor', active: true, status: 'active', requested_at: '2026-11-05T10:00:00Z' }]; this.sections = []; this.images = []; this.auditL = []; }
   async init() {
     try { const r = await fetch('demo-data.json', { cache: 'no-store' }); if (r.ok) this.t = await r.json(); } catch { /* no seed file */ }
   }
   async signIn(email) { this.user = { id: 'demo', email: email || 'admin@demo.local', name: 'Demo admin', role: 'admin' }; return { user: this.user }; }
+  async signUp(name, email) { return { created: true, needsConfirm: false }; }
+  async listUsers() { return this.users.map(u => ({ ...u })); }
+  async updateUser(id, patch) {
+    const u = this.users.find(x => x.id === id), me = id === this.user?.id;
+    if (me && ('active' in patch || 'role' in patch)) throw new Error('You cannot change your own access');
+    if (u.role === 'admin' && u.active && (patch.role && patch.role !== 'admin' || patch.active === false) && this.users.filter(x => x.role === 'admin' && x.active && x.id !== id).length === 0) throw new Error('There must be at least one active administrator');
+    Object.assign(u, patch); return { ...u };
+  }
+  async removeUser(id) { if (id === this.user?.id) throw new Error('You cannot change your own access'); this.users = this.users.filter(x => x.id !== id); }
   async signOut() { this.user = null; }
   async load(table) { return (this.t[table] || []).slice(); }
   async insert(table, rows, o = {}) {
@@ -60,10 +69,22 @@ class SupabaseDB {
     const v = await this._f(`/auth/v1/factors/${factorId}/verify`, { method: 'POST', body: JSON.stringify({ challenge_id: c.id, code }) });
     this._set(await v.json());
     const me = await (await this._f('/auth/v1/user')).json();
-    const p = (await (await this._f(`/rest/v1/${P}profiles?id=eq.${me.id}&select=full_name,role,active`)).json())[0];
-    if (!p || !p.active) { await this.signOut(); throw new Error('Your account has no active BP Master profile. Ask the administrator.'); }
+    let p = (await (await this._f(`/rest/v1/${P}profiles?id=eq.${me.id}&select=full_name,role,active,status`)).json())[0];
+    if (!p) {   // first verified sign-in of a new account: file an access request for the administrator
+      const name = (me.user_metadata && me.user_metadata.full_name) || me.email;
+      await this._f(`/rest/v1/rpc/bpm_request_access`, { method: 'POST', body: JSON.stringify({ p_name: name }) });
+      await this.signOut(); throw new Error('Request sent. An administrator must approve your account before you can use BP Master. You will be able to sign in once approved.');
+    }
+    if (!p.active) { const st = p.status; await this.signOut(); throw new Error(st === 'disabled' ? 'This account has been disabled. Contact the administrator.' : 'Your account is still waiting for administrator approval.'); }
     this.user = { id: me.id, email: me.email, name: p.full_name, role: p.role }; return { user: this.user };
   }
+  async signUp(name, email, password) {
+    const r = await this._f('/auth/v1/signup', { method: 'POST', noRefresh: true, body: JSON.stringify({ email, password, data: { full_name: name } }) });
+    const j = await r.json(); return { created: true, needsConfirm: !j.access_token };
+  }
+  async listUsers() { return this.load('profiles', '&order=requested_at.desc'); }
+  async updateUser(id, patch) { const r = await this._f(`/rest/v1/${P}profiles?id=eq.${id}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch) }); const j = await r.json(); if (!j.length) throw new Error('Not allowed'); return j[0]; }
+  async removeUser(id) { const r = await this._f(`/rest/v1/${P}profiles?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: 'return=representation' } }); if (!(await r.json()).length) throw new Error('Not allowed'); }
   async signOut() { try { if (this.tok) await this._f('/auth/v1/logout', { method: 'POST', noRefresh: true }); } catch { } this.tok = this.refresh_token = this.user = null; }
   async load(table, filter = '') {
     const out = []; for (let from = 0; ; from += 1000) {
