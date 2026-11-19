@@ -1,0 +1,4 @@
+-- Applied as bpm_0004_mfa_switch (after bpm_0004_mfa_off). Makes bpm_mfa_ok() driven by a row, so MFA is a one-line switch:
+--   update public.bpm_thresholds set value = 1 where key = 'mfa_required';   -- enforce authenticator codes (also set MFA_REQUIRED: true in web/config.js)
+--   update public.bpm_thresholds set value = 0 where key = 'mfa_required';   -- password sign-in is enough
+-- bpm_mfa_ok() = (aal = 'aal2') OR mfa_required = 0.   Currently: mfa_required = 0.
