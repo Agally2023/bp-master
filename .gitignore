@@ -1,0 +1,12 @@
+# Confidential audit data and generated reports must never be committed
+data/
+out/
+templates/*.pptx
+*.xlsx
+*.pptx
+.env
+.env.*
+__pycache__/
+web/demo-data.json
+node_modules/
+*.log

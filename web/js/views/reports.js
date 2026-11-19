@@ -1,0 +1,106 @@
+import { h, clear, pct, num, fmtDate, toast, download } from '../util.js';
+import { S, ensure } from '../state.js';
+import { db } from '../db.js';
+import * as A from '../analytics.js';
+import { lineChart, barChart, PAL } from '../charts.js';
+const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
+import { weekPicker, table, band } from './common.js';
+
+const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
+const CFG = window.BPM_CONFIG || {};
+const has = a => a.some(v => v != null);
+const pc0 = v => (v * 100).toFixed(0) + '%';
+// Section list = slide order of the weekly deck.
+const SECTIONS = [
+  { key: 'workstation', title: 'Incubation Workstation Compliance', slide: 2, an: (d, y, w) => A.workstation(d, y, w),
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason]))] },
+  { key: 'biosecurity', title: 'Biosecurity and Hygiene', slide: 3, an: (d, y, w) => A.biosecurity(d, y, w),
+    body: a => [table(['Category', 'Checks', 'Score'], a.cats.map(c => [c.category, c.n, { v: pct(c.score, 1), cls: band(c.score) }])), has(a.overall) ? lineChart({ labels: a.labels, series: [{ name: 'Overall', values: a.overall, color: PAL[1] }], min: 0, max: 1, fmt: pc0, h: 190 }) : null] },
+  { key: 'bio_photos', title: 'Biosecurity: audit photos', slide: 4, photos: 4, an: () => ({}), body: () => [] },
+  { key: 'parasitology', title: 'Incubation Parasitology', slide: 5, an: (d, y, w) => A.parasitology(d, y, w, 'RAS2', 'stage'),
+    body: a => [a.series.length ? lineChart({ labels: a.labels, series: a.series.map((s, i) => ({ name: s.key, values: s.prev, color: PAL[i % 6] })), min: 0, fmt: pc0, h: 190, title: 'Prevalence (RAS2, by stage)' }) : null, a.series.length ? lineChart({ labels: a.labels, series: a.series.map((s, i) => ({ name: s.key, values: s.int, color: PAL[i % 6] })), min: 0, h: 190, title: 'Intensity' }) : null] },
+  { key: 'ras_water', title: 'RAS Water Volume vs Parasite Prevalence', slide: 6, an: (d, y, w) => A.water(d, y, w),
+    body: a => [a.days.length ? barChart({ labels: a.days.map(x => shortD(x)), series: [{ name: 'Water (L)', values: a.vol, color: PAL[2] }], h: 190 }) : null, a.days.length ? lineChart({ labels: a.days.map(x => shortD(x)), series: [{ name: 'Prevalence', values: a.prev, color: PAL[4] }], min: 0, fmt: pc0, h: 190 }) : null] },
+  { key: 'day3', title: '3-Day Recount Survival', slide: 7, an: (d, y, w) => A.day3(d, y, w),
+    body: a => [a.total ? barChart({ labels: a.units, series: [{ name: 'Survival', values: a.values }], min: 0, fmt: pc0, target: 0.97, targetLabel: '97%', h: 200 }) : null] },
+  { key: 'stocking', title: 'Stocking Numbers Audit', slide: 8, an: (d, y, w) => A.stocking(d, y, w),
+    body: a => [table(['Date', 'ABW', 'Required', 'Target', 'Actual', 'Var.', 'Est.', 'Diff.'], a.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), pct(r.variance, 1), num(r.est, 0), num(r.diff, 0)]))] },
+  { key: 'transfers', title: 'Incubation to Pond Transfer Audit (Morning stocking)', slide: 8, an: (d, y, w) => A.transfers(d, y, w),
+    body: a => [table(['Date', 'Time', 'Tray', 'Bucket no fish', 'Bucket with fish', 'Pond', 'Variance'], a.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])}–${num(r.tray[1])}`, `${num(r.bwo[0])}–${num(r.bwo[1])}`, `${num(r.bw[0])}–${num(r.bw[1])}`, num(r.pond), `${num(r.variance[0])}–${num(r.variance[1])}`]))] },
+  { key: 'eggs', title: 'Egg Stage Separation Rating', slide: 9, an: (d, y, w) => A.eggs(d, y, w),
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], min: 0, max: 5, h: 190 }) : null, table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.slice(0, 7).map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
+  { key: 'flipping', title: 'Pond Flipping', slide: 10, an: (d, y, w) => A.flips(d, y, w),
+    body: a => [table(['Type', 'Pond', 'Scheduled', 'Days per stage'], [...a.nursery, ...a.brood].slice(0, 8).map(r => [r.kind, r.pond, fmtDate(r.scheduled), Object.values(r.stage_days || {}).join(', ')]), { empty: 'No ponds flipped' })] },
+  { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
+  { key: 'bottom_rope', title: 'Bottom Rope Audit (Nursery & Broodstock)', slide: 12, an: (d, y, w) => A.bottomRope(d, y, w),
+    body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? lineChart({ labels: a[k].labels, series: [{ name: k + ' non-conforming', values: a[k].trend, color: PAL[4] }], min: 0, fmt: pc0, h: 190 }) : null) },
+  { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 13, an: (d, y, w) => A.hapaExchange(d, y, w),
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Exchanged / scheduled', values: a.trend, color: PAL[1] }], min: 0, max: 1, fmt: pc0, h: 200 }) : null] },
+];
+const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };
+
+export async function render({ view, ctx }) {
+  const data = await ensure(KEYS); const body = h('div', {});
+  const draw = async () => {
+    clear(body); const { y, w } = S.week; const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
+    let R = await db.report(y, w, false); const calc = Object.fromEntries(SECTIONS.map(s => [s.key, s.an(data, y, w)]));
+    if (!R) { body.append(h('div', { class: 'card' }, h('h2', {}, `No report for Week ${w}, ${y} yet`), h('p', { class: 'muted' }, 'Creating a report drafts comments from the data. You can edit every comment, add photos and attach analysed graphs.'), canEdit ? h('button', { class: 'btn', onclick: async () => { await db.report(y, w, true); await db.audit('create', 'report', `${y}-${w}`); draw(); } }, `Create Week ${w} report`) : null)); return; }
+    const { report } = R, locked = ['approved', 'exported'].includes(report.status);
+    const secState = key => R.sections.find(s => s.section_key === key) || { comment: null, include: true };
+    // status bar
+    const nextBtns = [];
+    if (!locked && canEdit && report.status === 'draft') nextBtns.push(h('button', { class: 'btn sec', onclick: () => step('in_review') }, 'Send for review'));
+    if (isAdmin && report.status === 'in_review') nextBtns.push(h('button', { class: 'btn', onclick: () => step('approved') }, 'Approve'));
+    if (isAdmin && locked) nextBtns.push(h('button', { class: 'btn sec', onclick: () => step('draft') }, 'Re-open as draft'));
+    async function step(st) { await db.setStatus(report.id, st); await db.audit(st === 'approved' ? 'approve' : 'status', 'report', `${y}-${w}`, { status: st }); draw(); }
+    const gen = h('button', { class: 'btn', disabled: !isAdmin || report.status !== 'approved', title: isAdmin ? (report.status === 'approved' ? '' : 'Approve the report first') : 'Only an administrator can export', onclick: () => generate(report) }, 'Generate PPT');
+    body.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, `Week ${w} report`), h('span', { class: 'pill ' + (report.status === 'approved' || report.status === 'exported' ? 'ok' : 'warn') }, STATUS[report.status]), h('span', { class: 'sp' }), nextBtns, h('button', { class: 'btn sec', onclick: () => pack(R, calc) }, 'Download data pack (JSON)'), gen),
+      h('p', { class: 'muted' }, 'Slides follow the weekly deck order. Edit the comment under each slide, add photos or attach your analysed graph; use the tick to leave a slide out. Only an administrator can approve and export.')));
+    const slides = h('div', {}); body.append(slides);
+    for (const s of SECTIONS) {
+      const st = secState(s.key), a = calc[s.key]; const draft = A.draftComment(s.key, a);
+      const text = h('textarea', { disabled: locked || !canEdit, 'aria-label': `Comment for ${s.title}`, rows: 3 }); text.value = st.comment ?? draft;
+      let t; text.oninput = () => { clearTimeout(t); t = setTimeout(() => db.saveSection(report.id, s.key, { comment: text.value }).then(() => { st.comment = text.value; }), 700); };
+      const inc = h('input', { type: 'checkbox', checked: st.include !== false, disabled: locked || !canEdit, onchange: e => db.saveSection(report.id, s.key, { include: e.target.checked }) });
+      const prev = h('div', { class: 'slide' }, h('h3', {}, s.title), h('div', { class: 'sbody' }, s.photos ? photoGrid(R, s, locked || !canEdit, draw) : h('div', {}, ...s.body(a)), ...(s.photos ? [] : [h('div', {}, h('div', { class: 'sbox' }, h('ul', {}, (st.comment ?? draft).split('\n').filter(Boolean).map(l => h('li', {}, l)))))])),
+        h('img', { class: 'slogo', src: 'assets/victoryfarms-logo.png', alt: '' }), h('div', { class: 'sfoot' }, 'Victory Farms Confidential'), h('div', { class: 'sno' }, s.slide));
+      const graph = R.images.find(i => i.section_key === s.key && i.kind === 'analysed_graph');
+      slides.append(h('details', { class: 'sec', open: s.key === 'workstation' }, h('summary', {}, h('span', {}, `Slide ${s.slide}: ${s.title}`), h('span', { class: 'sp' }), h('label', { class: 'muted', onclick: e => e.stopPropagation() }, inc, ' include')),
+        h('div', { class: 'inner' }, prev, s.photos ? null : h('div', {}, h('label', { class: 'f' }, 'Comment (editable, auto-drafted from the data)', text),
+          h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
+    }
+  };
+  weekPicker(ctx, data, draw); view.append(body); await draw();
+}
+
+function uploadBtn(R, key, slot, kind, existing, disabled, redraw) {
+  const f = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
+  f.onchange = async () => { const file = f.files[0]; if (!file) return; if (file.size > 8e6) return toast('Image is over 8 MB', true); try { await db.putImage(R.report.id, key, slot, kind, file); await db.audit('upload', 'report_image', `${key}:${slot}`); redraw(); } catch (e) { toast(e.message, true); } };
+  return h('span', { class: 'row' }, f, h('button', { class: 'btn sec sm', disabled, onclick: () => f.click() }, existing ? 'Replace graph' : 'Upload graph (PNG/JPG)'), existing ? h('span', { class: 'pill ok' }, existing.caption || 'attached') : null,
+    existing && !disabled ? h('button', { class: 'btn sec sm', onclick: async () => { await db.removeImage(existing); redraw(); } }, 'Remove') : null);
+}
+function photoGrid(R, s, disabled, redraw) {
+  const grid = h('div', { class: 'slots', style: 'grid-template-columns:repeat(2,1fr);flex:1' });
+  for (let slot = 1; slot <= 4; slot++) {
+    const im = R.images.find(i => i.section_key === s.key && i.slot === slot && i.kind === 'photo');
+    const f = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
+    const box = h('div', { class: 'slot', tabindex: 0, role: 'button', 'aria-label': `Photo ${slot}`, onclick: e => { if (!disabled && e.target.tagName !== 'BUTTON') f.click(); } }, f, h('span', {}, im ? '' : `+ Photo ${slot}`));
+    f.onchange = async () => { const file = f.files[0]; if (!file) return; try { await db.putImage(R.report.id, s.key, slot, 'photo', file); await db.audit('upload', 'report_image', `${s.key}:${slot}`); redraw(); } catch (e) { toast(e.message, true); } };
+    if (im) { const img = h('img', { alt: im.caption || `Photo ${slot}` }); db.imageUrl(im).then(u => { img.src = u; }); box.append(img); if (!disabled) box.append(h('button', { class: 'btn danger sm', style: 'position:absolute;right:4px;top:4px;z-index:2', onclick: async e => { e.stopPropagation(); await db.removeImage(im); redraw(); } }, '✕')); }
+    grid.append(box);
+  }
+  return grid;
+}
+async function generate(report) {
+  if (!CFG.REPORT_API_URL) return toast('PPT service not connected yet. Set REPORT_API_URL in config.js (see README).', true);
+  try {
+    toast('Building the PowerPoint…');
+    const r = await fetch(CFG.REPORT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + db.tok }, body: JSON.stringify({ year: report.iso_year, week: report.iso_week, report_id: report.id }) });
+    if (!r.ok) throw new Error(await r.text() || r.statusText);
+    download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); toast('PowerPoint downloaded');
+  } catch (e) { toast('Export failed: ' + e.message, true); }
+}
+function pack(R, calc) {
+  const out = { year: R.report.iso_year, week: R.report.iso_week, status: R.report.status, sections: SECTIONS.map(s => ({ key: s.key, title: s.title, include: (R.sections.find(x => x.section_key === s.key) || {}).include !== false, comment: (R.sections.find(x => x.section_key === s.key) || {}).comment ?? A.draftComment(s.key, calc[s.key]) })), analytics: calc };
+  download(`BP_Week_${out.week}_${out.year}_datapack.json`, new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
+}
