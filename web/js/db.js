@@ -11,6 +11,9 @@ class DemoDB {
   }
   async signIn(email) { this.user = { id: 'demo', email: email || 'admin@demo.local', name: 'Demo admin', role: 'admin' }; return { user: this.user }; }
   async signUp(name, email) { return { created: true, needsConfirm: false }; }
+  async requestPasswordReset() { }
+  takeRecovery() { return null; }
+  async updatePassword() { }
   async listUsers() { return this.users.map(u => ({ ...u })); }
   async updateUser(id, patch) {
     const u = this.users.find(x => x.id === id), me = id === this.user?.id;
@@ -84,6 +87,22 @@ class SupabaseDB {
     }
     if (!p.active) { const st = p.status; await this.signOut(); throw new Error(st === 'disabled' ? 'This account has been disabled. Contact the administrator.' : 'Your account is still waiting for administrator approval.'); }
     this.user = { id: me.id, email: me.email, name: p.full_name, role: p.role }; return { user: this.user };
+  }
+  // ---- forgot password: Supabase emails a link that returns here as #access_token=...&type=recovery ----
+  async requestPasswordReset(email) {
+    const back = encodeURIComponent(location.origin + location.pathname);
+    await this._f('/auth/v1/recover?redirect_to=' + back, { method: 'POST', noRefresh: true, body: JSON.stringify({ email }) });
+  }
+  takeRecovery(hash) {   // returns null (not a recovery link), { error } (expired/invalid link) or { ok: true }
+    const q = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+    if (q.get('error') || q.get('error_description')) return { error: (q.get('error_description') || 'This reset link is invalid or has expired').replace(/\.?$/, '.') + ' Request a new link from the sign-in page.' };
+    if (q.get('type') !== 'recovery' || !q.get('access_token')) return null;
+    this._set({ access_token: q.get('access_token'), refresh_token: q.get('refresh_token'), expires_in: Number(q.get('expires_in')) || 3600 });
+    return { ok: true };
+  }
+  async updatePassword(password) {
+    await this._f('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password }) });
+    await this.signOut();   // the user signs in normally with the new password (profile approval checks still apply)
   }
   async signUp(name, email, password) {
     const r = await this._f('/auth/v1/signup', { method: 'POST', noRefresh: true, body: JSON.stringify({ email, password, data: { full_name: name } }) });

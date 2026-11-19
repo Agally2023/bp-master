@@ -37,8 +37,37 @@ function showLogin(msg, ok) {
     h('label', { class: 'f' }, 'Email', em), h('label', { class: 'f' }, 'Password', pw),
     isDemo() ? h('div', { class: 'note' }, 'Demo mode: any email and password. Data stays in this browser tab and is never saved.') : null,
     h('button', { class: 'btn', type: 'submit' }, 'Sign in'),
-    h('button', { class: 'btn sec', type: 'button', onclick: () => showSignup() }, 'Create account'));
+    h('button', { class: 'btn sec', type: 'button', onclick: () => showSignup() }, 'Create account'),
+    h('button', { class: 'btn sec', type: 'button', onclick: () => showForgot(em.value.trim()) }, 'Forgot password?'));
   L.append(box);
+}
+function showForgot(prefill) {
+  const L = clear($('#login')); const err = h('div', { class: 'err-msg', hidden: true });
+  const em = h('input', { type: 'email', required: true, autocomplete: 'username', placeholder: 'name@victoryfarms.com', value: prefill || '' });
+  L.append(h('form', { class: 'box', onsubmit: async e => {
+    e.preventDefault(); err.hidden = true;
+    try { await db.requestPasswordReset(em.value.trim()); showLogin('If an account exists for that email, a password reset link has been sent. Check your inbox (and spam folder).', true); }
+    catch (x) { err.textContent = x.message; err.hidden = false; }
+  } },
+    h('img', { src: 'assets/victoryfarms-logo.png', alt: 'Victory Farms' }), h('h1', {}, 'Reset password'),
+    h('div', { class: 'muted' }, 'Enter your email and we will send you a link to choose a new password.'), err,
+    h('label', { class: 'f' }, 'Email', em),
+    h('button', { class: 'btn', type: 'submit' }, 'Send reset link'),
+    h('button', { class: 'btn sec', type: 'button', onclick: () => showLogin() }, 'Back to sign in')));
+}
+function showReset() {   // reached from the emailed reset link
+  const L = clear($('#login')); $('#app').hidden = true; L.hidden = false; const err = h('div', { class: 'err-msg', hidden: true });
+  const pw = h('input', { type: 'password', required: true, minlength: 12, autocomplete: 'new-password' }), pw2 = h('input', { type: 'password', required: true, minlength: 12, autocomplete: 'new-password' });
+  L.append(h('form', { class: 'box', onsubmit: async e => {
+    e.preventDefault(); err.hidden = true;
+    if (pw.value !== pw2.value) { err.textContent = 'The two passwords do not match.'; err.hidden = false; return; }
+    try { await db.updatePassword(pw.value); showLogin('Password updated. Sign in with your new password.', true); }
+    catch (x) { err.textContent = x.message; err.hidden = false; }
+  } },
+    h('img', { src: 'assets/victoryfarms-logo.png', alt: 'Victory Farms' }), h('h1', {}, 'Choose a new password'),
+    h('div', { class: 'muted' }, 'Use at least 12 characters.'), err,
+    h('label', { class: 'f' }, 'New password', pw), h('label', { class: 'f' }, 'Repeat new password', pw2),
+    h('button', { class: 'btn', type: 'submit' }, 'Update password')));
 }
 function showSignup() {
   const L = clear($('#login')); const err = h('div', { class: 'err-msg', hidden: true });
@@ -95,6 +124,8 @@ export async function init() {
   $('#signout').onclick = signOut;
   for (const ev of ['click', 'keydown', 'mousemove']) document.addEventListener(ev, () => { if (db.user) idleReset(); }, { passive: true });
   window.addEventListener('hashchange', () => db.user && route());
+  const rec = db.takeRecovery(location.hash);   // opened from a password-reset email?
+  if (rec) { history.replaceState(null, '', location.pathname + location.search); return rec.error ? showLogin(rec.error) : showReset(); }
   showLogin();
 }
 init();
