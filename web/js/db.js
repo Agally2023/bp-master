@@ -24,6 +24,7 @@ class DemoDB {
   async removeUser(id) { if (id === this.user?.id) throw new Error('You cannot change your own access'); this.users = this.users.filter(x => x.id !== id); }
   async signOut() { this.user = null; }
   async load(table) { return (this.t[table] || []).slice(); }
+  async recent(table, df, n = 100) { const all = (this.t[table] || []).slice().sort((a, b) => String(b[df] || '').localeCompare(String(a[df] || ''))); return { rows: all.slice(0, n), total: all.length }; }
   async insert(table, rows, o = {}) {
     const cur = (this.t[table] ||= []); const idx = new Map(cur.map((r, i) => [r.row_hash, i])); let n = 0, u = 0;
     for (const r of rows) { if (idx.has(r.row_hash)) { if (o.merge && this.user?.role === 'admin') { cur[idx.get(r.row_hash)] = { ...cur[idx.get(r.row_hash)], ...r }; u++; } continue; } idx.set(r.row_hash, cur.length); cur.push({ id: uuid(), ...r }); n++; }
@@ -78,7 +79,7 @@ class SupabaseDB {
     return await this._finishSignIn();
   }
   async _finishSignIn() {
-    const me = await (await this._f('/auth/v1/user')).json();
+    const me = this.authUser && this.authUser.id ? this.authUser : await (await this._f('/auth/v1/user')).json();   // the token response already carries the user
     let p = (await (await this._f(`/rest/v1/${P}profiles?id=eq.${me.id}&select=full_name,role,active,status`)).json())[0];
     if (!p) {   // first verified sign-in of a new account: file an access request for the administrator
       const name = (me.user_metadata && me.user_metadata.full_name) || me.email;
@@ -113,11 +114,24 @@ class SupabaseDB {
   async removeUser(id) { const r = await this._f(`/rest/v1/${P}profiles?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: 'return=representation' } }); if (!(await r.json()).length) throw new Error('Not allowed'); }
   async signOut() { try { if (this.tok) await this._f('/auth/v1/logout', { method: 'POST', noRefresh: true }); } catch { } this.tok = this.refresh_token = this.user = null; }
   async load(table, filter = '') {
-    const out = []; for (let from = 0; ; from += 1000) {
-      const r = await this._f(`/rest/v1/${P}${table}?select=*${filter}`, { headers: { Range: `${from}-${from + 999}`, 'Range-Unit': 'items' } });
-      const j = await r.json(); out.push(...j); if (j.length < 1000) break;
+    // First page also returns the total (Content-Range); the remaining pages are then fetched in parallel instead of one after another.
+    const PG = 1000, url = `/rest/v1/${P}${table}?select=*${filter}`;
+    const page = (from, extra) => this._f(url, { headers: { Range: `${from}-${from + PG - 1}`, 'Range-Unit': 'items', ...extra } });
+    const r0 = await page(0, { Prefer: 'count=exact' }); const first = await r0.json();
+    if (first.length < PG) return first;
+    const total = Number((r0.headers.get('content-range') || '').split('/')[1]);
+    if (!Number.isFinite(total)) {   // total not readable: fall back to sequential paging
+      const out = first.slice(); for (let from = PG; ; from += PG) { const j = await (await page(from)).json(); out.push(...j); if (j.length < PG) break; }
+      return out;
     }
-    return out;
+    const starts = []; for (let f = PG; f < total; f += PG) starts.push(f);
+    const rest = await Promise.all(starts.map(async f => (await page(f)).json()));
+    return first.concat(...rest);
+  }
+  async recent(table, dateField, n = 100) {   // latest n rows + total count, without downloading the whole table
+    const r = await this._f(`/rest/v1/${P}${table}?select=*&order=${dateField || 'created_at'}.desc.nullslast`, { headers: { Range: `0-${n - 1}`, 'Range-Unit': 'items', Prefer: 'count=exact' } });
+    const rows = await r.json(); const total = Number((r.headers.get('content-range') || '').split('/')[1]);
+    return { rows, total: Number.isFinite(total) ? total : rows.length };
   }
   async insert(table, rows, o = {}) {
     const merge = o.merge && this.user?.role === 'admin'; let n = 0, u = 0; for (let i = 0; i < rows.length; i += 400) {

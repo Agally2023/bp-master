@@ -5,4 +5,20 @@
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+/
   Cache-Control: no-store
+/index.html
+  Cache-Control: no-store
+/js/*
+  Cache-Control: no-cache
+/css/*
+  Cache-Control: no-cache
+/config.js
+  Cache-Control: no-cache
+/modules.json
+  Cache-Control: no-cache
+/vendor/*
+  Cache-Control: public, max-age=604800
+/assets/*
+  Cache-Control: public, max-age=86400

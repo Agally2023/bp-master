@@ -115,14 +115,14 @@ export async function start() {
   $('#login').hidden = true; $('#app').hidden = false;
   $('#who').textContent = `${db.user.name || db.user.email} · ${db.user.role}`;
   $('#banner').replaceChildren(...(isDemo() ? [h('div', { class: 'demo' }, 'DEMO MODE: nothing is saved or sent anywhere. Connect Supabase in config.js to go live.')] : []));
-  await db.audit('login', 'session', db.user.id);
+  db.audit('login', 'session', db.user.id);   // fire and forget: do not make the screen wait for the audit write
   const w = currentWeek(); if (!S.week) S.week = w;
   buildNav(); route(); idleReset();
 }
 export async function init() {
   S.reg = await (await fetch('modules.json')).json(); await db.init();
   $('#signout').onclick = signOut;
-  for (const ev of ['click', 'keydown', 'mousemove']) document.addEventListener(ev, () => { if (db.user) idleReset(); }, { passive: true });
+  let lastAct = 0; for (const ev of ['click', 'keydown', 'mousemove']) document.addEventListener(ev, () => { const t = Date.now(); if (db.user && t - lastAct > 1000) { lastAct = t; idleReset(); } }, { passive: true });
   window.addEventListener('hashchange', () => db.user && route());
   const rec = db.takeRecovery(location.hash);   // opened from a password-reset email?
   if (rec) { history.replaceState(null, '', location.pathname + location.search); return rec.error ? showLogin(rec.error) : showReset(); }

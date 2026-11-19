@@ -16,7 +16,7 @@ function fmtKind(code) {
 }
 
 export async function openWorkbook(buf) {
-  const zip = await JSZip.loadAsync(buf);
+  const zip = await (await zipLib()).loadAsync(buf);
   const get = async p => { const f = zip.file(p); return f ? f.async('string') : null; };
   const wb = await get('xl/workbook.xml'); if (!wb) throw new Error('Not a valid .xlsx file');
   const rels = await get('xl/_rels/workbook.xml.rels') || '';
@@ -73,4 +73,15 @@ export async function openWorkbook(buf) {
       return out;
     }
   };
+}
+
+// JSZip (98 KB) is only needed when a workbook is opened, so it is fetched on first use instead of on every page load.
+let zipP;
+function zipLib() {
+  if (globalThis.JSZip) return Promise.resolve(globalThis.JSZip);
+  return zipP ||= new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = 'vendor/jszip.min.js';
+    s.onload = () => res(globalThis.JSZip); s.onerror = () => { zipP = null; rej(new Error('Could not load the spreadsheet reader. Check your connection and try again.')); };
+    document.head.append(s);
+  });
 }

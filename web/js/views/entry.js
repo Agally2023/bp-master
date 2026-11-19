@@ -32,9 +32,11 @@ export async function render({ view }) {
 }
 
 async function records(m) {
-  await ensure([m.key]); const rows = (S.data[m.key] || []).slice().sort((a, b) => String(b[m.dateField] || '').localeCompare(String(a[m.dateField] || ''))).slice(0, 100);
+  let rows, total;
+  try { ({ rows, total } = await db.recent(m.key, m.dateField, 100)); }   // only the latest 100 rows, not the whole table
+  catch { await ensure([m.key]); const all = S.data[m.key] || []; total = all.length; rows = all.slice().sort((a, b) => String(b[m.dateField] || '').localeCompare(String(a[m.dateField] || ''))).slice(0, 100); }
   const cols = m.fields.filter(f => !f.virtual && f.type !== 'stages').slice(0, 9);
-  return h('div', {}, h('div', { class: 'muted' }, `${(S.data[m.key] || []).length.toLocaleString()} records stored · showing latest ${rows.length}`),
+  return h('div', {}, h('div', { class: 'muted' }, `${total.toLocaleString()} records stored · showing latest ${rows.length}`),
     table(cols.map(f => f.label), rows.map(r => cols.map(f => { const v = r[f.name]; return v == null ? '' : typeof v === 'number' ? num(v, 3) : String(v); })), { empty: 'No records yet. Use the form or import an Excel file.' }));
 }
 
