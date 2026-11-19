@@ -144,6 +144,10 @@ const hooks = {
   }
 };
 const PENDING = { day3_recounts: ['recount_date', 'recount_pcs', 'in_fish_no'], egg_separation_ratings: ['abp_rating'], hapa_exchanges: [] };
+// Bottom rope sheets leave a count blank when none was found (e.g. no untied ropes): that means 0, and the table columns are NOT NULL.
+const ZERO_FILL = { bottom_rope_audits: ['top_position', 'middle_position', 'bottom_position', 'not_tied', 'missing_hook', 'total_ropes', 'missing_posts', 'wrong_position_ropes'] };
+// Pre-formatted spare rows at the bottom of these sheets (no date, pond or hapa, only formula zeros) are skipped quietly, not reported as rejected.
+const SPARE_IF_EMPTY = { bottom_rope_audits: ['audit_date', 'pond_id', 'hapa_no'] };
 
 export function validate(m, spec, parsed, { today = todayIso() } = {}) {
   const issues = []; const add = (sev, msg, n, sample) => issues.push({ severity: sev, message: msg, count: n, sample: sample || [] });
@@ -154,13 +158,15 @@ export function validate(m, spec, parsed, { today = todayIso() } = {}) {
   for (const [c, n] of Object.entries(parsed.errs)) add('warning', `Column '${c}' has ${n} Excel error cell(s) (#REF!/#DIV/0!/…). Values ignored and recomputed where possible.`, n);
   const fieldBy = Object.fromEntries(m.fields.map(f => [f.name, f]));
   const valid = []; const reject = {}; const rej = (why, sample) => { (reject[why] ||= { n: 0, s: [] }).n++; if (reject[why].s.length < 6 && sample) reject[why].s.push(sample); };
-  let pending = 0;
+  let pending = 0, spare = 0;
   const flip = m.special === 'flip';
   for (const pr of parsed.rows) {
     const row = {}; if (spec.const) Object.assign(row, spec.const);
     for (const f of m.fields) { if (f.derived || !(f.name in pr.raw)) continue; row[f.name] = f.type === 'stages' ? pr.raw[f.name] : coerce(f, pr.raw[f.name]); }
     if (pr.raw.noncompliant_islands != null && m.key === 'workstation_audits') pr.fileNon = coerce({ type: 'int' }, pr.raw.noncompliant_islands);
     normalizeRow(m, row);
+    if (SPARE_IF_EMPTY[m.key]?.every(k => row[k] == null || row[k] === '')) { spare++; continue; }
+    for (const k of ZERO_FILL[m.key] || []) if (row[k] == null) row[k] = 0;
     if ((PENDING[m.key] || []).some(k => row[k] == null) && m.fields.filter(f => f.req && !(PENDING[m.key] || []).includes(f.name)).every(f => row[f.name] != null)) { pending++; continue; }
     const miss = m.fields.filter(f => f.req && !f.derived && (row[f.name] == null || row[f.name] === ''));
     if (miss.length) { rej(`missing ${miss.map(f => f.label).join(', ')}`, 'row ' + pr.rowNo); continue; }
@@ -173,6 +179,7 @@ export function validate(m, spec, parsed, { today = todayIso() } = {}) {
     for (const f of m.fields) if (f.type === 'int' && !f.derived && !f.virtual && row[f.name] == null && f.name !== m.dateField && !f.req) row[f.name] = null;
     derive(m, row); valid.push({ row, rowNo: pr.rowNo, fileNon: pr.fileNon });
   }
+  if (spare) add('info', `${spare} spare empty row(s) at the bottom of the sheet were ignored.`, spare);
   if (pending) add('info', `${pending} row(s) are not complete yet (no recount / rating) and were skipped – not an error.`, pending);
   for (const [why, v] of Object.entries(reject)) add('error', `${v.n} row(s) rejected: ${why}.`, v.n, v.s);
   hooks[m.key]?.(m, valid, { push: a => add(a[0], a[1], a[2], a[3]) });
