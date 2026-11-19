@@ -25,7 +25,20 @@ export function importPanel(onlyKey) {
         const buf = await f.arrayBuffer(); const sha = await sha256Buf(buf); const wb = await openWorkbook(buf);
         let det = await detectModules(wb, S.reg); if (onlyKey) det = det.filter(d => d.m.key === onlyKey);
         if (!det.length) { results.prepend(h('div', { class: 'imp' }, h('h3', {}, f.name), h('div', { class: 'muted' }, 'No recognised audit sheets' + (onlyKey ? ' for this form.' : '. Check the sheet names/headers match the standard audit files.')))); continue; }
-        for (const { m, spec } of det) results.prepend(await card(f.name, sha, wb, m, spec));
+        const cards = [];
+        for (const { m, spec } of det) { const c = await card(f.name, sha, wb, m, spec); cards.push(c); results.prepend(c); }
+        if (cards.length > 1) {   // one workbook, several sheets: offer a single button so no sheet is missed
+          const all = h('button', { class: 'btn' }, `Import all ${cards.length} sheets from ${f.name}`);
+          const note = h('span', { class: 'muted' }, 'Each sheet is also listed below with its own button.');
+          const finished = b => new Promise(r => { const t = setInterval(() => { if (!/Importing/.test(b.textContent)) { clearInterval(t); r(); } }, 150); });
+          all.onclick = async () => {
+            all.disabled = true; all.textContent = 'Importing…';
+            for (const c of cards) { const b = c.querySelector('button.btn'); if (b && !b.disabled && /^Import \d/.test(b.textContent)) { b.click(); await finished(b); } }
+            const left = cards.filter(c => { const b = c.querySelector('button.btn'); return b && /^(Import \d|Retry)/.test(b.textContent); }).length;
+            all.textContent = left ? `${left} sheet(s) need attention, see below` : 'All sheets imported ✓'; all.disabled = !!left ? false : true;
+          };
+          results.prepend(h('div', { class: 'imp row' }, all, note));
+        }
       } catch (e) { console.error(e); results.prepend(h('div', { class: 'imp' }, h('h3', {}, f.name), h('div', { class: 'err-msg' }, 'Could not read this file: ' + e.message))); }
     }
     status.textContent = '';
