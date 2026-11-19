@@ -59,6 +59,7 @@ class SupabaseDB {
   async signIn(email, password) {
     const r = await this._f('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password }), noRefresh: true });
     this._set(await r.json());
+    if (!(window.BPM_CONFIG || {}).MFA_REQUIRED) return await this._finishSignIn();   // two-step verification switched off
     const factors = (this.authUser.factors || []).filter(f => f.factor_type === 'totp' && f.status === 'verified');
     if (factors.length) return { mfa: { factorId: factors[0].id } };
     const e = await (await this._f('/auth/v1/factors', { method: 'POST', body: JSON.stringify({ factor_type: 'totp', friendly_name: 'BP Master ' + Date.now() }) })).json();
@@ -71,6 +72,9 @@ class SupabaseDB {
     const c = await (await this._f(`/auth/v1/factors/${factorId}/challenge`, { method: 'POST', body: '{}' })).json();
     const v = await this._f(`/auth/v1/factors/${factorId}/verify`, { method: 'POST', body: JSON.stringify({ challenge_id: c.id, code }) });
     this._set(await v.json());
+    return await this._finishSignIn();
+  }
+  async _finishSignIn() {
     const me = await (await this._f('/auth/v1/user')).json();
     let p = (await (await this._f(`/rest/v1/${P}profiles?id=eq.${me.id}&select=full_name,role,active,status`)).json())[0];
     if (!p) {   // first verified sign-in of a new account: file an access request for the administrator

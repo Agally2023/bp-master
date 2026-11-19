@@ -30,7 +30,7 @@ function showLogin(msg, ok) {
   const pw = h('input', { type: 'password', autocomplete: 'current-password', required: true });
   const box = h('form', { class: 'box', onsubmit: async e => {
     e.preventDefault(); err.hidden = true;
-    try { const r = await db.signIn(em.value.trim(), pw.value); r.mfa ? mfaStep(r.mfa) : start(); } catch (x) { err.className = 'err-msg'; err.textContent = x.message; err.hidden = false; }
+    try { const r = await db.signIn(em.value.trim(), pw.value); r.mfa ? mfaStep(r.mfa) : start(); } catch (x) { if (/Request sent|approval/.test(x.message)) { showLogin(x.message, true); return; } err.className = 'err-msg'; err.textContent = x.message; err.hidden = false; }
   } },
     h('img', { src: 'assets/victoryfarms-logo.png', alt: 'Victory Farms' }), h('h1', {}, 'BP Master'),
     h('div', { class: 'muted' }, 'Best Practice audit reporting. Authorised users only.'), err,
