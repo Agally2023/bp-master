@@ -62,7 +62,10 @@ class SupabaseDB {
     const factors = (this.authUser.factors || []).filter(f => f.factor_type === 'totp' && f.status === 'verified');
     if (factors.length) return { mfa: { factorId: factors[0].id } };
     const e = await (await this._f('/auth/v1/factors', { method: 'POST', body: JSON.stringify({ factor_type: 'totp', friendly_name: 'BP Master ' + Date.now() }) })).json();
-    return { mfa: { factorId: e.id, enroll: { qr: e.totp.qr_code, secret: e.totp.secret } } };
+    // The REST endpoint returns the QR as a raw <svg> string (only supabase-js adds a data: prefix), so build the data URI here.
+    const q = e.totp.qr_code || '';
+    const qr = /^data:/i.test(q) ? q : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(q);
+    return { mfa: { factorId: e.id, enroll: { qr, secret: e.totp.secret } } };
   }
   async verifyMfa(factorId, code) {
     const c = await (await this._f(`/auth/v1/factors/${factorId}/challenge`, { method: 'POST', body: '{}' })).json();
