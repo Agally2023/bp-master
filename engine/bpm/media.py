@@ -1,6 +1,7 @@
 """Post-processing of the built deck: analysed graphs replace native charts, 4-grid photo slides, excluded slides."""
 from __future__ import annotations
 import copy
+from pathlib import Path
 from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.enum.text import PP_ALIGN
@@ -44,14 +45,34 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
     for ph in list(s.placeholders):
         if ph.placeholder_format.type is not None and ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
             ph._element.getparent().remove(ph._element)
-    W, H = prs.slide_width, prs.slide_height; top = Emu(int(H * 0.14)); gap = Emu(int(W * 0.015)); cw = Emu(int((W * 0.92 - gap) // 2)); chh = Emu(int(H * 0.33)); left = Emu(int(W * 0.04))
+    # 2x2 grid with the photos tight against the centre line: left column right-aligned, right column left-aligned
+    W, H = prs.slide_width, prs.slide_height; top = int(H * 0.13); gap = int(W * 0.012); cw = int(W * 0.46); chh = int(H * 0.31); pitch = int(H * 0.39); mid = int(W // 2)
     for i, (path, cap) in enumerate(photos[:4]):
-        x = left + (cw + gap) * (i % 2); y = top + (chh + Emu(int(H * 0.05))) * (i // 2)
-        l, t, w, h = _fit(path, (x, y, cw, chh)); s.shapes.add_picture(path, l, t, w, h)
+        col, row = i % 2, i // 2
+        x0 = mid - gap // 2 - cw if col == 0 else mid + gap // 2
+        l, t, w, h = _fit(path, (x0, top + pitch * row, cw, chh))
+        x = (x0 + cw - w) if col == 0 else x0          # hug the centre line
+        y = top + pitch * row                           # all photos in a row share the top edge
+        s.shapes.add_picture(path, Emu(x), Emu(y), Emu(w), Emu(h))
         if cap:
-            tb = s.shapes.add_textbox(x, y + chh, cw, Emu(int(H * 0.04))); p = tb.text_frame.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-            r = p.add_run(); r.text = cap; r.font.size = Pt(11); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+            tb = s.shapes.add_textbox(Emu(x), Emu(y + h + int(H * 0.005)), Emu(w), Emu(int(H * 0.05))); tf = tb.text_frame; tf.word_wrap = True
+            p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+            r = p.add_run(); r.text = cap; r.font.size = Pt(12); r.font.bold = True; r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
+
+LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
+
+def add_table_logos(prs):
+    """Victory Farms logo at the top right of every slide that carries a table."""
+    if not LOGO.exists(): return
+    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.08); h = int(w * ih / iw)
+    for s in prs.slides:
+        if any(sh.has_table for sh in s.shapes):
+            x = prs.slide_width - w - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.012)
+            for sh in s.shapes:                          # keep titles clear of the logo (the text wraps instead)
+                if sh.has_text_frame and sh.top is not None and sh.top < y + h and sh.left + sh.width > x - int(prs.slide_width * 0.01) and sh.left < x:
+                    sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
+            pic = s.shapes.add_picture(str(LOGO), Emu(x), Emu(y), Emu(w), Emu(h)); pic.name = 'VF Logo (table)'
 
 def finish(out, week, images, exclude):
     prs = Presentation(out); by = {}
@@ -70,4 +91,5 @@ def finish(out, week, images, exclude):
         i, _ = find_slide(prs, key)
         if i is not None:
             sid = list(lst)[i]; prs.part.drop_rel(sid.rId); lst.remove(sid)
+    add_table_logos(prs)
     prs.save(out)
