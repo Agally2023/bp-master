@@ -52,7 +52,7 @@ export async function render({ view, ctx }) {
     body.append(g(card('Pond flipping this week', table(['Type', 'Pond', 'Scheduled', 'Stage days'], flipRows.map(([k, r]) => [k, r.pond, fmtDate(r.scheduled), Object.entries(r.stage_days || {}).map(([s, d]) => `${s}: ${d}`).join(' · ')]), { empty: 'No ponds flipped this week' })),
       card('Hapa exchange compliance', has(hx.trend) ? lineChart({ labels: hx.labels, series: [{ name: 'Exchanged / scheduled', values: hx.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true }) : noData())));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
-      br[k].ponds.length ? table(['Pond', 'Audited', 'Failed'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
+      br[k].ponds.length ? table(['Pond', 'Hapas audited', 'Hapas failed'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
   };
   weekPicker(ctx, data, draw); view.append(body); draw();
 }
