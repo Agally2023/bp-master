@@ -76,10 +76,41 @@ export function derive(m, row) {
       case 'gt0': row[d.out] = (g(d.of) || 0) > 0; break;
       case 'concat': row[d.out] = d.parts.every(k => row[k] != null && row[k] !== '') ? d.parts.map(k => row[k]).join(d.sep) : null; break;
       case 'countpos': row[d.out] = d.of.filter(k => (g(k) || 0) > 0).length; break;
+      case 'pond_prep': pondPrep(m, row); break;
       case 'sumcols': row[d.out] = d.of.reduce((s, k) => s + (g(k) || 0), 0); break;
     }
   }
   return row;
+}
+// Pond Preparation Scoring: same rules as the "Pond Scoring" sheet (stage = KPIs met / 5; preparation = average of the stages;
+// WQ = parameters inside their limit / parameters tested; post-stocking = KPIs passed / KPIs with data; overall = average of preparation and post-stocking).
+function pondPrep(m, row) {
+  const R = m.rules, n = v => v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v), r4 = v => v == null ? null : Math.round(v * 1e4) / 1e4;
+  if (n(row.survival_3doc) > 3) row.survival_3doc = n(row.survival_3doc) / 100;   // typed as a percentage
+  if (n(row.parasite_d6) > 1.5) row.parasite_d6 = n(row.parasite_d6) / 100;
+  const st = R.stages.map(k => { const kk = n(row['k_' + k]); const sc = kk == null ? null : r4(kk / R.kpis); row['s_' + k] = sc; return sc; }).filter(v => v != null);
+  const prep = st.length ? st.reduce((a, b) => a + b, 0) / st.length : null; row.prep_score = r4(prep);
+  const t = [['ammonia', v => v <= R.ammonia], ['nitrite', v => v <= R.nitrite], ['nitrate', v => v <= R.nitrate], ['calcium_hardness', v => v <= R.calcium_hardness], ['secchi', v => v >= R.secchi],
+    ['ph', v => v >= R.ph_lo && v <= R.ph_hi], ['dissolved_oxygen', v => v >= R.dissolved_oxygen], ['chlorine_residue', v => v <= R.chlorine_residue]].filter(([k]) => n(row[k]) != null);
+  row.wq_score = t.length ? r4(t.filter(([k, f]) => f(n(row[k]))).length / t.length) : null;
+  const p = [];
+  if (n(row.survival_3doc) != null) p.push(n(row.survival_3doc) >= R.surv);
+  if (n(row.mort_d7) != null || n(row.mort_d14) != null) p.push((n(row.mort_d7) == null || n(row.mort_d7) < R.mort) && (n(row.mort_d14) == null || n(row.mort_d14) < R.mort));
+  if (n(row.parasite_d6) != null) p.push(n(row.parasite_d6) < R.prev);
+  if (row.wq_score != null) p.push(row.wq_score >= R.wq_pass);
+  const post = p.length ? p.filter(Boolean).length / p.length : null; row.post_score = r4(post);
+  row.overall_score = prep != null && post != null ? r4((prep + post) / 2) : null;
+  const b = row.overall_score == null ? null : [...R.bands].reverse().find(([lim]) => row.overall_score >= lim); row.rating = b ? b[1] : null;
+  if (t.length) {
+    const a = [], x = k => n(row[k]);
+    if ((x('ammonia') != null && x('ammonia') > R.ammonia) || (x('nitrite') != null && x('nitrite') > R.nitrite) || (x('nitrate') != null && x('nitrate') > R.nitrate)) a.push('Flush (ammonia/nitrite/nitrate)');
+    if (x('secchi') != null && x('secchi') < R.secchi) a.push('Flush (Secchi low)');
+    if (x('calcium_hardness') != null && x('calcium_hardness') > R.calcium_hardness) a.push('Review hardness');
+    if (x('ph') != null && (x('ph') < R.ph_lo || x('ph') > R.ph_hi)) a.push('Adjust pH');
+    if (x('dissolved_oxygen') != null && x('dissolved_oxygen') < R.dissolved_oxygen) a.push('Aerate (low DO)');
+    if (x('chlorine_residue') != null && x('chlorine_residue') > R.chlorine_residue) a.push('Flush (chlorine residue)');
+    row.action_points = a.length ? a.join('; ') : 'No action';
+  } else row.action_points = null;
 }
 export function stored(m, row) { const o = {}; for (const f of storedFields(m)) o[f.name] = row[f.name] ?? null; return o; }
 export async function rowHash(m, row, occ) {
@@ -103,7 +134,9 @@ export function parseSheet(m, spec, rows) {
       if (typeof v === 'string' && ERR.test(v.trim())) { const n = String(hdr[c]).trim(); errs[n] = (errs[n] || 0) + 1; continue; }
       if (!isEmpty(v)) { rawVals[field] = v; any = true; }
     }
-    if (!any) continue; read++;
+    if (!any) continue;
+    if (spec.skipRe && rawVals.pond != null && new RegExp(spec.skipRe, 'i').test(String(rawVals.pond))) continue;   // example / target / rule rows
+    read++;
     // trailing pre-formatted rows hold only formula zeros: require a date or key text to count as a record
     out.push({ rowNo: i + 1, raw: rawVals });
   }
@@ -211,14 +244,17 @@ export async function withHashes(m, valid) {
 export async function detectModules(wb, registry) {
   const found = [];
   for (const m of registry.modules) for (const spec of m.imports) {
-    if (!wb.sheetNames.includes(spec.sheet)) continue;
-    const rows = await wb.rows(spec.sheet, { maxRows: 100 }); if (!rows) continue;
+    const names = spec.sheetRe ? wb.sheetNames.filter(n => new RegExp(spec.sheetRe, 'i').test(n)) : wb.sheetNames.includes(spec.sheet) ? [spec.sheet] : [];
+    for (const name of names) {
+    const sp = { ...spec, sheet: name };
+    const rows = await wb.rows(name, { maxRows: 100 }); if (!rows) continue;
     const hi = findHeaderRow(rows, spec.header); if (hi < 0) continue;
     if (m.special !== 'flip') {
-      const { missing } = mapColumns(rows[hi], spec); const need = Object.keys(spec.map).length;
+      const { missing } = mapColumns(rows[hi], sp); const need = Object.keys(spec.map).length;
       if (missing.length > Math.max(1, need * 0.4) || missing.some(k => m.fields.find(f => f.name === k && f.req))) continue;
     }
-    found.push({ m, spec });
+    found.push({ m, spec: sp });
+    }
   }
   return found;
 }

@@ -2949,6 +2949,381 @@
      "exact": true
     }
    ]
+  },
+  {
+   "key": "pond_prep_scoring",
+   "label": "Pond Preparation Scoring",
+   "group": "Nursery",
+   "auto": true,
+   "dateField": "flipping_date",
+   "natural": [
+    "pond",
+    "flipping_date"
+   ],
+   "rules": {
+    "stages": [
+     "draining",
+     "ploughing",
+     "chlorination",
+     "drying",
+     "liming",
+     "first_fill",
+     "first_maturation",
+     "second_fill",
+     "second_maturation"
+    ],
+    "kpis": 5,
+    "surv": 0.97,
+    "mort": 500,
+    "prev": 0.1,
+    "wq_pass": 1,
+    "ammonia": 0,
+    "nitrite": 0,
+    "nitrate": 0,
+    "calcium_hardness": 150,
+    "secchi": 20,
+    "ph_lo": 7,
+    "ph_hi": 8.4,
+    "dissolved_oxygen": 4.5,
+    "chlorine_residue": 0,
+    "bands": [
+     [
+      0.01,
+      1
+     ],
+     [
+      0.75,
+      2
+     ],
+     [
+      0.81,
+      3
+     ],
+     [
+      0.91,
+      4
+     ],
+     [
+      0.96,
+      4.5
+     ],
+     [
+      1,
+      5
+     ]
+    ]
+   },
+   "fields": [
+    {
+     "name": "pond",
+     "label": "Pond",
+     "type": "text",
+     "req": true,
+     "pond": true
+    },
+    {
+     "name": "flipping_date",
+     "label": "Flipping date",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "stocking_date",
+     "label": "Stocking date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "k_draining",
+     "label": "Draining: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_ploughing",
+     "label": "Ploughing: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_chlorination",
+     "label": "Chlorination: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_drying",
+     "label": "Drying: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_liming",
+     "label": "Liming: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_first_fill",
+     "label": "First Fill: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_first_maturation",
+     "label": "First Maturation: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_second_fill",
+     "label": "Second Fill: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "k_second_maturation",
+     "label": "Second maturation: KPIs met (0–5)",
+     "type": "int",
+     "req": false,
+     "min": 0,
+     "max": 5
+    },
+    {
+     "name": "ammonia",
+     "label": "Total ammonia (mg/L)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "nitrite",
+     "label": "Nitrite (mg/L)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "nitrate",
+     "label": "Nitrate (mg/L)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "calcium_hardness",
+     "label": "Calcium hardness (mg/L)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "secchi",
+     "label": "Secchi (cm)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "ph",
+     "label": "pH",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "dissolved_oxygen",
+     "label": "Dissolved oxygen (mg/L)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "chlorine_residue",
+     "label": "Chlorine residue (ppt)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "survival_3doc",
+     "label": "3 DOC survival (e.g. 0.97 or 97%)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "mort_d7",
+     "label": "Bottom mortalities day 7 (pcs)",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "mort_d14",
+     "label": "Bottom mortalities day 14 (pcs)",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "parasite_d6",
+     "label": "Parasite prevalence day 6 (e.g. 0.05 or 5%)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "s_draining",
+     "label": "Draining score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_ploughing",
+     "label": "Ploughing score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_chlorination",
+     "label": "Chlorination score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_drying",
+     "label": "Drying score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_liming",
+     "label": "Liming score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_first_fill",
+     "label": "First Fill score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_first_maturation",
+     "label": "First Maturation score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_second_fill",
+     "label": "Second Fill score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "s_second_maturation",
+     "label": "Second maturation score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "prep_score",
+     "label": "Preparation score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "wq_score",
+     "label": "Water quality score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "post_score",
+     "label": "Post-stocking score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "overall_score",
+     "label": "Overall score",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "rating",
+     "label": "Rating (0–5)",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "action_points",
+     "label": "Action points",
+     "type": "text",
+     "derived": true
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "isoweek",
+     "date": "flipping_date"
+    },
+    {
+     "fn": "pond_prep"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "Pond Scoring",
+     "sheetRe": "^Pond Scoring",
+     "header": "Pond",
+     "map": {
+      "pond": "Pond",
+      "flipping_date": "Flipping Date",
+      "stocking_date": "Stocking Date",
+      "survival_3doc": "3 DOC Survival",
+      "mort_d7": "Bottom Mortalities Day 7 (pcs)",
+      "mort_d14": "Bottom Mortalities Day 14 (pcs)",
+      "parasite_d6": "Parasite Prevalence Day 6",
+      "k_draining": "Draining: KPIs met (0–5)",
+      "k_ploughing": "Ploughing: KPIs met (0–5)",
+      "k_chlorination": "Chlorination: KPIs met (0–5)",
+      "k_drying": "Drying: KPIs met (0–5)",
+      "k_liming": "Liming: KPIs met (0–5)",
+      "k_first_fill": "First Fill: KPIs met (0–5)",
+      "k_first_maturation": "First Maturation: KPIs met (0–5)",
+      "k_second_fill": "Second Fill: KPIs met (0–5)",
+      "k_second_maturation": "Second maturation: KPIs met (0–5)",
+      "ammonia": "Total Ammonia (mg/L)",
+      "nitrite": "Nitrite (mg/L)",
+      "nitrate": "Nitrate (mg/L)",
+      "calcium_hardness": "Calcium Hardness (mg/L)",
+      "secchi": "Secchi (cm)",
+      "ph": "pH",
+      "dissolved_oxygen": "Dissolved Oxygen (mg/L)",
+      "chlorine_residue": "Chlorine residue (ppt)"
+     },
+     "exact": true,
+     "skipRe": "(example|target|rule)"
+    }
+   ]
   }
  ],
  "islands": [

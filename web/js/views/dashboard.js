@@ -1,11 +1,11 @@
-import { h, clear, pct, num, fmtDate } from '../util.js';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js';
 import { S, ensure } from '../state.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
 import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js';
 
-const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
+const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
 const has = a => a.some(v => v != null);
 
 export async function render({ view, ctx }) {
@@ -47,6 +47,16 @@ export async function render({ view, ctx }) {
     body.append(g(card('Egg stage separation rating', has(eg.trend) ? lineChart({ labels: eg.labels, series: [{ name: 'ABP rating (1–5)', values: eg.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, valueLabels: true }) : noData()),
       card(`Jars rated 0–2 stars (${eg.low.length} of ${eg.total})`, table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', '% Overall', 'Stars'], eg.low.slice(0, 40).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), { v: num(r.mixed_h), cls: 'redtxt' }, pct(r.overall), { v: r.star, cls: 'poor' }])))));
     // 7 flips, bottom rope, exchange
+    {   // pond preparation scoring: latest record per pond, flipped in the selected week's month, lowest overall first
+      const mon = weekRange(y, w).sun.toISOString().slice(0, 7), latest = new Map();
+      for (const r of data.pond_prep_scoring || []) if (String(r.flipping_date).slice(0, 7) === mon) { const c = latest.get(r.pond); if (!c || String(r.flipping_date) > String(c.flipping_date)) latest.set(r.pond, r); }
+      const pp = [...latest.values()].sort((a, b) => (a.overall_score ?? 9) - (b.overall_score ?? 9));
+      const sb = v => v == null ? '–' : { v: pct(v, 0), cls: band(v, 0.91, 0.75) };
+      body.append(h('div', { class: 'mt' }, card(`Pond preparation scoring (${pp.length} pond${pp.length === 1 ? '' : 's'} flipped this month)`,
+        table(['Pond', 'Flipped', 'Stocked', 'Preparation', 'Water quality', 'Post-stocking', 'Overall', 'Rating (0–5)', 'Action points'],
+          pp.map(r => [r.pond, fmtDate(r.flipping_date), r.stocking_date ? fmtDate(r.stocking_date) : '–', sb(r.prep_score), sb(r.wq_score), sb(r.post_score), sb(r.overall_score), r.rating ?? '–', r.action_points || '–']), { empty: 'No scored ponds this month' }),
+        h('div', { class: 'note' }, 'Preparation = average of 9 stage scores (KPIs met ÷ 5). Overall = average of preparation and post-stocking. Rating bands: <75% = 1, 75–80% = 2, 81–90% = 3, 91–95% = 4, 96–99% = 4.5, 100% = 5.'))));
+    }
     body.append(g(...[['broodstock', 'Broodstock ponds'], ['nursery', 'Nursery ponds']].map(([k, label]) => {
       const { st, ponds } = fl.matrix[k]; const P = ponds.slice(0, 14);
       if (!P.length) return card(`Pond flipping: ${label}`, noData('No ponds in progress'));
