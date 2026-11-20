@@ -168,3 +168,7 @@ textarea{min-height:90px;resize:vertical}
 .slotwrap{display:flex;flex-direction:column;gap:4px;min-width:0}
 .capbar{display:grid;grid-template-columns:1fr 1.4fr 1.2fr;gap:4px}
 .cap{min-width:0;padding:4px 6px;font-size:12px;border:1px solid #c5d3c5;border-radius:6px;background:#fff;color:inherit}
+
+/* Victory Farms icon at the top right of every dashboard card that holds a table */
+.card:has(table.t){position:relative;background-image:url(../assets/vf-icon.png);background-repeat:no-repeat;background-position:right 14px top 12px;background-size:34px auto}
+.card:has(table.t) h2{padding-right:46px}
