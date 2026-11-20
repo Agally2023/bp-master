@@ -43,6 +43,19 @@ def _detach_external(chart):
         part._element.remove(ext)
         part.drop_rel(rid)
 
+def _no_overlay(ax):
+    """Axis titles must reserve their own space instead of drawing over the tick labels."""
+    from pptx.oxml.ns import qn
+    from lxml import etree
+    t = ax._element.find(qn('c:title'))
+    if t is None: return
+    ov = t.find(qn('c:overlay'))
+    if ov is None:
+        ov = etree.SubElement(t, qn('c:overlay'))
+        lay = t.find(qn('c:layout'))
+        (lay.addnext(ov) if lay is not None else t.find(qn('c:tx')).addnext(ov))
+    ov.set('val', '0')
+
 def replace_chart(sh, cats, vals, fmt, title=None, xt=None, yt=None):
     """vals: list of numbers (single series, keeps its name) or list of (name, values) for multi-series charts."""
     _detach_external(sh.chart)
@@ -66,6 +79,7 @@ def replace_chart(sh, cats, vals, fmt, title=None, xt=None, yt=None):
         if t:
             ax.has_title = True; ax.axis_title.text_frame.text = t
             r = ax.axis_title.text_frame.paragraphs[0].runs[0]; r.font.size = Pt(10); r.font.bold = True
+            _no_overlay(ax)
     if title and sh.chart.has_title:
         tf = sh.chart.chart_title.text_frame
         tf.text = title
@@ -163,9 +177,9 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     s = S(12)
     for key, chart_name, pic_name, box_name in (('nursery', 'Chart 7', 'Picture 6', 'TextBox 31'), ('broodstock', 'Chart 14', 'Picture 10', 'TextBox 16')):
         g, by_pond = br[key]
-        wk = list(range(4, week + 1))
+        wk = list(range(max(1, week - 11), week + 1))                       # last 12 weeks
         vals = [float(g.loc[w, 'nc_pct']) if w in g.index else None for w in wk]
-        replace_chart(shape(s, chart_name), [str(w) for w in wk], vals, '0%', xt='ISO week', yt='Non-conforming hapas (%)')
+        bar_replace(shape(s, chart_name), [f'Wk {w}' for w in wk], vals, '0%', f'Bottom rope non-conformance: % of hapas failed ({key.capitalize()})', 'ISO week', 'Hapas failed the audit (%)')
         pic = shape(s, pic_name)
         bp = by_pond.sort_values(['failed', 'audited'], ascending=False)
         if len(bp) > 5:
@@ -241,6 +255,31 @@ def batch2(prs, year, week, comments, x):
         done |= {6, 7}
     return done
 
+
+def bar_replace(sh, cats, vals, fmt, title, xt, yt):
+    """Swap a template line chart for a green clustered-column chart in the same place (percentage of hapas failed)."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE
+    from pptx.util import Pt
+    parent = sh._element.getparent(); l, t, w, h = sh.left, sh.top, sh.width, sh.height
+    cd = CategoryChartData(number_format=fmt); cd.categories = cats
+    cd.add_series('% hapas failed', [None if v is None or v != v else float(v) for v in vals])
+    gf = None
+    from pptx.shapes.shapetree import SlideShapes
+    slide = sh.part.slide if hasattr(sh.part, 'slide') else None
+    gf = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, l, t, w, h, cd)
+    parent.remove(sh._element)
+    ch = gf.chart; ch.has_legend = False; ch.font.size = Pt(10)
+    ch.has_title = True; ch.chart_title.text_frame.text = title; ch.chart_title.text_frame.paragraphs[0].runs[0].font.size = Pt(12); ch.chart_title.text_frame.paragraphs[0].runs[0].font.bold = True
+    pl = ch.plots[0]; pl.gap_width = 60; pl.has_data_labels = True
+    pl.data_labels.number_format = fmt; pl.data_labels.number_format_is_linked = False; pl.data_labels.font.size = Pt(9)
+    se = pl.series[0]; se.format.fill.solid(); se.format.fill.fore_color.rgb = RGBColor(0x0E, 0x81, 0x2E)
+    va = ch.value_axis; va.minimum_scale = 0; va.tick_labels.number_format = fmt; va.tick_labels.number_format_is_linked = False
+    va.major_gridlines.format.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
+    for ax, tx in ((ch.category_axis, xt), (va, yt)):
+        ax.has_title = True; ax.axis_title.text_frame.text = tx
+        r = ax.axis_title.text_frame.paragraphs[0].runs[0]; r.font.size = Pt(10); r.font.bold = True
+    return gf
 
 def _drop_shape(sh):
     sh._element.getparent().remove(sh._element)

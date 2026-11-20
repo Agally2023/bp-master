@@ -32,8 +32,8 @@ const SECTIONS = [
   { key: 'flipping', title: 'Pond Flipping', slide: 10, an: (d, y, w) => A.flips(d, y, w),
     body: a => [table(['Type', 'Pond', 'Scheduled', 'Days per stage'], [...a.nursery, ...a.brood].slice(0, 8).map(r => [r.kind, r.pond, fmtDate(r.scheduled), Object.values(r.stage_days || {}).join(', ')]), { empty: 'No ponds flipped' })] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
-  { key: 'bottom_rope', title: 'Bottom Rope Audit (Nursery & Broodstock)', slide: 12, an: (d, y, w) => A.bottomRope(d, y, w),
-    body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? lineChart({ labels: a[k].labels, series: [{ name: k + ' non-conforming', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Non-conforming hapas (%)', min: 0, fmt: pc0, h: 190 }) : null) },
+  { key: 'bottom_rope', title: 'Bottom Rope Non-Conformance (Nursery & Broodstock)', slide: 12, an: (d, y, w) => A.bottomRope(d, y, w),
+    body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? barChart({ labels: a[k].labels, series: [{ name: '% hapas failed the audit', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: pc0, valueLabels: true, maxLabels: 30, h: 190, title: 'Bottom rope non-conformance: ' + k }) : null) },
   { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 13, an: (d, y, w) => A.hapaExchange(d, y, w),
     body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Exchanged / scheduled', values: a.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: pc0, h: 200 }) : null] },
 ];
