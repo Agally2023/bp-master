@@ -109,6 +109,10 @@ export function draftComment(key, a) {
     case 'transfers': return a.length ? `Temperature variance (bucket with fish vs pond) ranged ${Math.min(...a.map(r => r.variance[0])).toFixed(1)} to ${Math.max(...a.map(r => r.variance[1])).toFixed(1)}°C across ${sum(a.map(r => r.n))} audited hapa stockings.` : 'No fry transfers audited this week.';
     case 'eggs': return a.current == null ? 'No egg separation ratings this week.' : `Weekly average egg stage separation was ${a.current.toFixed(2)}; ${a.low.length} of ${a.total} jars scored 0–2 stars (${a.mixed} with mixed stages).`;
     case 'hapa_exchange': return a.current == null ? 'No hapa exchanges scheduled this week.' : `Hapa exchange compliance was ${p(a.current)} this week.`;
+    case 'bottom_rope': return ['Nursery', 'Broodstock'].map(k => {
+      const t = a[k].ponds.reduce((n, x) => n + x.audited, 0), f = a[k].ponds.reduce((n, x) => n + x.failed, 0);
+      return t ? `${k}: total of ${t} hapas were audited; ${f} failed the audit metrics, a non-conformance of ${p(f / t)} (${f ? 'still fail' : 'meets the standard'}).` : `${k}: no bottom rope audits were recorded this week.`;
+    }).join('\n');
     default: return '';
   }
 }

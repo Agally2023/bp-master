@@ -41,8 +41,7 @@ def bottom_rope(g: pd.DataFrame, week: int):
         return [f"No bottom rope audits were recorded in week {week}.", "[Add comment]"]
     r = g.loc[week]
     status = "still fail" if r.failed > 0 else "meets the standard"
-    return [f"Total of {int(r.ropes)} ropes were audited; {int(r.failed)} of {int(r.audited)} hapas failed the audit metrics.",
-            f"Bottom rope non-conformance was at {r.nc_pct:.1%} ({status}).",
+    return [f"Total of {int(r.audited)} hapas were audited; {int(r.failed)} failed the audit metrics, a non-conformance of {r.nc_pct:.1%} ({status}).",
             "[Add comment]"]
 
 def biosecurity(overall, cat):

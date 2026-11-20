@@ -51,7 +51,11 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     for sec, text in (overrides or {}).items():                  # comments edited by people replace the drafts
         lines = [l.strip() for l in (text or '').split('\n') if l.strip()]
         for k in COMMENT_MAP.get(sec, []):
-            if lines and k in cm: cm[k] = lines
+            mine = lines
+            if sec == 'bottom_rope':        # one editable comment feeds two slides: 'Nursery: ...' / 'Broodstock: ...' lines go to their own slide, untagged lines to both
+                tag = k.split('_')[-1].capitalize() + ':'; other = ('Broodstock:' if tag == 'Nursery:' else 'Nursery:')
+                mine = [l[len(tag):].strip() if l.startswith(tag) else l for l in lines if not l.startswith(other)]
+            if mine and k in cm: cm[k] = mine
     deck.build(template, out, year, week, sun + dt.timedelta(days=2), tr, nc, cm, sub, title,
                {'nursery': (gn, A.bottom_rope_by_pond(nur, year, week)), 'broodstock': (gb, A.bottom_rope_by_pond(bro, year, week))}, extra)
     media.finish(out, week, images or [], set(exclude))
