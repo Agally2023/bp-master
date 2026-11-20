@@ -22,3 +22,11 @@ export function table(heads, rows, o = {}) {
 export const band = (v, good = 0.8, avg = 0.5) => v == null ? '' : v >= good ? 'good' : v >= avg ? 'avg' : 'poor';
 export const card = (title, ...kids) => h('div', { class: 'card' }, title ? h('h2', {}, title) : null, ...kids);
 export const noData = (msg = 'No data for this week') => h('div', { class: 'empty' }, msg);
+
+// Biosecurity block shared by the dashboard and the report preview: category table + shaded trend, as on the PPT slide.
+export const bandText = v => v == null ? '' : v >= 0.8 ? 'Good' : v >= 0.5 ? 'Average' : 'Poor';
+export function bioTable(a, pct) {
+  const rows = a.cats.map(c => [c.category, c.n, pct(c.score, 1), { v: bandText(c.score), cls: band(c.score) }]);
+  if (a.current != null) rows.push([{ v: 'Overall', cls: 'tot' }, a.checks, pct(a.current, 1), { v: bandText(a.current), cls: band(a.current) }]);
+  return table(['Category', 'Ratings', 'Average %', 'Rating'], rows, { num: [1, 2, 3] });
+}

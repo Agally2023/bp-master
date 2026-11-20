@@ -24,13 +24,15 @@ export function workstation(data, y, w, n = 13) {
   return { labels: weeks.map(wl), trend, current: trend.at(-1), nc, reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 3), audits: inWeek(data.workstation_audits, y, w).length };
 }
 
-export function biosecurity(data, y, w) {
+export function biosecurity(data, y, w) {          // same shape as the PPT slide: every week from the first audit, gaps joined, category table with a rating band
   const d = inYear(data.biosecurity_audits, y).filter(r => r.rating_value != null && r.analysis_category !== 'Not scored');
-  const byWeek = group(d, r => r.iso_week), weeks = [...byWeek.keys()].filter(x => x <= w).sort((a, b) => a - b).slice(-12);
-  const overall = weeks.map(x => mean([...group(byWeek.get(x), r => r.analysis_category).values()].map(g => mean(g.map(r => r.rating_value)))));
+  const byWeek = group(d, r => r.iso_week), have = [...byWeek.keys()].filter(x => x <= w).sort((a, b) => a - b);
+  const first = have[0] ?? w, weeks = Array.from({ length: w - first + 1 }, (_, i) => first + i);
+  const overall = weeks.map(x => byWeek.has(x) ? mean([...group(byWeek.get(x), r => r.analysis_category).values()].map(g => mean(g.map(r => r.rating_value)))) : null);
   const cur = group(byWeek.get(w) || [], r => r.analysis_category);
-  const cats = [...cur].map(([k, g]) => ({ category: k, n: g.length, score: mean(g.map(r => r.rating_value)) })).sort((a, b) => a.score - b.score);
-  return { labels: weeks.map(wl), overall, current: overall.at(-1), cats };
+  const cats = [...cur].map(([k, g]) => ({ category: k, n: g.length, score: mean(g.map(r => r.rating_value)) })).sort((a, b) => b.n - a.n || a.category.localeCompare(b.category));
+  const lowest = [...cats].sort((a, b) => a.score - b.score);
+  return { labels: weeks.map(wl), weeks, overall, current: overall.at(-1), cats, lowest, checks: cats.reduce((n, c) => n + c.n, 0) };
 }
 
 const prevInt = g => { const n = sum(g.map(r => r.samples_collected)), c = sum(g.map(r => r.infected_samples)), t = sum(g.map(r => r.total_parasites)); return [n ? c / n : null, c ? t / c : n ? 0 : null]; };
@@ -103,7 +105,7 @@ export function draftComment(key, a) {
   const p = v => v == null ? '–' : (v * 100).toFixed(1) + '%';
   switch (key) {
     case 'workstation': return a.current == null ? 'No workstation audits this week.' : `Workstation compliance was ${p(a.current)} this week from ${a.audits} audits; ${a.nc.length} audit(s) had non-compliant islands.${a.reasons.length ? ' Main reasons: ' + a.reasons.map(r => `${r[0]} (${r[1]})`).join(', ') + '.' : ''}`;
-    case 'biosecurity': return a.current == null ? 'No biosecurity audits this week.' : `Overall biosecurity score was ${p(a.current)}.${a.cats[0] ? ` Weakest category: ${a.cats[0].category} (${p(a.cats[0].score)}).` : ''}`;
+    case 'biosecurity': return a.current == null ? 'No biosecurity audits this week.' : `Overall biosecurity score was ${p(a.current)}.${a.cats[0] ? ` Weakest category: ${a.lowest[0].category} (${p(a.lowest[0].score)}).` : ''}`;
     case 'day3': return a.total ? `${a.total - a.failed} of ${a.total} hapas met the 97% three-day survival target (average ${p(a.avg)}).` : 'No 3-day recounts completed this week.';
     case 'stocking': return a.length ? `Daily average variance ranged ${p(Math.min(...a.map(r => r.variance)))} to ${p(Math.max(...a.map(r => r.variance)))}; ${a.filter(r => Math.abs(r.variance) <= 0.05).length} of ${a.length} days within ±5%.` : 'No stocking audits this week.';
     case 'transfers': return a.length ? `Temperature variance (bucket with fish vs pond) ranged ${Math.min(...a.map(r => r.variance[0])).toFixed(1)} to ${Math.max(...a.map(r => r.variance[1])).toFixed(1)}°C across ${sum(a.map(r => r.n))} audited hapa stockings.` : 'No fry transfers audited this week.';

@@ -3,7 +3,7 @@ import { S, ensure } from '../state.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData } from './common.js';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
 const has = a => a.some(v => v != null);
@@ -29,8 +29,7 @@ export async function render({ view, ctx }) {
       ws.reasons.length ? h('div', { class: 'note' }, h('b', {}, 'Main reasons: '), ws.reasons.map(r => `${r[0]} (${r[1]})`).join(' · ')) : null),
       card('Non-compliant workstations this week', table(['Date', 'RAS', 'Compliance', 'Island', 'Responsible', 'Reason'], ws.nc.map(r => [fmtDate(r.audit_date), r.ras, { v: pct(r.score), cls: band(r.score, 0.95, 0.8) }, r.noncompliant_island, r.employee_responsible, r.reason])))));
     // 2 biosecurity
-    body.append(g(card('Biosecurity & hygiene: weekly trend', has(bio.overall) ? lineChart({ labels: bio.labels, series: [{ name: 'Overall score', values: bio.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', target: 0.8, targetLabel: 'Good ≥80%' }) : noData()),
-      card('Category scores this week', table(['Category', 'Checks', 'Score'], bio.cats.map(c => [c.category, c.n, { v: pct(c.score, 1), cls: band(c.score) }]), { num: [1, 2] }))));
+    body.append(g(card('Biosecurity and Hygiene', has(bio.overall) ? bioTable(bio, pct) : null, has(bio.overall) ? lineChart({ labels: bio.labels, series: [{ name: 'Overall rating', values: bio.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', area: true, joinGaps: true, valueLabels: true, maxLabels: 30, w: 760 }) : noData())));
     // 3 parasitology
     const pick = h('div', { class: 'row' }, h('select', { onchange: e => { ras = e.target.value; draw(); } }, (par.rasList.length ? par.rasList : [ras]).map(r => h('option', { selected: r === ras }, r))),
       h('select', { onchange: e => { by = e.target.value; draw(); } }, [['stage', 'By stage'], ['island', 'By island']].map(([v, l]) => h('option', { value: v, selected: v === by }, l))));

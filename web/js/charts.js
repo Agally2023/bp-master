@@ -42,7 +42,11 @@ export function lineChart(o) {
   o.labels.forEach((l, i) => { if (i % c.step === 0 || i === n - 1) svg.append(el('text', { x: x(i), y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, l)); });
   o.series.forEach((s, k) => {
     const col = o.series.length === 1 ? PAL[0] : (s.color || PAL[k % PAL.length]); let d = '', pen = false;   // a single line is always Victory Farms green
-    s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) { pen = false; return; } d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+    s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) { if (!o.joinGaps) pen = false; return; } d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+    if (o.area && d) {                       // light shaded area under the line (the PPT biosecurity look); weeks without data are joined, not broken
+      const pts = s.values.map((v, i) => v == null || Number.isNaN(v) ? null : [x(i), y(v)]).filter(Boolean);
+      if (pts.length > 1) svg.append(el('path', { d: `M${pts[0][0].toFixed(1)},${y(c.lo).toFixed(1)}` + pts.map(q => `L${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('') + `L${pts.at(-1)[0].toFixed(1)},${y(c.lo).toFixed(1)}Z`, fill: col, 'fill-opacity': 0.16, stroke: 'none' }));
+    }
     svg.append(el('path', { d, fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }));
     s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) return; const p = el('circle', { cx: x(i), cy: y(v), r: 3.4, fill: col }); p.append(el('title', {}, `${s.name} · ${o.labels[i]}: ${f(v)}`)); svg.append(p); });
     if (o.valueLabels) s.values.forEach((v, i) => { if (v != null && !Number.isNaN(v)) svg.append(el('text', { x: x(i), y: y(v) - 7, 'text-anchor': 'middle', fill: col, 'font-weight': 700 }, f(v))); });

@@ -4,7 +4,7 @@ import { db } from '../db.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band } from './common.js';
+import { weekPicker, table, band, bioTable } from './common.js';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
 const CFG = window.BPM_CONFIG || {};
@@ -15,7 +15,7 @@ const SECTIONS = [
   { key: 'workstation', title: 'Incubation Workstation Compliance', slide: 2, an: (d, y, w) => A.workstation(d, y, w),
     body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason]))] },
   { key: 'biosecurity', title: 'Biosecurity and Hygiene', slide: 3, an: (d, y, w) => A.biosecurity(d, y, w),
-    body: a => [table(['Category', 'Checks', 'Score'], a.cats.map(c => [c.category, c.n, { v: pct(c.score, 1), cls: band(c.score) }])), has(a.overall) ? lineChart({ labels: a.labels, series: [{ name: 'Overall', values: a.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: pc0, h: 190 }) : null] },
+    body: a => [bioTable(a, pct), has(a.overall) ? lineChart({ labels: a.labels, series: [{ name: 'Overall rating', values: a.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', area: true, joinGaps: true, valueLabels: true, maxLabels: 30, w: 760, h: 210 }) : null] },
   { key: 'bio_photos', title: 'Biosecurity: audit photos', slide: 4, photos: 4, an: () => ({}), body: () => [] },
   { key: 'parasitology', title: 'Incubation Parasitology', slide: 5, an: (d, y, w) => A.parasitology(d, y, w, 'RAS2', 'stage'),
     body: a => [a.series.length ? lineChart({ labels: a.labels, series: a.series.map((s, i) => ({ name: s.key, values: s.prev, color: PAL[i % 6] })), xTitle: 'ISO week', yTitle: 'Prevalence (%)', min: 0, fmt: pc0, h: 190, title: 'Prevalence (RAS2, by stage)' }) : null, a.series.length ? lineChart({ labels: a.labels, series: a.series.map((s, i) => ({ name: s.key, values: s.int, color: PAL[i % 6] })), xTitle: 'ISO week', yTitle: 'Parasites per infected sample', min: 0, h: 190, title: 'Intensity' }) : null] },
