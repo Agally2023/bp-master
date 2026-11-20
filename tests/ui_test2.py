@@ -5,6 +5,7 @@ async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch(); pg=await b.new_page(viewport={'width':1440,'height':900})
         errs=[]; pg.on('pageerror',lambda e: errs.append(str(e)))
+        await pg.route('**/config.js', lambda r: r.fulfill(content_type='text/javascript', body='window.BPM_CONFIG={SUPABASE_URL:\"\",SUPABASE_ANON_KEY:\"\",REPORT_API_URL:\"\",IDLE_LOGOUT_MINUTES:0};'))
         await pg.goto('http://localhost:8765/index.html'); await pg.fill('input[type=email]','a@b.c'); await pg.fill('input[type=password]','x'); await pg.click('button[type=submit]')
         await pg.click('nav button[data-r=entry]'); await pg.click('.modlist button:has-text("Incubation Workstation")'); await pg.wait_for_selector('form.form')
         await pg.fill('[name=audit_date]','2026-11-17'); await pg.fill('[name=ras]','RAS2'); await pg.fill('[name=total_islands]','6'); await pg.fill('[name=compliant_islands]','5')

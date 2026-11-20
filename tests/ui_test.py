@@ -6,6 +6,7 @@ async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch(); pg=await b.new_page(viewport={'width':1440,'height':900})
         errs=[]; pg.on('console',lambda m: errs.append(m.text) if m.type=='error' else None); pg.on('pageerror',lambda e: errs.append('PAGEERR '+str(e)))
+        await pg.route('**/config.js', lambda r: r.fulfill(content_type='text/javascript', body='window.BPM_CONFIG={SUPABASE_URL:\"\",SUPABASE_ANON_KEY:\"\",REPORT_API_URL:\"\",IDLE_LOGOUT_MINUTES:0};'))
         await pg.goto('http://localhost:8765/index.html'); await pg.wait_for_selector('#login form')
         await pg.screenshot(path=OUT+'01_login.png')
         await pg.fill('input[type=email]','audit@victoryfarms.com'); await pg.fill('input[type=password]','x'); await pg.click('button[type=submit]')
@@ -25,7 +26,7 @@ async def main():
         await pg.click('.imp .btn'); await pg.wait_for_selector('.imp .note'); print('import note:',await pg.inner_text('.imp .note'))
         await pg.click('nav button[data-r=reports]'); await pg.wait_for_selector('.card button'); 
         await pg.select_option('.ctx select','2026-46'); await pg.wait_for_timeout(500)
-        await pg.click('button:has-text("Create Week 46")'); await pg.wait_for_selector('.sec'); await pg.wait_for_timeout(800)
+        await pg.click('button:has-text("Create Week 46")'); await pg.wait_for_selector('details.sec'); await pg.wait_for_timeout(800)
         await pg.screenshot(path=OUT+'08_report.png',full_page=True)
         print('ERRORS:',errs[:10]); await b.close()
 asyncio.run(main())

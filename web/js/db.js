@@ -23,7 +23,7 @@ class DemoDB {
   }
   async removeUser(id) { if (id === this.user?.id) throw new Error('You cannot change your own access'); this.users = this.users.filter(x => x.id !== id); }
   async signOut() { this.user = null; }
-  async load(table) { return (this.t[table] || []).slice(); }
+  async load(table, filter = '') { const m = /iso_year=gte\.(\d+)/.exec(filter); const rows = (this.t[table] || []).slice(); return m ? rows.filter(r => r.iso_year == null || r.iso_year >= +m[1]) : rows; }
   async recent(table, df, n = 100) { const all = (this.t[table] || []).slice().sort((a, b) => String(b[df] || '').localeCompare(String(a[df] || ''))); return { rows: all.slice(0, n), total: all.length }; }
   async insert(table, rows, o = {}) {
     const cur = (this.t[table] ||= []); const idx = new Map(cur.map((r, i) => [r.row_hash, i])); let n = 0, u = 0;

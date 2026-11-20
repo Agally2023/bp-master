@@ -9,9 +9,10 @@ const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples'
 const has = a => a.some(v => v != null);
 
 export async function render({ view, ctx }) {
-  const data = await ensure(KEYS);
+  const data = await ensure(KEYS, S.week.y - 1);
   const body = h('div', {}); let ras = 'RAS2', by = 'stage';
-  const draw = () => {
+  const draw = async () => {
+    await ensure(KEYS, S.week.y - 1);
     clear(body); const { y, w } = S.week;
     if (!KEYS.some(k => (data[k] || []).length)) { body.append(card('No data yet', h('p', {}, 'Open ', h('b', {}, 'Data Entry'), ' to type records or import your Excel audit files. The dashboard fills in automatically.'))); return; }
     const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), wat = A.water(data, y, w), d3 = A.day3(data, y, w), st = A.stocking(data, y, w), tf = A.transfers(data, y, w), eg = A.eggs(data, y, w), br = A.bottomRope(data, y, w), hx = A.hapaExchange(data, y, w), fl = A.flips(data, y, w);
