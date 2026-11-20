@@ -1,10 +1,11 @@
 FROM python:3.12-slim
-RUN pip install --no-cache-dir python-pptx pandas pillow openpyxl numpy
 WORKDIR /app
+COPY engine/requirements.txt engine/requirements.txt
+RUN pip install --no-cache-dir -r engine/requirements.txt
 COPY engine/ engine/
 COPY web/modules.json web/modules.json
-# The weekly template is company content: mount it as a secret/volume, do not bake it into a public image.
-ENV TEMPLATE=/secrets/VF_BP_Weekly_Template.pptx PORT=8787
+# The weekly template ships inside this PRIVATE repository (engine/templates). Never make the repo or the image public.
+ENV TEMPLATE=/app/engine/templates/VF_BP_Weekly_Template.pptx PORT=8787
 USER nobody
 EXPOSE 8787
 CMD ["python", "-I", "engine/server.py"]

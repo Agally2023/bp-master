@@ -10,3 +10,4 @@ __pycache__/
 web/demo-data.json
 node_modules/
 *.log
+!engine/templates/VF_BP_Weekly_Template.pptx

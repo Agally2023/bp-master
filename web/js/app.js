@@ -11,6 +11,7 @@ const ICON = {
   rep: '<path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
   col: '<path d="M15 6l-6 6 6 6"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
@@ -100,6 +101,10 @@ function mfaStep(mfa) {
 function buildNav() {
   const nav = clear($('#nav'));
   for (const r of ROUTES.filter(r => !r.admin || db.user.role === 'admin')) nav.append(h('button', { 'data-r': r.id, title: r.label, onclick: () => { location.hash = '#/' + r.id; } }, svg(ICON[r.icon]), h('span', { class: 'lbl' }, r.label)));
+  const mb = $('#menu'), app = $('#app'); mb.replaceChildren(svg(ICON.menu || ICON.col));
+  const setNav = o => { app.classList.toggle('nav-open', o); mb.setAttribute('aria-expanded', String(o)); mb.setAttribute('aria-label', o ? 'Close menu' : 'Open menu'); };
+  mb.onclick = () => setNav(!app.classList.contains('nav-open')); $('#backdrop').onclick = () => setNav(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setNav(false); }); window.addEventListener('hashchange', () => setNav(false));
   const cb = clear($('#collapse')); cb.append(svg(ICON.col));
   cb.onclick = () => { const a = $('#app'); a.classList.toggle('collapsed'); const c = a.classList.contains('collapsed'); cb.title = c ? 'Expand menu' : 'Collapse menu'; cb.setAttribute('aria-label', cb.title); cb.style.transform = c ? 'rotate(180deg)' : ''; };
 }

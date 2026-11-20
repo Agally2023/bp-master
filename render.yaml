@@ -1,0 +1,17 @@
+# Render Blueprint: the PowerPoint report service for BP Master.
+services:
+  - type: web
+    name: bp-master-report
+    runtime: docker
+    dockerfilePath: ./engine/Dockerfile
+    dockerContext: .
+    plan: free            # upgrade to Starter to avoid ~1 min cold start after idle
+    region: frankfurt     # closest Render region to Kenya
+    healthCheckPath: /
+    envVars:
+      - key: SUPABASE_URL
+        value: https://gtokqbahkdjwyasagosi.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_9CQAwg_g5Ljl7tlximwxKQ_n9oYwisL
+      - key: ALLOWED_ORIGIN
+        value: https://bp-master.steveochieng299.workers.dev

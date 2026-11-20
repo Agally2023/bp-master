@@ -95,9 +95,9 @@ function photoGrid(R, s, disabled, redraw) {
 async function generate(report) {
   if (!CFG.REPORT_API_URL) return toast('PPT service not connected yet. Set REPORT_API_URL in config.js (see README).', true);
   try {
-    toast('Building the PowerPoint…');
+    toast('Building the PowerPoint… the first request after idle can take up to a minute.');
     const r = await fetch(CFG.REPORT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + db.tok }, body: JSON.stringify({ year: report.iso_year, week: report.iso_week, report_id: report.id }) });
-    if (!r.ok) throw new Error(await r.text() || r.statusText);
+    if (!r.ok) { const t = await r.text(); let m = t; try { m = JSON.parse(t).error || t; } catch { } throw new Error(m || r.statusText); }
     download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); toast('PowerPoint downloaded');
   } catch (e) { toast('Export failed: ' + e.message, true); }
 }

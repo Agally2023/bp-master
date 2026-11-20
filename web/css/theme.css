@@ -133,7 +133,32 @@ textarea{min-height:90px;resize:vertical}
 .err-msg{color:#9c0006;background:var(--poor);padding:8px 10px;border-radius:8px;font-size:13px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
 .toast.show{opacity:1;transform:translateX(-50%)}.toast.bad{background:#9c0006}
-@media (max-width:900px){.split{grid-template-columns:1fr}.modlist{position:static;max-height:none}.slides{grid-template-columns:1fr}.view,.top{padding-left:14px;padding-right:14px}.side{position:fixed;z-index:20}.app:not(.collapsed) .side{box-shadow:0 0 40px rgba(0,0,0,.4)}.main{margin-left:var(--side-w-c)}}
+.menu-btn,.backdrop{display:none}
+@media (max-width:900px){
+  .split{grid-template-columns:1fr}.modlist{position:static;max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;padding:4px}
+  .slides{grid-template-columns:1fr}.g2,.g3{grid-template-columns:minmax(0,1fr)}.grid>*,.card,.view{min-width:0}
+  .view{padding:14px 12px 28px}.top{padding:10px 12px;gap:8px;flex-wrap:wrap;justify-content:flex-start}.top h1{font-size:20px;flex:1;min-width:0}.ctx{width:100%}
+  .ctx select,.ctx input{flex:1;min-width:0}
+  /* sidebar becomes an off-canvas drawer opened from the hamburger button */
+  .side{position:fixed;z-index:30;left:0;top:0;bottom:0;height:100%;width:min(82vw,300px);flex-basis:auto;transform:translateX(-102%);transition:transform .2s ease;box-shadow:none}
+  .app.nav-open .side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.45)}
+  .app.collapsed .side{width:min(82vw,300px)}
+  .app.collapsed .side .brand img,.app.collapsed .appname,.app.collapsed nav .lbl,.app.collapsed .who,.app.collapsed #signout{display:revert}
+  .app.collapsed nav button{justify-content:flex-start;padding:11px 14px}
+  #collapse{display:none}.main{margin-left:0}
+  .menu-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--vf-green);cursor:pointer;flex:none}
+  .menu-btn svg{width:24px;height:24px}
+  .app.nav-open .backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:25}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:10px}
+  .form{grid-template-columns:1fr}
+  .btn,button,select,input,textarea{min-height:44px}.btn.sm{min-height:38px}input,select,textarea{font-size:16px}
+  nav button{min-height:48px}.modlist button{min-height:40px}
+  .tw{max-height:360px;-webkit-overflow-scrolling:touch}.t th,.t td{white-space:nowrap}
+  .row{gap:8px}.drop{padding:20px 12px}
+  #banner .demo{padding:7px 12px}.login .box{padding:22px 18px}
+  .slide .sbody{overflow-x:auto}
+}
+@media (max-width:420px){.kpis{grid-template-columns:1fr 1fr}.kpi .v,.kpi b{font-size:20px}}
 @media print{.side,.top,.foot,#banner{display:none}.slide{break-inside:avoid;box-shadow:none}.view{padding:0}}
 .chartbox{margin:4px 0}.chart-title{font-weight:700;color:var(--vf-green-dk);font-size:14px;margin-bottom:2px}
 .chart text{fill:inherit}

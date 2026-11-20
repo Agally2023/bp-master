@@ -40,3 +40,15 @@ Static, dependency-free site (host on Cloudflare Pages). Sidebar (collapsible): 
 - Admin profile seeded for steve.okongo@victoryfarmskenya.com. Everyone else needs a row in `bpm_profiles` (auditor/reviewer/admin); other apps' users in the same auth pool get no access.
 - `web/config.js` holds the project URL and publishable key (public by design).
 - **Cloudflare Pages**: Framework none, build command empty, output directory `web`. Add a Cloudflare Access policy (email allow-list) in front of the site. Keep `web/demo-data.json` out of git (.gitignore).
+
+## PPT report service (Render)
+`render.yaml` is a Render Blueprint for `engine/server.py` (service name `bp-master-report`, URL `https://bp-master-report.onrender.com`).
+1. Render dashboard → New → Blueprint → pick this (private) repo → Apply. The weekly template ships in `engine/templates/` (keep the repo private).
+2. If Render gives the service another URL, set it in `web/config.js` (`REPORT_API_URL`, ending `/report`) and in the `connect-src` of `web/_headers`.
+3. Only an admin can export, and only an approved report. The free plan sleeps when idle: the first export after idle can take about a minute.
+
+## Performance notes
+Migration `0005_rls_initplan.bpm.sql` evaluates RLS helper functions once per query instead of once per row and adds (iso_year, iso_week) indexes. The dashboard and reports load only the selected year and the year before.
+
+## Phone layout
+Below 900px the menu becomes a drawer (hamburger button), grids and forms go single-column, tables scroll inside their own box. Test: `python3 tests/ui_mobile.py` (serve `web/` on port 8765 first).
