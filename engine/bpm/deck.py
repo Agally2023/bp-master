@@ -43,7 +43,7 @@ def _detach_external(chart):
         part._element.remove(ext)
         part.drop_rel(rid)
 
-def replace_chart(sh, cats, vals, fmt, title=None):
+def replace_chart(sh, cats, vals, fmt, title=None, xt=None, yt=None):
     """vals: list of numbers (single series, keeps its name) or list of (name, values) for multi-series charts."""
     _detach_external(sh.chart)
     cd = CategoryChartData(number_format=fmt)
@@ -54,6 +54,18 @@ def replace_chart(sh, cats, vals, fmt, title=None):
     else:
         cd.add_series(sh.chart.plots[0].series[0].name, vals)
     sh.chart.replace_data(cd)
+    ch = sh.chart
+    if len(ch.plots[0].series) == 1 and 'LINE' in str(ch.chart_type):          # a single line is always Victory Farms green
+        se = ch.plots[0].series[0]; g = RGBColor(0x0E, 0x81, 0x2E)
+        se.format.line.color.rgb = g
+        try:
+            se.marker.format.fill.solid(); se.marker.format.fill.fore_color.rgb = g; se.marker.format.line.color.rgb = g
+        except Exception:
+            pass
+    for ax, t in ((ch.category_axis, xt), (ch.value_axis, yt)):               # label both axes
+        if t:
+            ax.has_title = True; ax.axis_title.text_frame.text = t
+            r = ax.axis_title.text_frame.paragraphs[0].runs[0]; r.font.size = Pt(10); r.font.bold = True
     if title and sh.chart.has_title:
         tf = sh.chart.chart_title.text_frame
         tf.text = title
@@ -124,7 +136,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     # --- slide 2: workstation compliance
     s = S(2)
     cats = [f' Wk {w} ' for w, _ in ws_trend]
-    replace_chart(shape(s, 'Chart 6'), cats, [v for _, v in ws_trend], '0%')
+    replace_chart(shape(s, 'Chart 6'), cats, [v for _, v in ws_trend], '0%', xt='ISO week', yt='Compliance (%)')
     cur = ws_trend[-1][1]
     shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.0%}'
     pic = shape(s, 'Picture 5'); anchor = pic
@@ -145,7 +157,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     set_lines(box, lines, size=14)
     # --- slide 8: day-3 recounts
     s = S(8)
-    replace_chart(shape(s, 'Chart 2'), list(d3_sub.unit), [float(v) for v in d3_sub.survival], '0.0%', d3_title)
+    replace_chart(shape(s, 'Chart 2'), list(d3_sub.unit), [float(v) for v in d3_sub.survival], '0.0%', d3_title, xt='Pond-Hapa unit', yt='3-day survival (%)')
     set_lines(shape(s, 'TextBox 23'), comments['day3'], size=14)
     # --- slide 12: bottom rope
     s = S(12)
@@ -153,7 +165,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
         g, by_pond = br[key]
         wk = list(range(4, week + 1))
         vals = [float(g.loc[w, 'nc_pct']) if w in g.index else None for w in wk]
-        replace_chart(shape(s, chart_name), [str(w) for w in wk], vals, '0%')
+        replace_chart(shape(s, chart_name), [str(w) for w in wk], vals, '0%', xt='ISO week', yt='Non-conforming hapas (%)')
         pic = shape(s, pic_name)
         bp = by_pond.sort_values(['failed', 'audited'], ascending=False)
         if len(bp) > 5:
@@ -198,7 +210,7 @@ def batch2(prs, year, week, comments, x):
         chart = [sh for sh in s.shapes if sh.has_chart][0]
         weeks = [w for w, _ in ov]; v = [a for _, a in ov]
         replace_chart(chart, [str(w) for w in weeks], [('Shaded area (joins weeks without data)', _interp(v)),
-                      ('Trend line (joins weeks without data)', _interp(v)), ('Overall rating', v)], '0%')
+                      ('Trend line (joins weeks without data)', _interp(v)), ('Overall rating', v)], '0%', xt='ISO week', yt='Biosecurity score (%)')
         pic = shape(s, 'Picture 6')
         rows = [[i, int(r['count']), f"{r['mean']:.1%}", x['bio']['band'](r['mean'])] for i, r in cat.iterrows()]
         n = int(cat['count'].sum()); tot = float(ov[-1][1])
@@ -213,7 +225,7 @@ def batch2(prs, year, week, comments, x):
         s = S(4); rows = x['water']['rows']
         replace_chart(shape(s, 'Chart 5'), [d.strftime('%d-%b') for d, _, _ in rows],
                       [('Volume (x10^5 L)', [v / 1e5 if v == v else None for _, v, _ in rows]),
-                       ('Avg prevalence: Eggs + Fry', [p if p == p else None for _, _, p in rows])], '0.000')
+                       ('Avg prevalence: Eggs + Fry', [p if p == p else None for _, _, p in rows])], '0.000', xt='Date', yt='Volume (x10^5 L) / prevalence')
         set_lines(shape(s, 'TextBox 7'), comments['ras_water'], size=16)
         done.add(4)
     if 'para' in x:
@@ -221,11 +233,11 @@ def batch2(prs, year, week, comments, x):
         cats = [f' Wk {w} ' for w in P['weeks']]
         for name, key, fmt in (('Chart 5', 'int', '0.0'), ('Chart 6', 'prev', '0%')):
             ser = [('New SOP Start', [None] * len(cats))] + [(st, P['stage'][st][key]) for st in P['stages']]
-            replace_chart(shape(s, name), cats, ser, fmt)
+            replace_chart(shape(s, name), cats, ser, fmt, xt='ISO week', yt='Prevalence (%)' if '%' in fmt else 'Parasites per infected sample')
         set_lines(shape(s, 'TextBox 8'), comments['parasitology'], size=16)
         s = S(7); wk = [str(w) for w in P['island_weeks']]
         for name, key, fmt in (('Chart 8', 'prev', '0%'), ('Chart 9', 'int', '0.0')):
-            replace_chart(shape(s, name), wk, [(i, P['island'][i][key]) for i in P['islands']], fmt)
+            replace_chart(shape(s, name), wk, [(i, P['island'][i][key]) for i in P['islands']], fmt, xt='ISO week', yt='Prevalence (%)' if '%' in fmt else 'Parasites per infected sample')
         done |= {6, 7}
     return done
 
@@ -259,7 +271,7 @@ def batch3(prs, year, week, comments, x):
             _drop_shape(shape(s, 'Picture 8')); _drop_shape(shape(s, 'TextBox 13'))
         if 'egg' in x:
             e = x['egg']
-            replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00')
+            replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}"
             pic = shape(s, 'Picture 15'); low = e['low']; more = max(0, len(low) - 7); low = low.head(7)
             rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.0%}', int(r.star)] for r in low.itertuples()]
@@ -309,6 +321,7 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
     gf = ns.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(300000), Emu(900000), Emu(7600000), Emu(3600000), cd)
     ch = gf.chart; ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False
     ch.has_title = False; ch.font.size = Pt(12)
+    ch.category_axis.has_title = True; ch.category_axis.axis_title.text_frame.text = 'ISO week'; ch.value_axis.has_title = True; ch.value_axis.axis_title.text_frame.text = 'Exchanged / scheduled (%)'
     va = ch.value_axis; va.minimum_scale = 0.5; va.maximum_scale = 1.1; va.tick_labels.number_format = '0%'; va.tick_labels.number_format_is_linked = False
     va.major_gridlines.format.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
     for se, rgb in zip(ch.plots[0].series, (RGBColor(0xBF, 0x90, 0x00), RGBColor(0x1E, 0x7B, 0x3A))):

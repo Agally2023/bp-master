@@ -41,7 +41,7 @@ CORE = [
           D('unit', 'Unit', 'text'), D('survival', 'Survival'), D('iso_year', 'ISO year', 'int'), D('iso_week', 'ISO week', 'int')],
   derive=[dict(fn='concat', out='unit', parts=['pond', 'hapa'], sep='-'), dict(fn='ratio', out='survival', num='recount_pcs', den='in_fish_no', round=4), dict(fn='isoweek', date='recount_date')],
   imports=[dict(sheet='Data', header='Stocking Date', map={'stocking_date': 'stocking date', 'pond': 'pond', 'hapa': 'hapa', 'batch_code': 'ras', 'in_abw': 'in abw', 'in_fish_no': 'in fish no',
-           'recount_date': 'day 3 recount date', 'recount_pcs': 'day 3 recount pcs', 'recount_abw': 'day 3 recount abw'})]),
+           'recount_date': 'day 3 recount date', 'recount_pcs': 'day 3 recount pcs', 'recount_abw': 'day 3 recount abw', 'unit_label': 'unit'})]),
  dict(key='biosecurity_audits', label='Biosecurity & Hygiene', group='Nursery', dateField='audit_date',
   fields=[F('audit_date', 'Date', 'date', True), F('location', 'Location', 'text', True), F('category', 'Category'), F('metric', 'Metric'), F('reported_pct', 'Reported %', 'num'), F('rating', 'Mapped rating', 'select', options=['Good', 'Above Average', 'Average', 'Bad']),
           F('rating_value', 'Rating value (0-1)', 'num'), F('analysis_category', 'Analysis category', 'select', options=['Floor Cleanliness', 'Organisation', 'Footbath Condition', 'Hand Washing Compliance', 'Not scored']),

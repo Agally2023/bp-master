@@ -5,20 +5,27 @@ const el = (t, a = {}, txt) => { const e = document.createElementNS(NS, t); for 
 const fmtDef = v => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.0+$/, '');
 
 function frame(o) {
-  const W = o.w || 520, H = o.h || 250, m = { t: 14, r: 14, b: o.labels.length > 9 ? 44 : 30, l: 44 };
+  const W = o.w || 520, H = (o.h || 250) + (o.xTitle ? 18 : 0), m = { t: 14, r: 14, b: (o.labels.length > 9 ? 44 : 30) + (o.xTitle ? 18 : 0), l: o.yTitle ? 60 : 44 };
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': o.title || 'chart' });
   const vals = o.series.flatMap(s => s.values).filter(v => v != null && !Number.isNaN(v));
   if (o.target != null) vals.push(o.target);
   let lo = o.min ?? Math.min(0, ...vals), hi = o.max ?? Math.max(...vals, 0.0001);
   if (o.stacked) hi = o.max ?? Math.max(...o.labels.map((_, i) => o.series.reduce((s, x) => s + (x.values[i] || 0), 0)), 0.0001);
-  if (o.max == null) hi = hi + (hi - lo) * 0.08; if (lo === hi) hi = lo + 1;
+  if (o.max == null) {                                   // round the top up to a tidy tick step (e.g. 0, 25, 50, 75, 100 %)
+    const raw = (hi - lo) / 4 || 0.25, pw = Math.pow(10, Math.floor(Math.log10(raw))), nz = [1, 2, 2.5, 5, 10].find(k => k * pw >= raw * 1.0001) * pw;
+    hi = lo + Math.ceil((hi - lo) / nz - 1e-9) * nz; if (hi - lo < nz * 4) hi = lo + nz * 4;
+  }
+  if (lo === hi) hi = lo + 1;
   const iw = W - m.l - m.r, ih = H - m.t - m.b, y = v => m.t + ih - (v - lo) / (hi - lo) * ih;
   const f = o.fmt || fmtDef;
   for (let i = 0; i <= 4; i++) {
     const v = lo + (hi - lo) * i / 4;
     svg.append(el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: '#e3e9e3' }), el('text', { x: m.l - 6, y: y(v) + 3, 'text-anchor': 'end', fill: '#555' }, f(v)));
   }
-  const step = Math.ceil(o.labels.length / 14);
+  const step = Math.ceil(o.labels.length / (o.maxLabels || 14));
+  // axis titles (every chart carries both)
+  if (o.xTitle) svg.append(el('text', { x: m.l + iw / 2, y: H - 6, 'text-anchor': 'middle', fill: '#222', 'font-weight': 700 }, o.xTitle));
+  if (o.yTitle) svg.append(el('text', { transform: `translate(13,${m.t + ih / 2}) rotate(-90)`, 'text-anchor': 'middle', fill: '#222', 'font-weight': 700 }, o.yTitle));
   return { svg, W, H, m, iw, ih, y, f, lo, hi, step };
 }
 function finish(c, o) {
@@ -34,7 +41,7 @@ export function lineChart(o) {
   const c = frame(o), { svg, m, iw, y, f } = c, n = o.labels.length, x = i => m.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
   o.labels.forEach((l, i) => { if (i % c.step === 0 || i === n - 1) svg.append(el('text', { x: x(i), y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, l)); });
   o.series.forEach((s, k) => {
-    const col = s.color || PAL[k % PAL.length]; let d = '', pen = false;
+    const col = o.series.length === 1 ? PAL[0] : (s.color || PAL[k % PAL.length]); let d = '', pen = false;   // a single line is always Victory Farms green
     s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) { pen = false; return; } d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
     svg.append(el('path', { d, fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }));
     s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) return; const p = el('circle', { cx: x(i), cy: y(v), r: 3.4, fill: col }); p.append(el('title', {}, `${s.name} · ${o.labels[i]}: ${f(v)}`)); svg.append(p); });

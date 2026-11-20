@@ -110,6 +110,9 @@ def day3(path, as_of):
     if miss.any():
         issues.append(issue('info', 'no_recount_yet', f"Day-3: {int(miss.sum())} stocked unit(s) have no Day-3 recount yet (not an error).", miss.sum()))
         df = df[~miss]
+    # pond/hapa cells can be blank while the Unit label (e.g. A3-8) is filled: take them from the label
+    lab_ = df['unit'].astype(str).str.extract(r'^(.+)-(\d+)$')
+    df['pond'] = df['pond'].where(df['pond'].notna(), lab_[0]); df['hapa'] = df['hapa'].where(~df['hapa'].isin(['nan', 'None', '<NA>', '']), lab_[1])
     hp = pd.to_numeric(df['hapa'], errors='coerce')
     derived = df['pond'].astype(str) + '-' + hp.round().astype('Int64').astype(str)
     lab = (df['unit'].astype(str) != derived) & hp.notna()

@@ -443,7 +443,8 @@
       "in_fish_no": "in fish no",
       "recount_date": "day 3 recount date",
       "recount_pcs": "day 3 recount pcs",
-      "recount_abw": "day 3 recount abw"
+      "recount_abw": "day 3 recount abw",
+      "unit_label": "unit"
      }
     }
    ]

@@ -165,6 +165,9 @@ export function validate(m, spec, parsed, { today = todayIso() } = {}) {
     for (const f of m.fields) { if (f.derived || !(f.name in pr.raw)) continue; row[f.name] = f.type === 'stages' ? pr.raw[f.name] : coerce(f, pr.raw[f.name]); }
     if (pr.raw.noncompliant_islands != null && m.key === 'workstation_audits') pr.fileNon = coerce({ type: 'int' }, pr.raw.noncompliant_islands);
     normalizeRow(m, row);
+    if (m.key === 'day3_recounts' && (row.pond == null || row.pond === '' || row.hapa == null || row.hapa === '')) {   // pond/hapa cells can be blank while the Unit label (e.g. A3-8) is filled
+      const u = /^(.+)-(\d+)$/.exec(String(pr.raw.unit_label ?? '').trim()); if (u) { if (row.pond == null || row.pond === '') row.pond = u[1]; if (row.hapa == null || row.hapa === '') row.hapa = u[2]; }
+    }
     if (SPARE_IF_EMPTY[m.key]?.every(k => row[k] == null || row[k] === '')) { spare++; continue; }
     for (const k of ZERO_FILL[m.key] || []) if (row[k] == null) row[k] = 0;
     if ((PENDING[m.key] || []).some(k => row[k] == null) && m.fields.filter(f => f.req && !(PENDING[m.key] || []).includes(f.name)).every(f => row[f.name] != null)) { pending++; continue; }
