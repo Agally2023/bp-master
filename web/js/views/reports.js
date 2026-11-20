@@ -92,11 +92,27 @@ function photoGrid(R, s, disabled, redraw) {
   }
   return grid;
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// The free-tier report service goes to sleep when idle and needs up to ~1.5 minutes to wake. While it is waking the browser sees a
+// network error or a 502/503/504 with no CORS headers ("Failed to fetch"), so those cases are retried instead of reported straight away.
+async function callReportService(body) {
+  const waits = [0, 15000, 30000, 30000];   // pauses before each attempt
+  for (let i = 0; i < waits.length; i++) {
+    if (waits[i]) { toast(`The report service is waking up, trying again (${i}/${waits.length - 1})… this can take up to 2 minutes.`); await sleep(waits[i]); }
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 180000);
+    try {
+      const r = await fetch(CFG.REPORT_API_URL, { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + db.tok }, body: JSON.stringify(body) });
+      if (![502, 503, 504].includes(r.status)) return r;
+    } catch { /* network error or timeout: retry */ } finally { clearTimeout(timer); }
+  }
+  let host = CFG.REPORT_API_URL; try { host = new URL(CFG.REPORT_API_URL).host; } catch { }
+  throw new Error(`the report service (${host}) did not respond. Check that it is deployed and running in Render, that REPORT_API_URL in config.js is its exact address, and that ALLOWED_ORIGIN in Render is this site's address (${location.origin}).`);
+}
 async function generate(report) {
   if (!CFG.REPORT_API_URL) return toast('PPT service not connected yet. Set REPORT_API_URL in config.js (see README).', true);
   try {
     toast('Building the PowerPoint… the first request after idle can take up to a minute.');
-    const r = await fetch(CFG.REPORT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + db.tok }, body: JSON.stringify({ year: report.iso_year, week: report.iso_week, report_id: report.id }) });
+    const r = await callReportService({ year: report.iso_year, week: report.iso_week, report_id: report.id });
     if (!r.ok) { const t = await r.text(); let m = t; try { m = JSON.parse(t).error || t; } catch { } throw new Error(m || r.statusText); }
     download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); toast('PowerPoint downloaded');
   } catch (e) { toast('Export failed: ' + e.message, true); }

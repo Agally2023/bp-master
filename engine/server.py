@@ -33,13 +33,15 @@ def load_table(t, token, year):
 
 class H(BaseHTTPRequestHandler):
     def _cors(self):
-        if ORIGIN: self.send_header('Access-Control-Allow-Origin', ORIGIN); self.send_header('Vary', 'Origin')
+        # ALLOWED_ORIGIN may list several addresses separated by commas (e.g. the workers.dev address and a custom domain)
+        o = self.headers.get('Origin', ''); allowed = [x.strip().rstrip('/') for x in ORIGIN.split(',') if x.strip()]
+        if allowed: self.send_header('Access-Control-Allow-Origin', o if o.rstrip('/') in allowed else allowed[0]); self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type'); self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
     def _err(self, code, msg):
         b = json.dumps({'error': msg}).encode(); self.send_response(code); self._cors(); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(b))); self.end_headers(); self.wfile.write(b)
     def do_OPTIONS(self): self.send_response(204); self._cors(); self.end_headers()
     def do_GET(self):
-        b = b'ok'; self.send_response(200); self.send_header('Content-Length', '2'); self.end_headers(); self.wfile.write(b)
+        b = b'ok'; self.send_response(200); self._cors(); self.send_header('Content-Length', '2'); self.end_headers(); self.wfile.write(b)
     def do_POST(self):
         try:
             n = int(self.headers.get('Content-Length', 0))
