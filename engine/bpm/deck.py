@@ -84,7 +84,7 @@ def replace_chart(sh, cats, vals, fmt, title=None, xt=None, yt=None):
         tf = sh.chart.chart_title.text_frame
         tf.text = title
 
-def table(slide, anchor, header, rows, widths, header_fill, font=8, total_last=False, align=None, fill_fn=None, width=None):
+def table(slide, anchor, header, rows, widths, header_fill, font=8, total_last=False, align=None, fill_fn=None, width=None, color_fn=None):
     """Native table drawn over the screenshot's position; the old picture is removed by the caller."""
     L, T, W = anchor.left, anchor.top, (width or anchor.width)
     rh = Emu(int(font * 12700 * 2.1))
@@ -119,7 +119,8 @@ def table(slide, anchor, header, rows, widths, header_fill, font=8, total_last=F
         for c, v in enumerate(row):
             al = (align[c] if align else PP_ALIGN.LEFT)
             f = fill_fn(r, c, v) if fill_fn else None
-            cell(r, c, v, bold=last, fill=f or (RGBColor(0xDD, 0xEB, 0xF7) if last else None), al=al)
+            tc = color_fn(r, c, v) if color_fn else None
+            cell(r, c, v, bold=last or bool(tc), fill=f or (RGBColor(0xDD, 0xEB, 0xF7) if last else None), color=tc, al=al)
     for i in range(len(rows) + 1):
         tbl.rows[i].height = rh
     return gs
@@ -317,7 +318,8 @@ def batch3(prs, year, week, comments, x):
             if more:
                 rows.append([f'+{more} more', '', '', '', '', '', ''])
             table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', '% Overall', 'Stars'],
-                  rows or [['-'] * 7], [11, 7, 9, 12, 11, 9, 6], BLUE_DARK, font=7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6, width=Emu(3700000))
+                  rows or [['-'] * 7], [11, 7, 9, 12, 11, 9, 6], BLUE_DARK, font=7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6, width=Emu(3700000),
+                  color_fn=lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c == 4 and v not in ('', '-') else None)  # mixed-stage height in red
             _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
             set_lines(shape(s, 'TextBox 18'), [comments['egg'][0]], size=14)
         else:
