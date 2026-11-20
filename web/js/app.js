@@ -1,3 +1,4 @@
+import { setPonds } from './engine.js';
 import { h, $, clear, toast } from './util.js';
 import { db, isDemo } from './db.js';
 import { S, currentWeek, setWeek } from './state.js';
@@ -125,7 +126,12 @@ export async function start() {
   buildNav(); route(); idleReset();
 }
 export async function init() {
-  S.reg = await (await fetch('modules.json')).json(); await db.init();
+  S.reg = await (await fetch('modules.json')).json();
+  try {   // pond list: every pond-name field becomes a required drop-down of these ponds
+    S.ponds = (await (await fetch('ponds.json')).json()).map(p => p.pond); setPonds(S.ponds);
+    for (const m of S.reg.modules) for (const f of m.fields) if (f.pond) { f.type = 'select'; f.options = S.ponds; f.req = true; }
+  } catch { S.ponds = []; }
+  await db.init();
   $('#signout').onclick = signOut;
   let lastAct = 0; for (const ev of ['click', 'keydown', 'mousemove']) document.addEventListener(ev, () => { const t = Date.now(); if (db.user && t - lastAct > 1000) { lastAct = t; idleReset(); } }, { passive: true });
   window.addEventListener('hashchange', () => db.user && route());

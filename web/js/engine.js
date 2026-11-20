@@ -49,7 +49,13 @@ export function coerce(f, v) {
     default: { if (v instanceof Date) return v.toISOString().slice(0, 10); const s = String(v).trim(); return s === '' ? null : s; }
   }
 }
+// Pond list (ponds.json, from the "Pond Allocation file" tab of the hapa coverage audit). Pond fields must match it.
+let POND_MAP = new Map();
+const pondKey = v => String(v ?? '').toUpperCase().replace(/[\s_]+/g, '').replace(/^HO-/, 'H0-');
+export function setPonds(list) { POND_MAP = new Map(list.map(p => [pondKey(p), p])); }
+export const pondCanon = v => POND_MAP.get(pondKey(v));
 export function normalizeRow(m, row) {
+  for (const f of m.fields) if (f.pond && row[f.name] != null) { const c = pondCanon(row[f.name]); if (c) row[f.name] = c; }
   for (const [k, rule] of Object.entries(m.normalize || {})) {
     if (row[k] == null) continue;
     if (rule === 'ras') row[k] = String(row[k]).toUpperCase().replace(/\s+/g, '');
@@ -173,6 +179,7 @@ export function validate(m, spec, parsed, { today = todayIso() } = {}) {
     if ((PENDING[m.key] || []).some(k => row[k] == null) && m.fields.filter(f => f.req && !(PENDING[m.key] || []).includes(f.name)).every(f => row[f.name] != null)) { pending++; continue; }
     const miss = m.fields.filter(f => f.req && !f.derived && (row[f.name] == null || row[f.name] === ''));
     if (miss.length) { rej(`missing ${miss.map(f => f.label).join(', ')}`, 'row ' + pr.rowNo); continue; }
+    if (POND_MAP.size) { const bad = m.fields.find(f => f.pond && row[f.name] != null && !POND_MAP.has(pondKey(row[f.name]))); if (bad) { rej(`${bad.label} not on the pond list`, `row ${pr.rowNo}: ${row[bad.name]}`); continue; } }
     const df = m.dateField; const dv = df ? row[df] : null;
     if (df && row[df] == null) { rej('invalid date', 'row ' + pr.rowNo); continue; }
     if (dv && dv > today) { rej(`dated after ${today} (check day/month order)`, dv); continue; }
