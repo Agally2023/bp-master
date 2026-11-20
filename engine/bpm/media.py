@@ -63,15 +63,15 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
 
 def add_table_logos(prs):
-    """Victory Farms logo at the top right corner of EVERY table (not only one per slide)."""
+    """Victory Farms icon at the top right of every slide except the cover."""
     if not LOGO.exists(): return
-    iw, ih = Image.open(LOGO).size; h = Emu(280000); w = int(h * iw / ih)
-    for s in prs.slides:
-        for tb in [sh for sh in s.shapes if sh.has_table]:
-            x = int(tb.left + tb.width - w); y = max(int(prs.slide_height * 0.01), int(tb.top - h - 12000))
-            for sh in s.shapes:                          # keep a title that sits in the logo's corner clear of it (the text wraps instead)
-                if sh is not tb and sh.has_text_frame and not sh.has_table and sh.top is not None and sh.top < y + h and sh.top + sh.height > y and sh.left + sh.width > x - 60000 and sh.left < x:
-                    sh.width = Emu(max(int(x - 60000 - sh.left), 914400)); sh.text_frame.word_wrap = True
+    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.055); h = int(w * ih / iw)
+    for i, s in enumerate(prs.slides):
+        if i > 0:   # every slide except the cover
+            x = prs.slide_width - w - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.012)
+            for sh in s.shapes:                          # keep titles clear of the logo (the text wraps instead)
+                if sh.has_text_frame and sh.top is not None and sh.top < y + h and sh.left + sh.width > x - int(prs.slide_width * 0.01) and sh.left < x:
+                    sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
             pic = s.shapes.add_picture(str(LOGO), Emu(x), Emu(y), Emu(w), Emu(h)); pic.name = 'VF Logo (table)'
 
 def finish(out, week, images, exclude):

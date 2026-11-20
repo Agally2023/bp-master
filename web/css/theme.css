@@ -174,3 +174,4 @@ textarea{min-height:90px;resize:vertical}
 .card:has(table.t,.chart)::after{content:"";position:absolute;top:12px;right:14px;width:34px;height:35px;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
 .card:has(table.t,.chart) h2{padding-right:46px}
 td.redtxt{color:#e00000;font-weight:700}
+.slide::after{content:"";position:absolute;top:2%;right:1.5%;width:5.5%;aspect-ratio:1;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
