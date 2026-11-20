@@ -400,10 +400,29 @@ create table public.hapa_cov_aerated (
 create unique index hapa_cov_aerated_row_hash_uq on public.hapa_cov_aerated(row_hash);
 create index on public.hapa_cov_aerated (iso_year, iso_week);
 
+create table public.ibc_method_survival (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid references public.import_batches(id) on delete restrict,
+  row_hash text,
+  "pond" text,
+  "hapa" integer,
+  "stocking_date" date,
+  "day3_survival" numeric,
+  "lake_transfer_date" date,
+  "day22_survival" numeric,
+  "method_of_treatment" text,
+  "iso_year" integer,
+  "iso_week" integer,
+  created_by uuid references auth.users(id) default auth.uid(),
+  created_at timestamptz not null default now()
+);
+create unique index ibc_method_survival_row_hash_uq on public.ibc_method_survival(row_hash);
+create index on public.ibc_method_survival (iso_year, iso_week);
+
 do $$
 declare t text;
 begin
-  foreach t in array array['biosecurity_audits','parasitology_samples','ras_water_volume','ras_parasite_prevalence','stocking_audits','fry_transfers','egg_separation_ratings','egg_volumetric_jars','hapa_exchanges','pond_flips','do_temp_drone','do_temp_mis_truck','egg_disinfection','egg_viability','fry_culling','broodstock_density','pond_feeding','hapa_cov_unaerated','hapa_cov_aerated'] loop
+  foreach t in array array['biosecurity_audits','parasitology_samples','ras_water_volume','ras_parasite_prevalence','stocking_audits','fry_transfers','egg_separation_ratings','egg_volumetric_jars','hapa_exchanges','pond_flips','do_temp_drone','do_temp_mis_truck','egg_disinfection','egg_viability','fry_culling','broodstock_density','pond_feeding','hapa_cov_unaerated','hapa_cov_aerated','ibc_method_survival'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('alter table public.%I force row level security', t);
     execute format($p$create policy %I on public.%I as restrictive to authenticated using ((auth.jwt()->>'aal') = 'aal2')$p$, t||'_mfa', t);

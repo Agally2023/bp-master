@@ -118,7 +118,8 @@ AUTO = [('0df203e3', 'Drone', 'do_temp_drone', 'DO & Temp Before/After Disinfect
         ('7a34e640', 'Raw Data', 'egg_disinfection', 'Egg Disinfection Audit', 'Eggs'), ('6578a319', 'Data', 'egg_viability', 'Egg Viability Before Disinfection', 'Eggs'),
         ('ef92fa54', 'Culling Number Audit', 'fry_culling', 'Fry Culling Numbers Audit', 'Fry'), ('a4d29050', 'Data', 'broodstock_density', 'Broodstock Stocking Density & Sex Ratio', 'Broodstock'),
         ('2fd6849e', 'Pond Audit Log', 'pond_feeding', 'Pond Feeding Audit', 'Nursery'), ('85dd27c0', 'Unaerated Ponds', 'hapa_cov_unaerated', 'Hapa Coverage - Unaerated Ponds', 'Broodstock'),
-        ('85dd27c0', 'Aerated Ponds', 'hapa_cov_aerated', 'Hapa Coverage - Aerated Ponds', 'Broodstock')]
+        ('85dd27c0', 'Aerated Ponds', 'hapa_cov_aerated', 'Hapa Coverage - Aerated Ponds', 'Broodstock'),
+        ('10506b0a', 'IBC Method Survival Combined', 'ibc_method_survival', 'IBC Method Survival (Combined)', 'Nursery')]
 
 def snake(s, used):
     s = re.sub(r'\(.*?\)', ' ', s); s = re.sub(r'[^A-Za-z0-9]+', '_', s).strip('_').lower() or 'col'
@@ -126,6 +127,8 @@ def snake(s, used):
     while s in used or s in ('id', 'row_hash', 'batch_id', 'created_at', 'created_by', 'iso_year', 'iso_week'):
         n += 1; s = f'{base}_{n}'
     used.add(s); return s
+
+RENAME = {'3_day_survival': 'day3_survival', '22_day_survival': 'day22_survival'}   # identifiers must not start with a digit
 
 def auto_module(prefix, sheet, key, label, group):
     import openpyxl, datetime as dt
@@ -140,10 +143,10 @@ def auto_module(prefix, sheet, key, label, group):
         label_ = re.sub(r'\s+', ' ', hdr[j]).strip()
         vals = [r[j] for r in body_v if j < len(r) and r[j] not in (None, '')]
         fv = [r[j] for r in body_f if j < len(r) and isinstance(r[j], str) and r[j].startswith('=')]
-        name = snake(label_, used)
+        name = snake(label_, used); name = RENAME.get(name, name)
         if len(vals) >= 3 and len(fv) > 0.5 * len(vals):
             fields.append(dict(name=name, label=label_, type='num', derived=True, excel_formula=True)); continue
-        if vals and (all(isinstance(v, (dt.datetime, dt.date)) for v in vals) or name == 'date'): t = 'date'
+        if vals and (all(isinstance(v, (dt.datetime, dt.date)) for v in vals) or name in ('date', 'lake_transfer_date')): t = 'date'
         elif vals and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in vals): t = 'int' if all(float(v).is_integer() for v in vals) else 'num'
         else: t = 'text'
         fields.append(F(name, label_, t)); mp[name] = re.sub(r'\s+', ' ', hdr[j]).strip().lower()

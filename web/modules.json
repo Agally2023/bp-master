@@ -2850,6 +2850,91 @@
      "exact": true
     }
    ]
+  },
+  {
+   "key": "ibc_method_survival",
+   "label": "IBC Method Survival (Combined)",
+   "group": "Nursery",
+   "auto": true,
+   "dateField": "stocking_date",
+   "fields": [
+    {
+     "name": "pond",
+     "label": "Pond",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "hapa",
+     "label": "Hapa",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "stocking_date",
+     "label": "Stocking Date",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "day3_survival",
+     "label": "3-Day Survival %",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "lake_transfer_date",
+     "label": "Lake Transfer Date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "day22_survival",
+     "label": "22-Day Survival %",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "method_of_treatment",
+     "label": "Method of Treatment",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "isoweek",
+     "date": "stocking_date"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "IBC Method Survival Combined",
+     "header": "Pond",
+     "map": {
+      "pond": "pond",
+      "hapa": "hapa",
+      "stocking_date": "stocking date",
+      "day3_survival": "3-day survival %",
+      "lake_transfer_date": "lake transfer date",
+      "day22_survival": "22-day survival %",
+      "method_of_treatment": "method of treatment"
+     },
+     "exact": true
+    }
+   ]
   }
  ],
  "islands": [
