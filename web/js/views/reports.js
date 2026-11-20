@@ -80,6 +80,17 @@ function uploadBtn(R, key, slot, kind, existing, disabled, redraw) {
   return h('span', { class: 'row' }, f, h('button', { class: 'btn sec sm', disabled, onclick: () => f.click() }, existing ? 'Replace graph' : 'Upload graph (PNG/JPG)'), existing ? h('span', { class: 'pill ok' }, existing.caption || 'attached') : null,
     existing && !disabled ? h('button', { class: 'btn sec sm', onclick: async () => { await db.removeImage(existing); redraw(); } }, 'Remove') : null);
 }
+// Photo label "Pond, Status, dd/mm/yyyy" printed under the photo in the exported slide.
+function captionBar(im, disabled) {
+  const parts = (im.caption || '').split(',').map(x => x.trim()); const m = parts.length && /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(parts[parts.length - 1]);
+  let date = '', pond = '', status = '';
+  if (m) { date = `${m[3]}-${m[2]}-${m[1]}`; parts.pop(); pond = parts.shift() || ''; status = parts.join(', '); }
+  else if (/\.(jpe?g|png|webp)$/i.test(im.caption || '')) { /* old file-name caption: ignore */ } else { pond = parts.shift() || ''; status = parts.join(', '); }
+  const P = h('input', { class: 'cap', placeholder: 'Pond', value: pond, disabled, maxlength: 20 }), S = h('input', { class: 'cap', placeholder: 'Status', value: status, disabled, maxlength: 40 }), D = h('input', { class: 'cap', type: 'date', value: date, disabled });
+  let t; const save = () => { clearTimeout(t); t = setTimeout(async () => { const [y, mo, d] = D.value ? D.value.split('-') : []; const cap = [P.value.trim(), S.value.trim(), D.value ? `${d}/${mo}/${y}` : ''].filter(Boolean).join(', '); try { await db.setCaption(im, cap); im.caption = cap; } catch (e) { toast(e.message, true); } }, 500); };
+  [P, S, D].forEach(i => i.addEventListener('input', save));
+  return h('div', { class: 'capbar' }, P, S, D);
+}
 function photoGrid(R, s, disabled, redraw) {
   const grid = h('div', { class: 'slots', style: 'grid-template-columns:repeat(2,1fr);flex:1' });
   for (let slot = 1; slot <= 4; slot++) {
@@ -88,7 +99,9 @@ function photoGrid(R, s, disabled, redraw) {
     const box = h('div', { class: 'slot', tabindex: 0, role: 'button', 'aria-label': `Photo ${slot}`, onclick: e => { if (!disabled && e.target.tagName !== 'BUTTON') f.click(); } }, f, h('span', {}, im ? '' : `+ Photo ${slot}`));
     f.onchange = async () => { const file = f.files[0]; if (!file) return; try { await db.putImage(R.report.id, s.key, slot, 'photo', file); await db.audit('upload', 'report_image', `${s.key}:${slot}`); redraw(); } catch (e) { toast(e.message, true); } };
     if (im) { const img = h('img', { alt: im.caption || `Photo ${slot}` }); db.imageUrl(im).then(u => { img.src = u; }); box.append(img); if (!disabled) box.append(h('button', { class: 'btn danger sm', style: 'position:absolute;right:4px;top:4px;z-index:2', onclick: async e => { e.stopPropagation(); await db.removeImage(im); redraw(); } }, '✕')); }
-    grid.append(box);
+    const wrap = h('div', { class: 'slotwrap' }, box);
+    if (im) wrap.append(captionBar(im, disabled));
+    grid.append(wrap);
   }
   return grid;
 }

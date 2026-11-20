@@ -42,8 +42,9 @@ class DemoDB {
   async setStatus(rid, status) { const r = this.reports.find(x => x.id === rid); r.status = status; return r; }
   async putImage(rid, key, slot, kind, file) {
     this.images = this.images.filter(i => !(i.report_id === rid && i.section_key === key && i.slot === slot));
-    const im = { id: uuid(), report_id: rid, section_key: key, slot, kind, storage_path: URL.createObjectURL(file), caption: file.name }; this.images.push(im); return im;
+    const im = { id: uuid(), report_id: rid, section_key: key, slot, kind, storage_path: URL.createObjectURL(file), caption: '' }; this.images.push(im); return im;
   }
+  async setCaption(im, caption) { im.caption = caption; return im; }
   async removeImage(im) { this.images = this.images.filter(i => i.id !== im.id); }
   async imageUrl(im) { return im.storage_path; }
 }
@@ -161,9 +162,10 @@ class SupabaseDB {
   async putImage(rid, key, slot, kind, file) {
     const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, ''), path = `${rid}/${key}-${slot}-${uuid()}.${ext}`;
     await this._f(`/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false' }, body: file });
-    const r = await this._f(`/rest/v1/${P}report_images?on_conflict=report_id,section_key,slot`, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ report_id: rid, section_key: key, slot, kind, storage_path: path, caption: file.name }) });
+    const r = await this._f(`/rest/v1/${P}report_images?on_conflict=report_id,section_key,slot`, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ report_id: rid, section_key: key, slot, kind, storage_path: path, caption: '' }) });
     return (await r.json())[0];
   }
+  async setCaption(im, caption) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'PATCH', body: JSON.stringify({ caption }) }); }
   async removeImage(im) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${im.storage_path}`, { method: 'DELETE' }); } catch { } }
   async imageUrl(im) { const j = await (await this._f(`/storage/v1/object/sign/${BUCKET}/${im.storage_path}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this.base + '/storage/v1' + j.signedURL; }
 }
