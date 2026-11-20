@@ -65,7 +65,7 @@ LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
 def add_table_logos(prs):
     """Victory Farms logo at the top right of every slide that carries a table."""
     if not LOGO.exists(): return
-    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.08); h = int(w * ih / iw)
+    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.055); h = int(w * ih / iw)
     for s in prs.slides:
         if any(sh.has_table for sh in s.shapes):
             x = prs.slide_width - w - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.012)
