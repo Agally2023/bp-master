@@ -43,8 +43,11 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
         fl = F.flips(T['pond_flips'], stage_defs)
         if not fl.empty:
             tot = {k: len(stage_defs.get(k, [])) or None for k in ('nursery', 'broodstock')}
-            tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month, tot['nursery']); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month, tot['broodstock'])
-            prog = {k: A.flip_progress(fl, k, tot[k]) for k in tot if tot[k]}
+            import datetime as _dt
+            as_of = min(_dt.date.today(), sun if isinstance(sun, _dt.date) else sun.date())
+            lastx = {k: (stage_defs.get(k) or [{}])[-1].get('expected') for k in tot}
+            tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month, tot['nursery'], as_of, lastx['nursery']); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month, tot['broodstock'], as_of, lastx['broodstock'])
+            prog = {k: A.flip_progress(fl, k, tot[k], as_of, lastx[k]) for k in tot if tot[k]}
             extra['flip'] = dict(nursery=(tn, en), broodstock=(tb, eb))
             cm['flipping'] = C.flipping(week, prog, A.flip_overdue(tn, en) + A.flip_overdue(tb, eb), tot)
     if T.get('hapa_exchanges'):

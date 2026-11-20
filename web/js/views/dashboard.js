@@ -47,6 +47,13 @@ export async function render({ view, ctx }) {
     body.append(g(card('Egg stage separation rating', has(eg.trend) ? lineChart({ labels: eg.labels, series: [{ name: 'ABP rating (1–5)', values: eg.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, valueLabels: true }) : noData()),
       card(`Jars rated 0–2 stars (${eg.low.length} of ${eg.total})`, table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', '% Overall', 'Stars'], eg.low.slice(0, 40).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), num(r.mixed_h), pct(r.overall), { v: r.star, cls: 'poor' }])))));
     // 7 flips, bottom rope, exchange
+    body.append(g(...[['broodstock', 'Broodstock ponds'], ['nursery', 'Nursery ponds']].map(([k, label]) => {
+      const { st, ponds } = fl.matrix[k]; const P = ponds.slice(0, 14);
+      if (!P.length) return card(`Pond flipping: ${label}`, noData('No ponds in progress'));
+      const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v, cls: v > x.expected ? 'late' : '' }; })]);
+      return card(`Pond flipping: ${label}: days per stage`, table(['Stage', 'Expected', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
+        h('div', { class: 'note' }, 'Red = more days than expected. A pond leaves this list automatically once its last stage has run its expected days.'));
+    })));
     body.append(g(card('Pond flipping: ponds in progress (all weeks)', table(A.flipHead, fl.progress.map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })),
       card('Hapa exchange compliance', has(hx.trend) ? lineChart({ labels: hx.labels, series: [{ name: 'Exchanged / scheduled', values: hx.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true }) : noData())));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),

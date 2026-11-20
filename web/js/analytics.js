@@ -1,6 +1,6 @@
 import { S } from './state.js';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum } from './util.js';
+import { mean, sum, weekRange } from './util.js';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 const inYear = (rows, y) => (rows || []).filter(r => r.iso_year === y);
 const group = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
@@ -96,17 +96,39 @@ export function hapaExchange(data, y, w, n = 12) {
   return { labels: weeks.map(wl), trend, current: trend.at(-1) };
 }
 
-// Pond flipping is progressive: a pond stays "in progress" until its last stage is recorded, whatever week it started in.
+// Pond flipping is progressive. A pond stays "in progress" until its preparation is complete, and that is worked out automatically:
+// either every stage has a recorded value, or every stage before the last is recorded and the last stage (final fill & maturation)
+// has had its expected days since the previous stage ended (scheduled date + recorded days). Nobody has to tick anything.
+const DAY = 86400000;
+function flipComplete(r, st, asOf) {
+  const rec = x => r.stage_days?.[x.name] != null;
+  if (!st.length) return false;
+  if (st.every(rec)) return true;
+  if (!st.slice(0, -1).every(rec) || !r.scheduled) return false;
+  const start = new Date(r.scheduled + 'T00:00:00Z').getTime() + st.slice(0, -1).reduce((t, x) => t + Math.max(0, Number(r.stage_days[x.name]) || 0), 0) * DAY;
+  return start + (st.at(-1).expected || 0) * DAY <= asOf.getTime();
+}
 export function flips(data, y, w) {
   const defs = S.reg?.modules.find(m => m.key === 'pond_flips')?.stages || {};
   const rows = data.pond_flips || [], inw = rows.filter(r => r.iso_year === y && r.iso_week === w);
+  const { sun } = weekRange(y, w), asOf = new Date(Math.min(Date.now(), sun.getTime()));
+  const stOf = r => defs[String(r.kind).toLowerCase()] || [];
   const prog = rows.map(r => {
-    const kind = String(r.kind).toLowerCase(), st = defs[kind] || [], done = st.filter(x => r.stage_days?.[x.name] != null);
+    const kind = String(r.kind).toLowerCase(), st = stOf(r), done = st.filter(x => r.stage_days?.[x.name] != null);
     const next = st.find(x => r.stage_days?.[x.name] == null);
     return { kind: kind === 'broodstock' ? 'Broodstock' : 'Nursery', pond: r.pond, scheduled: r.scheduled, done: done.length || Object.keys(r.stage_days || {}).length, total: st.length, next: next?.name || '',
-      over: st.filter(x => (r.stage_days?.[x.name] ?? 0) > x.expected).map(x => ({ stage: x.name, days: r.stage_days[x.name], exp: x.expected })) };
-  }).filter(r => r.total && r.done < r.total).sort((a, b) => a.kind.localeCompare(b.kind) || String(a.scheduled).localeCompare(String(b.scheduled)));
-  return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog };
+      complete: flipComplete(r, st, asOf), over: st.filter(x => (r.stage_days?.[x.name] ?? 0) > x.expected).map(x => ({ stage: x.name, days: r.stage_days[x.name], exp: x.expected })) };
+  }).filter(r => r.total && !r.complete).sort((a, b) => a.kind.localeCompare(b.kind) || String(a.scheduled).localeCompare(String(b.scheduled)));
+  // Stage x pond table of days taken (as on the weekly slide): every pond in progress plus ponds scheduled in the month of the selected week.
+  const inProg = new Set(prog.map(r => r.kind.toLowerCase() + '|' + r.pond + '|' + r.scheduled));
+  const matrix = Object.fromEntries(['nursery', 'broodstock'].map(kind => {
+    const st = defs[kind] || [];
+    const sel = rows.filter(r => String(r.kind).toLowerCase() === kind && (inProg.has(kind + '|' + r.pond + '|' + r.scheduled) || String(r.scheduled).slice(0, 7) === sun.toISOString().slice(0, 7)));
+    const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled)) latest.set(r.pond, r); }
+    const ponds = [...latest.values()].sort((a, b) => String(a.scheduled).localeCompare(String(b.scheduled)) || String(a.pond).localeCompare(String(b.pond)));
+    return [kind, { st, ponds }];
+  }));
+  return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog, matrix };
 }
 export const flipHead = ['Type', 'Pond', 'Scheduled', 'Stages done', 'Next stage', 'Over expected days'];
 export const flipRow = (r, fmtDate) => [r.kind, r.pond, fmtDate(r.scheduled), `${r.done} of ${r.total}`, r.next, r.over.map(o => `${o.stage} ${o.days}d (exp. ${o.exp}d)`).join('; ') || '–'];

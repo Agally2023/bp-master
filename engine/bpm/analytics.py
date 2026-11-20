@@ -136,24 +136,29 @@ def jars_low(vol, year, week, max_star=2):
     low = d[d.star <= max_star].sort_values(['date', 'pond'])
     return low, len(d), int((low.mixed_h.fillna(0) > 0).sum())
 
-def flip_progress(fl, kind, total):
-    """Ponds in progress, whatever week they started: a pond is in progress until its last stage is recorded.
-    Returns [(pond, scheduled, stages_done, next_stage_index)] sorted by scheduled date."""
+def flip_progress(fl, kind, total, as_of=None, last_expected=None):
+    """Ponds in progress, whatever week they started. A pond is complete automatically when every stage is recorded, or when every
+    stage before the last is recorded and the last stage has had its expected days since (scheduled + recorded days).
+    Returns [(pond, scheduled, stages_done)] sorted by scheduled date."""
+    import datetime as _dt
     d = fl[fl.kind == kind]
     out = []
     for (pond, sched), g in d.groupby(['pond', 'scheduled']):
-        n = int(g.dropna(subset=['days']).stage.nunique())          # stages with a recorded value
-        if n < total:
-            out.append((pond, sched, n))
+        rec = g.dropna(subset=['days']); n = int(rec.stage.nunique())
+        if n >= total: continue
+        if as_of is not None and last_expected is not None and n == total - 1 and (rec.order == total - 1).sum() == 0:
+            end = sched + _dt.timedelta(days=float(rec[rec.days > 0].days.sum()) + float(last_expected))
+            if end <= as_of: continue
+        out.append((pond, sched, n))
     return sorted(out, key=lambda t: (t[1], t[0]))
 
-def flip_table(fl, kind, year, month, total=None):
+def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None):
     """Stage x pond table of days taken, plus expected days. Shows every pond in progress (any week or month) plus ponds scheduled in the given month."""
     k = fl[fl.kind == kind]
     sched = pd.to_datetime(k.scheduled)
     mask = (sched.dt.year == year) & (sched.dt.month == month)
     if total:
-        keep = {(p, s) for p, s, _ in flip_progress(fl, kind, total)}
+        keep = {(p, s) for p, s, _ in flip_progress(fl, kind, total, as_of, last_expected)}
         mask = mask | pd.Series([(p, s) in keep for p, s in zip(k.pond, k.scheduled)], index=k.index)
     d = k[mask].copy()
     d.loc[d.days < 0, 'days'] = float('nan')                 # negative days come from a blank/typed date in the Excel file: shown as '-', never as a value
