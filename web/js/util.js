@@ -22,8 +22,9 @@ export function toast(msg, bad) {
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (bad ? ' bad' : '');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.className = 'toast', 3600);
 }
-export const pct = (v, d = 0) => v == null || Number.isNaN(v) ? '–' : (v * 100).toFixed(d) + '%';
-export const num = (v, d = 1) => v == null || Number.isNaN(v) ? '–' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+// Victory Farms format: % with one decimal, negatives in ( ), smaller numbers with 2 decimals, dates dd/mm/yyyy
+export const pct = (v, d = 1) => v == null || Number.isNaN(v) ? '–' : v < 0 ? '(' + Math.abs(v * 100).toFixed(1) + '%)' : (v * 100).toFixed(1) + '%';
+export const num = (v, d = 1) => { if (v == null || Number.isNaN(v)) return '–'; const k = d >= 1 && Math.abs(v) < 10 ? Math.max(d, 2) : d, t = Math.abs(Number(v)).toLocaleString('en-US', { maximumFractionDigits: k, minimumFractionDigits: k }); return Number(v) < 0 ? '(' + t + ')' : t; };
 export const mean = a => { const x = a.filter(v => v != null && !Number.isNaN(v)); return x.length ? x.reduce((s, v) => s + v, 0) / x.length : null; };
 export const sum = a => a.reduce((s, v) => s + (Number(v) || 0), 0);
 
@@ -40,7 +41,7 @@ export function weekRange(year, week) {   // Monday..Sunday of ISO week
   const sun = new Date(mon.getTime() + 6 * 86400000);
   return { mon, sun, monIso: mon.toISOString().slice(0, 10), sunIso: sun.toISOString().slice(0, 10) };
 }
-export const fmtDate = (d, o) => new Date(d.getTime ? d : d + 'T00:00:00Z').toLocaleDateString('en-GB', { timeZone: 'UTC', day: '2-digit', month: o || 'short', year: 'numeric' });
+export const fmtDate = (d, o) => new Date(d.getTime ? d : d + 'T00:00:00Z').toLocaleDateString('en-GB', { timeZone: 'UTC', day: '2-digit', month: o || '2-digit', year: 'numeric' });
 export const todayIso = () => new Date().toISOString().slice(0, 10);
 export function iso(d) { return d instanceof Date ? d.toISOString().slice(0, 10) : d; }
 export async function sha256(text) {

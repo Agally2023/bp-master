@@ -16,8 +16,8 @@ export function weekPicker(ctx, data, onChange) {
 }
 export const kpi = (label, value, o = {}) => h('div', { class: 'kpi ' + (o.cls || '') }, h('div', { class: 'v' }, value), h('div', { class: 'l' }, label), o.note ? h('div', { class: 'd ' + (o.good == null ? '' : o.good ? 'good' : 'bad') }, o.note) : null);
 export function table(heads, rows, o = {}) {
-  return h('div', { class: 'tw' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, heads.map(x => h('th', {}, x)))),
-    h('tbody', {}, rows.length ? rows.map(r => h('tr', {}, r.map((c, i) => { const cell = c && typeof c === 'object' && !(c instanceof Node) ? c : { v: c }; return h('td', { class: [cell.cls, o.num && o.num.includes(i) ? 'num' : ''].filter(Boolean).join(' ') || false }, cell.v instanceof Node ? cell.v : cell.v ?? '–'); }))) : [h('tr', {}, h('td', { colspan: heads.length, class: 'empty' }, o.empty || 'No data for this week'))])));
+  return h('div', { class: 'tw' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, heads.map((x, i) => h('th', { class: rows.length && rows.filter(r => { const c = r[i]; const v = c && typeof c === 'object' && !(c instanceof Node) ? c.v : c; return v != null && /^[(\-–]?\s*[\d.,]+\s*(%|x)?\)?$/.test(String(v).trim()); }).length >= Math.max(1, rows.length / 2) ? 'num' : '' }, x)))),
+    h('tbody', {}, rows.length ? rows.map(r => h('tr', {}, r.map((c, i) => { const cell = c && typeof c === 'object' && !(c instanceof Node) ? c : { v: c }; return h('td', { class: [cell.cls, (o.num && o.num.includes(i)) || (cell.v != null && typeof cell.v !== 'object' && /^[(\-–]?\s*[\d.,]+\s*(%|x)?\)?$/.test(String(cell.v).trim())) ? 'num' : ''].filter(Boolean).join(' ') || false }, cell.v instanceof Node ? cell.v : cell.v ?? '–'); }))) : [h('tr', {}, h('td', { colspan: heads.length, class: 'empty' }, o.empty || 'No data for this week'))])));
 }
 export const band = (v, good = 0.8, avg = 0.5) => v == null ? '' : v >= good ? 'good' : v >= avg ? 'avg' : 'poor';
 export const card = (title, ...kids) => h('div', { class: 'card' }, title ? h('h2', {}, title) : null, ...kids);

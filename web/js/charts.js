@@ -1,5 +1,5 @@
 // Dependency-free SVG charts in the Victory Farms palette.
-export const PAL = ['#0E812E', '#CB8306', '#00BDF0', '#7030A0', '#F3091A', '#1F3864'];
+export const PAL = ['#0E812E', '#CB8306', '#C30015', '#00BDF0', '#002060', '#7030A0'];
 const NS = 'http://www.w3.org/2000/svg';
 const el = (t, a = {}, txt) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
 const fmtDef = v => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.0+$/, '');
@@ -30,7 +30,7 @@ function frame(o) {
 }
 function finish(c, o) {
   const { svg, m, y } = c;
-  if (o.target != null) svg.append(el('line', { x1: m.l, x2: c.W - m.r, y1: y(o.target), y2: y(o.target), stroke: '#F3091A', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }), el('text', { x: c.W - m.r, y: y(o.target) - 4, 'text-anchor': 'end', fill: '#F3091A' }, o.targetLabel || 'Target'));
+  if (o.target != null) svg.append(el('line', { x1: m.l, x2: c.W - m.r, y1: y(o.target), y2: y(o.target), stroke: '#C30015', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }), el('text', { x: c.W - m.r, y: y(o.target) - 4, 'text-anchor': 'end', fill: '#C30015' }, o.targetLabel || 'Target'));
   const wrap = document.createElement('div'); wrap.className = 'chartbox';
   if (o.title) { const t = document.createElement('div'); t.className = 'chart-title'; t.textContent = o.title; wrap.append(t); }
   wrap.append(svg);

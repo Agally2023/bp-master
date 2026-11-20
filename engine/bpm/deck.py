@@ -106,18 +106,20 @@ def table(slide, anchor, header, rows, widths, header_fill, font=8, total_last=F
         ce.text = '' if text is None else str(text)
         p = ce.text_frame.paragraphs[0]; p.alignment = al
         for run in p.runs:
-            run.font.size = Pt(font); run.font.bold = bold
+            run.font.size = Pt(font); run.font.bold = bold; run.font.name = 'Calibri'
             if color: run.font.color.rgb = color
         if fill is not None:
             ce.fill.solid(); ce.fill.fore_color.rgb = fill
         else:
             ce.fill.background()
+    isnum = lambda v: bool(re.fullmatch(r'[\(\-–]?\s*[\d.,]+\s*(%|x)?\)?', str(v).strip())) if v is not None else False
+    numcol = [bool(rows) and sum(isnum(r[c]) for r in rows) >= max(1, len(rows) // 2) for c in range(len(header))]   # numbers right-aligned (Victory Farms template)
     for c, h in enumerate(header):
-        cell(0, c, h, True, header_fill[0], header_fill[1], PP_ALIGN.CENTER)
+        cell(0, c, h, True, header_fill[0], header_fill[1], PP_ALIGN.RIGHT if numcol[c] else PP_ALIGN.CENTER)
     for r, row in enumerate(rows, 1):
         last = total_last and r == len(rows)
         for c, v in enumerate(row):
-            al = (align[c] if align else PP_ALIGN.LEFT)
+            al = PP_ALIGN.RIGHT if numcol[c] and isnum(v) else (align[c] if align else PP_ALIGN.LEFT)
             f = fill_fn(r, c, v) if fill_fn else None
             tc = color_fn(r, c, v) if color_fn else None
             cell(r, c, v, bold=last or bool(tc), fill=f or (RGBColor(0xDD, 0xEB, 0xF7) if last else None), color=tc, al=al)
@@ -125,7 +127,7 @@ def table(slide, anchor, header, rows, widths, header_fill, font=8, total_last=F
         tbl.rows[i].height = rh
     return gs
 
-BLUE_DARK = (RGBColor(0x1F, 0x38, 0x64), RGBColor(0xFF, 0xFF, 0xFF))
+BLUE_DARK = (RGBColor(0x00, 0x20, 0x60), RGBColor(0xFF, 0xFF, 0xFF))
 BLUE_LIGHT = (RGBColor(0xBD, 0xD7, 0xEE), RGBColor(0x00, 0x00, 0x00))
 
 def drop_slides(prs, keep):
@@ -153,10 +155,10 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     cats = [f' Wk {w} ' for w, _ in ws_trend]
     replace_chart(shape(s, 'Chart 6'), cats, [v for _, v in ws_trend], '0%', xt='ISO week', yt='Compliance (%)')
     cur = ws_trend[-1][1]
-    shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.0%}'
+    shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.1%}'
     pic = shape(s, 'Picture 5'); anchor = pic
     ws_nc = ws_nc.sort_values(['score', 'audit_date'])           # worst audits first
-    rows = [[r.audit_date.strftime('%d/%m/%y'), r.ras, f'{r.score:.0%}', r.noncompliant_island or '', r.employee_responsible or '', r.reason or '']
+    rows = [[r.audit_date.strftime('%d/%m/%Y'), r.ras, f'{r.score:.1%}', r.noncompliant_island or '', r.employee_responsible or '', r.reason or '']
             for r in ws_nc.itertuples()]
     more = max(0, len(rows) - 6); rows = rows[:6]
     if rows:
@@ -303,7 +305,7 @@ def batch3(prs, year, week, comments, x):
             rng = lambda r, k: f"{r[k + '_min']:.1f} - {r[k + '_max']:.1f}"
             pz = x.get('transfer_parasites', {})   # {date: (intensity, prevalence)} - supplied by the auditor, '-' if not entered
             rows = [[i.strftime('%d/%m/%Y'), r.stock_time, rng(r, 'tray_temp'), rng(r, 'bucket_temp_wo'), rng(r, 'bucket_temp_w'), f"{r['pond_temp_min']:.1f}",
-                     rng(r, 'temp_var'), *( (f'{pz[i][0]:.1f}', f'{pz[i][1]:.0%}') if i in pz else ('-', '-') )] for i, r in t.iterrows()]
+                     rng(r, 'temp_var'), *( (f'{pz[i][0]:.1f}', f'{pz[i][1]:.1%}') if i in pz else ('-', '-') )] for i, r in t.iterrows()]
             table(s, pic, ['Date', 'Stocking time', 'Tray temp (\u00b0C) min-max', 'Bucket, no fish (\u00b0C)', 'Bucket, with fish (\u00b0C)', 'Pond temp (\u00b0C)', 'Variance (<2) min-max', 'Parasite intensity', 'Parasite prevalence'],
                   rows or [['-'] * 9], [9, 9, 11, 11, 11, 8, 11, 9, 10], BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 8)
             _drop_shape(pic); set_lines(shape(s, 'TextBox 13'), comments['transfers'], size=14)
@@ -314,7 +316,7 @@ def batch3(prs, year, week, comments, x):
             replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}"
             pic = shape(s, 'Picture 15'); low = e['low']; more = max(0, len(low) - 7); low = low.head(7)
-            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.0%}', int(r.star)] for r in low.itertuples()]
+            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.1%}', int(r.star)] for r in low.itertuples()]
             if more:
                 rows.append([f'+{more} more', '', '', '', '', '', ''])
             table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', '% Overall', 'Stars'],
@@ -372,7 +374,7 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
         ns.shapes._spTree.append(copy.deepcopy(protos['oval'])); ov = ns.shapes[-1]
         ov.left, ov.top = Emu(8050000), Emu(top)
         ov.fill.solid(); ov.fill.fore_color.rgb = rgb
-        v = series[-1][1]; ov.text_frame.paragraphs[0].runs[0].text = 'n/a' if v is None else f'{v:.0%}'
+        v = series[-1][1]; ov.text_frame.paragraphs[0].runs[0].text = 'n/a' if v is None else f'{v:.1%}'
     ns.shapes._spTree.append(copy.deepcopy(protos['box'])); bx = ns.shapes[-1]
     bx.left, bx.top, bx.width, bx.height = Emu(300000), Emu(4700000), Emu(7600000), Emu(900000)
     set_lines(bx, comments['hapa_exchange'], size=14)

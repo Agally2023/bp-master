@@ -1,7 +1,7 @@
 /* Victory Farms theme: brand colours taken from the weekly report template */
 :root{
   --vf-green:#0E812E; --vf-green-dk:#0A5F22; --vf-green-xdk:#073F17; --vf-gold:#CB8306; --vf-cyan:#00BDF0; --vf-red:#F3091A; --vf-purple:#7030A0;
-  --note:#BBF6CB; --navy:#1F3864; --ink:#262626; --ink-2:#5b625d; --line:#dfe7df; --bg:#f4f8f4; --card:#ffffff; --grey:#929292;
+  --note:#BBF6CB; --navy:#002060; --ink:#262626; --ink-2:#5b625d; --line:#dfe7df; --bg:#f4f8f4; --card:#ffffff; --grey:#929292;
   --good:#C6EFCE; --avg:#FFEB9C; --poor:#FFC7CE; --radius:10px; --side-w:252px; --side-w-c:68px;
   font-family:Calibri,"Segoe UI",system-ui,-apple-system,Arial,sans-serif; color:var(--ink);
 }
@@ -52,7 +52,7 @@ label.f .req{color:var(--vf-red)}
 label.f .hint{font-weight:400;font-size:12px;color:var(--grey)}
 .ctx select,.ctx input{width:auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
-.card h2{font-size:17px;color:var(--vf-green-dk);margin-bottom:8px}
+.card h2{font-size:17px;color:var(--navy);margin-bottom:8px}
 .card h3{font-size:14px;color:var(--ink-2)}
 .grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.sp{flex:1}
@@ -72,6 +72,7 @@ label.f .hint{font-weight:400;font-size:12px;color:var(--grey)}
 /* ---------- tables ---------- */
 .tw{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:460px}
 table.t{border-collapse:collapse;width:100%;font-size:13px}
+table.t th.num{text-align:right}
 table.t th{background:var(--navy);color:#fff;position:sticky;top:0;padding:7px 9px;text-align:left;white-space:nowrap;z-index:1}
 table.t td{padding:6px 9px;border-top:1px solid var(--line);white-space:nowrap}
 table.t tr:nth-child(even) td{background:#f8fbf8}
