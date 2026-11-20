@@ -42,9 +42,11 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     if T.get('pond_flips'):
         fl = F.flips(T['pond_flips'], stage_defs)
         if not fl.empty:
-            tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month)
+            tot = {k: len(stage_defs.get(k, [])) or None for k in ('nursery', 'broodstock')}
+            tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month, tot['nursery']); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month, tot['broodstock'])
+            prog = {k: A.flip_progress(fl, k, tot[k]) for k in tot if tot[k]}
             extra['flip'] = dict(nursery=(tn, en), broodstock=(tb, eb))
-            cm['flipping'] = C.flipping(week, {'nursery': A.flipped_in_week(fl, 'nursery', year, week), 'broodstock': A.flipped_in_week(fl, 'broodstock', year, week)}, A.flip_overdue(tn, en) + A.flip_overdue(tb, eb))
+            cm['flipping'] = C.flipping(week, prog, A.flip_overdue(tn, en) + A.flip_overdue(tb, eb), tot)
     if T.get('hapa_exchanges'):
         hn, hb = F.hapa_exchange(T['hapa_exchanges'], 'nursery'), F.hapa_exchange(T['hapa_exchanges'], 'broodstock')
         pns, bs = A.hapa_exchange_weekly(hn, year, week), A.hapa_exchange_weekly(hb, year, week); extra['hapa'] = dict(pns=pns, bs=bs); cm['hapa_exchange'] = C.hapa_exchange(pns, bs, week)

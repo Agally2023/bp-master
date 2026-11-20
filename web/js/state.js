@@ -5,8 +5,10 @@ export const modByKey = k => S.reg.modules.find(m => m.key === k);
 const inflight = new Map();   // a table requested twice at once (fast navigation) is downloaded once
 S.since = {};                 // oldest ISO year loaded per table (-Infinity = everything)
 // ensure(keys, sinceYear): sinceYear limits the download to iso_year >= sinceYear (the dashboard only needs the recent trend window).
-export async function ensure(keys, since = -Infinity) {
-  await Promise.all(keys.filter(k => !S.loaded.has(k) || (S.since[k] ?? -Infinity) > since).map(k => {
+const ALL_YEARS = new Set(['pond_flips']);   // progressive exercises: a pond can start in one year and finish in the next
+export async function ensure(keys, since0 = -Infinity) {
+  await Promise.all(keys.filter(k => { const since = ALL_YEARS.has(k) ? -Infinity : since0; return !S.loaded.has(k) || (S.since[k] ?? -Infinity) > since; }).map(k => {
+    const since = ALL_YEARS.has(k) ? -Infinity : since0;
     const id = k + '|' + since;
     if (!inflight.has(id)) {
       const filter = Number.isFinite(since) ? `&iso_year=gte.${since}` : '';

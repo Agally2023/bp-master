@@ -91,11 +91,13 @@ def egg(trend, low, total, mixed):
     return [f"The weekly average egg stage separation was {cur:.2f}{cmp_}." if cur is not None else "No egg separation ratings this week.",
             f"About {len(low)} of {total} jars scored 0-2 stars; {mixed} of them had mixed stages.", "[Add comment]"]
 
-def flipping(week, flipped, overdue):
+def flipping(week, progress, overdue, total=None):
+    """Pond flipping is progressive: list every pond still in progress, whatever week it started in."""
     lines = []
     for kind in ('Nursery', 'Broodstock'):
-        f = flipped.get(kind.lower(), [])
-        lines.append(f"{kind}: " + (f"ponds flipped in week {week}: {', '.join(f)}." if f else f"no pond was flipped in week {week}."))
+        p = progress.get(kind.lower(), [])
+        n = (total or {}).get(kind.lower())
+        lines.append(f"{kind}: " + (f"{len(p)} pond(s) in progress: " + ', '.join(pn for pn, _, d in p) + "." if p else "no pond in progress."))
     if overdue:
         lines.append("Stages above expected days: " + "; ".join(f"{p} {s} {d}d (exp. {e}d)" for p, s, d, e in overdue[:6]) + ('...' if len(overdue) > 6 else '.'))
     lines.append("[Add comment]")

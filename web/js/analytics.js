@@ -1,3 +1,4 @@
+import { S } from './state.js';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
 import { mean, sum } from './util.js';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
@@ -95,10 +96,20 @@ export function hapaExchange(data, y, w, n = 12) {
   return { labels: weeks.map(wl), trend, current: trend.at(-1) };
 }
 
+// Pond flipping is progressive: a pond stays "in progress" until its last stage is recorded, whatever week it started in.
 export function flips(data, y, w) {
-  const rows = (data.pond_flips || []), inw = rows.filter(r => r.iso_year === y && r.iso_week === w);
-  return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows };
+  const defs = S.reg?.modules.find(m => m.key === 'pond_flips')?.stages || {};
+  const rows = data.pond_flips || [], inw = rows.filter(r => r.iso_year === y && r.iso_week === w);
+  const prog = rows.map(r => {
+    const kind = String(r.kind).toLowerCase(), st = defs[kind] || [], done = st.filter(x => r.stage_days?.[x.name] != null);
+    const next = st.find(x => r.stage_days?.[x.name] == null);
+    return { kind: kind === 'broodstock' ? 'Broodstock' : 'Nursery', pond: r.pond, scheduled: r.scheduled, done: done.length || Object.keys(r.stage_days || {}).length, total: st.length, next: next?.name || '',
+      over: st.filter(x => (r.stage_days?.[x.name] ?? 0) > x.expected).map(x => ({ stage: x.name, days: r.stage_days[x.name], exp: x.expected })) };
+  }).filter(r => r.total && r.done < r.total).sort((a, b) => a.kind.localeCompare(b.kind) || String(a.scheduled).localeCompare(String(b.scheduled)));
+  return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog };
 }
+export const flipHead = ['Type', 'Pond', 'Scheduled', 'Stages done', 'Next stage', 'Over expected days'];
+export const flipRow = (r, fmtDate) => [r.kind, r.pond, fmtDate(r.scheduled), `${r.done} of ${r.total}`, r.next, r.over.map(o => `${o.stage} ${o.days}d (exp. ${o.exp}d)`).join('; ') || '–'];
 
 // Automatic first-draft comments (a person edits them; same wording as the PPT engine).
 export function draftComment(key, a) {
@@ -115,6 +126,7 @@ export function draftComment(key, a) {
       const t = a[k].ponds.reduce((n, x) => n + x.audited, 0), f = a[k].ponds.reduce((n, x) => n + x.failed, 0);
       return t ? `${k}: total of ${t} hapas were audited; ${f} failed the audit metrics, a non-conformance of ${p(f / t)} (${f ? 'still fail' : 'meets the standard'}).` : `${k}: no bottom rope audits were recorded this week.`;
     }).join('\n');
+    case 'flipping': return ['Nursery', 'Broodstock'].map(k => { const l = a.progress.filter(r => r.kind === k); return `${k}: ` + (l.length ? `${l.length} pond(s) in progress: ${l.map(r => `${r.pond} (${r.done} of ${r.total} stages${r.next ? ', next: ' + r.next : ''})`).join(', ')}.` : 'no pond in progress.'); }).concat(a.progress.some(r => r.over.length) ? ['Stages above expected days: ' + a.progress.flatMap(r => r.over.map(o => `${r.pond} ${o.stage} ${o.days}d (exp. ${o.exp}d)`)).slice(0, 6).join('; ') + '.'] : []).join('\n');
     default: return '';
   }
 }

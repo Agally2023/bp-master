@@ -330,13 +330,13 @@ def batch3(prs, year, week, comments, x):
             piv, exp = F[kind]; pic = shape(s, pic_name)
             if piv.shape[1] == 0:
                 _drop_shape(pic); continue
-            ponds = list(piv.columns)[:10]
+            ponds = list(piv.columns)[:14]
             rows = [[st, exp[st]] + [('-' if v != v or v is None else int(v)) for v in piv.loc[st, ponds]] for st in piv.index]
             header = [f'{label} - days per stage', 'Expected'] + ponds
             def fill(r, c, v, rows=rows, exp=exp, piv=piv):
                 if c >= 2 and v != '-' and v > rows[r - 1][1]:
                     return RGBColor(0xFF, 0x00, 0x00)
-            table(s, pic, header, rows, [22, 7] + [6] * len(ponds), BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * (len(ponds) + 1), fill_fn=fill)
+            table(s, pic, header, rows, [22, 7] + [6 if len(ponds) <= 10 else 5] * len(ponds), BLUE_DARK, font=8 if len(ponds) <= 10 else 7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * (len(ponds) + 1), fill_fn=fill)
             _drop_shape(pic)
         set_lines(shape(s, 'TextBox 19'), comments['flipping'], size=14)
         done.add(10)

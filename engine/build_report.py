@@ -60,10 +60,10 @@ if a.egg_collection:
 if a.pond_flipping:
     fn, mfn = I.flipping(a.pond_flipping, 'Nursery Ponds Data', 'nursery', a.as_of)
     fb, mfb = I.flipping(a.pond_flipping, 'Broodstock Ponds Data', 'broodstock', a.as_of); imp['flipping_nursery'] = mfn; imp['flipping_broodstock'] = mfb
-    fl = pd.concat([fn, fb]); tn, en, _ = A.flip_table(fl, 'nursery', a.year, sun.month); tb, eb, _ = A.flip_table(fl, 'broodstock', a.year, sun.month)
+    fl = pd.concat([fn, fb]); tot = {k: int(fl[fl.kind == k].stage.nunique()) or None for k in ('nursery', 'broodstock')}
+    tn, en, _ = A.flip_table(fl, 'nursery', a.year, sun.month, tot['nursery']); tb, eb, _ = A.flip_table(fl, 'broodstock', a.year, sun.month, tot['broodstock'])
     extra['flip'] = dict(nursery=(tn, en), broodstock=(tb, eb))
-    cm['flipping'] = C.flipping(a.week, {'nursery': A.flipped_in_week(fl, 'nursery', a.year, a.week), 'broodstock': A.flipped_in_week(fl, 'broodstock', a.year, a.week)},
-                                A.flip_overdue(tn, en) + A.flip_overdue(tb, eb))
+    cm['flipping'] = C.flipping(a.week, {k: A.flip_progress(fl, k, tot[k]) for k in tot if tot[k]}, A.flip_overdue(tn, en) + A.flip_overdue(tb, eb), tot)
 if a.hapa_exchange:
     hn, mhn = I.hapa_exchange(a.hapa_exchange, 'Nursery Exchange', 'nursery', a.as_of)
     hb, mhb = I.hapa_exchange(a.hapa_exchange, 'Broodstock Exchange', 'broodstock', a.as_of); imp['hapa_exchange_nursery'] = mhn; imp['hapa_exchange_broodstock'] = mhb

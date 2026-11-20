@@ -136,9 +136,28 @@ def jars_low(vol, year, week, max_star=2):
     low = d[d.star <= max_star].sort_values(['date', 'pond'])
     return low, len(d), int((low.mixed_h.fillna(0) > 0).sum())
 
-def flip_table(fl, kind, year, month):
-    """Ponds whose scheduled flip is in the given month: stage x pond table of days taken, plus expected days."""
-    d = fl[(fl.kind == kind) & (pd.to_datetime(fl.scheduled).dt.year == year) & (pd.to_datetime(fl.scheduled).dt.month == month)]
+def flip_progress(fl, kind, total):
+    """Ponds in progress, whatever week they started: a pond is in progress until its last stage is recorded.
+    Returns [(pond, scheduled, stages_done, next_stage_index)] sorted by scheduled date."""
+    d = fl[fl.kind == kind]
+    out = []
+    for (pond, sched), g in d.groupby(['pond', 'scheduled']):
+        n = int(g.dropna(subset=['days']).stage.nunique())          # stages with a recorded value
+        if n < total:
+            out.append((pond, sched, n))
+    return sorted(out, key=lambda t: (t[1], t[0]))
+
+def flip_table(fl, kind, year, month, total=None):
+    """Stage x pond table of days taken, plus expected days. Shows every pond in progress (any week or month) plus ponds scheduled in the given month."""
+    k = fl[fl.kind == kind]
+    sched = pd.to_datetime(k.scheduled)
+    mask = (sched.dt.year == year) & (sched.dt.month == month)
+    if total:
+        keep = {(p, s) for p, s, _ in flip_progress(fl, kind, total)}
+        mask = mask | pd.Series([(p, s) in keep for p, s in zip(k.pond, k.scheduled)], index=k.index)
+    d = k[mask].copy()
+    d.loc[d.days < 0, 'days'] = float('nan')                 # negative days come from a blank/typed date in the Excel file: shown as '-', never as a value
+    d = d[d.groupby('pond').scheduled.transform('max') == d.scheduled]        # a pond flipped twice shows its latest flip
     ponds = (d.drop_duplicates('pond').sort_values('scheduled')['pond']).tolist()
     st = d.drop_duplicates('stage').sort_values('order')[['stage', 'expected_days']]
     piv = d.pivot_table(index='stage', columns='pond', values='days', aggfunc='first').reindex(index=st.stage, columns=ponds)
