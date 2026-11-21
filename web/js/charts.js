@@ -1,4 +1,6 @@
 // Dependency-free SVG charts in the Victory Farms palette.
+// Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
+export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
 export const PAL = ['#0E812E', '#CB8306', '#D7263D', '#00BDF0', '#3B6FD4', '#9B59D0'];
 const NS = 'http://www.w3.org/2000/svg';
 const el = (t, a = {}, txt) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
@@ -60,7 +62,7 @@ export function barChart(o) {
     if (i % c.step === 0) svg.append(el('text', { x: cx, y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, String(l).slice(0, 10)));
     let acc = 0;
     o.series.forEach((s, j) => {
-      const v = s.values[i]; if (v == null || Number.isNaN(v)) return; const col = s.color || PAL[j % PAL.length];
+      const v = s.values[i]; if (v == null || Number.isNaN(v)) return; const col = s.color || BARPAL[j % BARPAL.length];
       const x0 = o.stacked ? cx - bw / 2 : cx - bw * k / 2 + bw * j, y1 = y(o.stacked ? acc + v : v), y0 = y(o.stacked ? acc : 0);
       const r = el('rect', { x: x0, y: Math.min(y1, y0), width: bw, height: Math.abs(y0 - y1), fill: col, rx: 2 }); r.append(el('title', {}, `${s.name} · ${l}: ${f(v)}`)); svg.append(r);
       if (o.valueLabels && !o.stacked) svg.append(el('text', { x: x0 + bw / 2, y: y1 - 4, 'text-anchor': 'middle', fill: '#333' }, f(v)));

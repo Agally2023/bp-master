@@ -106,6 +106,23 @@ def add_prep_slide(out, rows, month, anchor='flip'):
     r.text = f'Ponds flipped in {month}, lowest overall score first. Overall = average of preparation (stage KPIs met / 5) and post-stocking results.'; r.font.size = Pt(10); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
     move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
 
+def no_red_bars(prs):
+    """No bar/column series may be red: recolour any explicitly red series fill to teal."""
+    from pptx.enum.dml import MSO_FILL
+    from pptx.dml.color import RGBColor
+    for s in prs.slides:
+        for sh in s.shapes:
+            if not sh.has_chart or not any(k in str(sh.chart.chart_type) for k in ('COLUMN', 'BAR')): continue
+            for pl in sh.chart.plots:
+                for se in pl.series:
+                    try:
+                        f = se.format.fill
+                        if f.type == MSO_FILL.SOLID and f.fore_color.type == 1:
+                            r, g, b = f.fore_color.rgb[0], f.fore_color.rgb[1], f.fore_color.rgb[2]
+                            if r > 170 and g < 90 and b < 90: f.fore_color.rgb = RGBColor(0x14, 0xA3, 0xA3)
+                    except Exception:
+                        pass
+
 def finish(out, week, images, exclude):
     prs = Presentation(out); by = {}
     for im in images: by.setdefault((im['section_key'], im['kind']), []).append(im)
@@ -124,4 +141,5 @@ def finish(out, week, images, exclude):
         if i is not None:
             sid = list(lst)[i]; prs.part.drop_rel(sid.rId); lst.remove(sid)
     add_table_logos(prs)
+    no_red_bars(prs)
     prs.save(out)

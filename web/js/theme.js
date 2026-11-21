@@ -23,7 +23,7 @@
     mode = prefs.theme; var d = dark(); root.dataset.theme = d ? 'amoled' : 'light';
     var Z = { s: 0.92, m: 1, l: 1.12, xl: 1.25 }; root.style.setProperty('--z', Z[prefs.size] || 1); root.dataset.density = prefs.density; root.dataset.motion = prefs.motion; root.style.setProperty('--txt-l', textL() + '%');
     var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = d ? '#000000' : '#0A5F22';
-    var b = document.getElementById('theme'); if (b) { var n = { auto: 'Auto', light: 'Light', amoled: 'AMOLED' }[mode]; b.title = 'Theme: ' + n + ' (click to change)'; b.setAttribute('aria-label', 'Theme: ' + n); b.dataset.mode = mode; b.querySelector('span').textContent = n; }
+    var b = document.getElementById('theme'); if (b) { var n = { auto: 'Auto', light: 'Normal', amoled: 'AMOLED' }[mode]; b.title = 'Theme: ' + n + ' (click to change)'; b.setAttribute('aria-label', 'Theme: ' + n); b.dataset.mode = mode; b.querySelector('span').textContent = n; }
     document.dispatchEvent(new CustomEvent('bpm-theme', { detail: { dark: d } }));
   }
   window.bpmPrefs = { get: function () { return Object.assign({}, prefs); }, defaults: DEF,

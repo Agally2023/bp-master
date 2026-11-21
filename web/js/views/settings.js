@@ -19,7 +19,7 @@ export async function render({ view }) {
   const themeCard = (() => {
     const box = h('div', { class: 'prev' });
     const paint = () => [...box.children].forEach(b => b.setAttribute('aria-pressed', String(P().get().theme === b.dataset.v)));
-    for (const [v, name, note] of [['auto', 'Auto', 'Follows your device and, where supported, the light in the room'], ['light', 'Light', 'Bright, for daylight and print-like reading'], ['amoled', 'AMOLED', 'True black: saves battery on OLED screens and is easy on the eyes at night']])
+    for (const [v, name, note] of [['auto', 'Auto', 'Follows your device and, where supported, the light in the room'], ['light', 'Normal', 'The standard Victory Farms look: bright, for daylight and print-like reading'], ['amoled', 'AMOLED', 'True black: saves battery on OLED screens and is easy on the eyes at night']])
       box.append(h('button', { type: 'button', 'data-v': v, onclick: () => { P().set('theme', v); paint(); } }, h('div', { class: 'sw t-' + v }, h('i', { style: 'height:40%' }), h('i', { style: 'height:70%' }), h('i', { style: 'height:55%' })), h('b', {}, name), h('div', { class: 'hint' }, note)));
     paint(); return box;
   })();
