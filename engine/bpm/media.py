@@ -61,18 +61,19 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
 
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
+ICON = Path(__file__).resolve().parent.parent / 'templates' / 'vf_icon.png'
 
 def add_table_logos(prs):
-    """Victory Farms logo at the top right of every slide except the cover."""
-    if not LOGO.exists(): return
-    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.08); h = int(w * ih / iw)
+    """Victory Farms V icon at the top right corner of slides that hold a table (not on every slide)."""
+    if not ICON.exists(): return
+    side = int(prs.slide_width * 0.058)
     for i, s in enumerate(prs.slides):
-        if i > 0:   # every slide except the cover
-            x = prs.slide_width - w - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.012)
-            for sh in s.shapes:                          # keep titles clear of the logo (the text wraps instead)
-                if sh.has_text_frame and sh.top is not None and sh.top < y + h and sh.left + sh.width > x - int(prs.slide_width * 0.01) and sh.left < x:
-                    sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
-            pic = s.shapes.add_picture(str(LOGO), Emu(x), Emu(y), Emu(w), Emu(h)); pic.name = 'VF Logo (table)'
+        if i == 0 or not any(getattr(sh, 'has_table', False) and sh.has_table for sh in s.shapes): continue
+        x = prs.slide_width - side - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.015)
+        for sh in s.shapes:                              # keep titles clear of the icon (the text wraps instead)
+            if sh.has_text_frame and sh.top is not None and sh.top < y + side and sh.left + sh.width > x - int(prs.slide_width * 0.01) and sh.left < x:
+                sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
+        pic = s.shapes.add_picture(str(ICON), Emu(x), Emu(y), Emu(side), Emu(side)); pic.name = 'VF Logo (table)'
 
 def add_prep_slide(out, rows, month, anchor='flip'):
     """Native "Pond Preparation Scoring" table slide, placed after the pond-flipping slides. rows: dicts from bpm_pond_prep_scoring."""
