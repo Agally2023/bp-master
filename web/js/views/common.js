@@ -28,5 +28,5 @@ export const bandText = v => v == null ? '' : v >= 0.8 ? 'Good' : v >= 0.5 ? 'Av
 export function bioTable(a, pct) {
   const rows = a.cats.map(c => [c.category, c.n, pct(c.score, 1), { v: bandText(c.score), cls: band(c.score) }]);
   if (a.current != null) rows.push([{ v: 'Overall', cls: 'tot' }, a.checks, pct(a.current, 1), { v: bandText(a.current), cls: band(a.current) }]);
-  return table(['Category', 'Ratings', 'Average %', 'Rating'], rows, { num: [1, 2, 3] });
+  return table(['Category', 'Ratings (no.)', 'Average (%)', 'Rating'], rows, { num: [1, 2, 3] });
 }

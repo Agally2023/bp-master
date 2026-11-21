@@ -162,7 +162,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
             for r in ws_nc.itertuples()]
     more = max(0, len(rows) - 6); rows = rows[:6]
     if rows:
-        g = table(s, anchor, ['Date', 'RAS', 'Score', 'Name of non-compliant island', 'Employee responsible', 'Reason for non-compliance'],
+        g = table(s, anchor, ['Date', 'RAS', 'Score (%)', 'Name of non-compliant island', 'Employee responsible', 'Reason for non-compliance'],
                   rows, [9, 6, 6, 21, 21, 37], BLUE_DARK, font=7)
         bottom = g.top + g.height
     else:
@@ -193,7 +193,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
             body = [[i, *r] for i, r in zip(bp.index, bp.values.tolist())]
         body.append(['Grand total', *bp.sum().astype(int).tolist()])
         num = [PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6
-        table(s, pic, ['Pond', 'Hapas audited', 'Hapas failed', 'Failed: position', 'Failed: missing hook', 'Failed: not tied', 'Failed: missing posts'],
+        table(s, pic, ['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)', 'Failed: position (no.)', 'Failed: missing hook (no.)', 'Failed: not tied (no.)', 'Failed: missing posts (no.)'],
               body, [10, 9, 9, 9, 11, 9, 11], BLUE_LIGHT, total_last=True, align=num)
         pic._element.getparent().remove(pic._element)
         set_lines(shape(s, box_name), comments[f'bottom_rope_{key}'], size=14)
@@ -233,7 +233,7 @@ def batch2(prs, year, week, comments, x):
         n = int(cat['count'].sum()); tot = float(ov[-1][1])
         rows.append(['Overall', n, f'{tot:.1%}', x['bio']['band'](tot)])
         col = {'Good': GOOD, 'Average': AVG, 'Poor': POOR}
-        table(s, pic, ['Category', 'Ratings', 'Average %', 'Rating'], rows, [14, 6, 8, 8], BLUE_DARK, font=9, total_last=True,
+        table(s, pic, ['Category', 'Ratings (no.)', 'Average (%)', 'Rating'], rows, [14, 6, 8, 8], BLUE_DARK, font=9, total_last=True,
               align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 3, fill_fn=lambda r, c, v: col.get(v) if c == 3 else None)
         pic._element.getparent().remove(pic._element)
         set_lines(shape(s, 'TextBox 11'), comments['biosecurity'], size=14)
@@ -295,7 +295,7 @@ def batch3(prs, year, week, comments, x):
             d = x['stocking']; pic = shape(s, 'Picture 4')
             rows = [[i.strftime('%d/%m/%Y') if hasattr(i, 'strftime') else str(i), f'{r.abw:.4f}', f'{r.req:.0f}', f'{r.target:,.0f}', f'{r.actual:.1f}',
                      f'{r.variance:.1%}', f'{r.est:,.0f}', f"{r['diff']:,.0f}"] for i, r in d.iterrows()]
-            table(s, pic, ['Date', 'Calc. ABW (g)', 'Required weight (g)', 'Target fry number', 'Actual weight (g)', 'Variance', 'Est. fry stocked', 'Diff.'],
+            table(s, pic, ['Date', 'Calc. ABW (g)', 'Required weight (g)', 'Target fry number (pcs)', 'Actual weight (g)', 'Variance (%)', 'Est. fry stocked (pcs)', 'Diff. (pcs)'],
                   rows, [9, 8, 10, 10, 10, 8, 10, 7], BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 7)
             _drop_shape(pic); set_lines(shape(s, 'TextBox 17'), comments['stocking'], size=14)
         else:
@@ -319,7 +319,7 @@ def batch3(prs, year, week, comments, x):
             rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.1%}', int(r.star)] for r in low.itertuples()]
             if more:
                 rows.append([f'+{more} more', '', '', '', '', '', ''])
-            table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', '% Overall', 'Stars'],
+            table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', 'Overall (%)', 'Rating (stars)'],
                   rows or [['-'] * 7], [11, 7, 9, 12, 11, 9, 6], BLUE_DARK, font=7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6, width=Emu(3700000),
                   color_fn=lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c == 4 and v not in ('', '-') else None)  # mixed-stage height in red
             _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
@@ -336,7 +336,7 @@ def batch3(prs, year, week, comments, x):
                 _drop_shape(pic); continue
             ponds = list(piv.columns)[:14]
             rows = [[st, exp[st]] + [('-' if v != v or v is None else int(v)) for v in piv.loc[st, ponds]] for st in piv.index]
-            header = [f'{label} - days per stage', 'Expected'] + ponds
+            header = [f'{label} - days per stage', 'Expected (days)'] + ponds
             def fill(r, c, v, rows=rows, exp=exp, piv=piv):
                 if c >= 2 and v != '-' and v > rows[r - 1][1]:
                     return RGBColor(0xFF, 0x00, 0x00)

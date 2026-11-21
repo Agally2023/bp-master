@@ -99,7 +99,7 @@ def add_prep_slide(out, rows, month, anchor='flip'):
     def fill(r, c, v):
         if c in (3, 4, 5, 6) and v != '-':
             x = float(v[:-1]); return deck.GOOD if x >= 91 else deck.AVG if x >= 75 else deck.POOR
-    deck.table(s, anchor_box, ['Pond', 'Flipped', 'Stocked', 'Preparation', 'Water quality', 'Post-stocking', 'Overall', 'Rating (0-5)', 'Action points'], body,
+    deck.table(s, anchor_box, ['Pond', 'Flipped', 'Stocked', 'Preparation (%)', 'Water quality (%)', 'Post-stocking (%)', 'Overall (%)', 'Rating (0-5)', 'Action points'], body,
                [8, 10, 10, 10, 10, 10, 9, 8, 25], deck.BLUE_DARK, font=9, fill_fn=fill)
     note = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * 0.88)), Emu(int(W * 0.92)), Emu(int(H * 0.06)))
     note.text_frame.word_wrap = True; r = note.text_frame.paragraphs[0].add_run()

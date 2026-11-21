@@ -130,7 +130,7 @@ export function flips(data, y, w) {
   }));
   return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog, matrix };
 }
-export const flipHead = ['Type', 'Pond', 'Scheduled', 'Stages done', 'Next stage', 'Over expected days'];
+export const flipHead = ['Type', 'Pond', 'Scheduled', 'Stages done', 'Next stage', 'Over expected (days)'];
 export const flipRow = (r, fmtDate) => [r.kind, r.pond, fmtDate(r.scheduled), `${r.done} of ${r.total}`, r.next, r.over.map(o => `${o.stage} ${o.days}d (exp. ${o.exp}d)`).join('; ') || '–'];
 
 // Automatic first-draft comments (a person edits them; same wording as the PPT engine).

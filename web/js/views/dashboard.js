@@ -27,7 +27,7 @@ export async function render({ view, ctx }) {
     // 1 workstation
     body.append(g(card('Incubation workstation compliance trend', has(ws.trend) ? lineChart({ labels: ws.labels, series: [{ name: 'Compliance', values: ws.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', target: 1, targetLabel: '100%', valueLabels: true }) : noData(),
       ws.reasons.length ? h('div', { class: 'note' }, h('b', {}, 'Main reasons: '), ws.reasons.map(r => `${r[0]} (${r[1]})`).join(' · ')) : null),
-      card('Non-compliant workstations this week', table(['Date', 'RAS', 'Compliance', 'Island', 'Responsible', 'Reason'], ws.nc.map(r => [fmtDate(r.audit_date), r.ras, { v: pct(r.score), cls: band(r.score, 0.95, 0.8) }, r.noncompliant_island, r.employee_responsible, r.reason])))));
+      card('Non-compliant workstations this week (compliance in %)', table(['Date', 'RAS', 'Compliance (%)', 'Island', 'Responsible', 'Reason'], ws.nc.map(r => [fmtDate(r.audit_date), r.ras, { v: pct(r.score), cls: band(r.score, 0.95, 0.8) }, r.noncompliant_island, r.employee_responsible, r.reason])))));
     // 2 biosecurity
     body.append(g(card('Biosecurity and Hygiene', has(bio.overall) ? bioTable(bio, pct) : null, has(bio.overall) ? lineChart({ labels: bio.labels, series: [{ name: 'Overall rating', values: bio.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', area: true, joinGaps: true, valueLabels: true, maxLabels: 30, w: 760 }) : noData())));
     // 3 parasitology
@@ -41,11 +41,11 @@ export async function render({ view, ctx }) {
       h('div', { class: 'note' }, wat.r == null ? 'Not enough paired days to correlate.' : `Correlation r = ${wat.r.toFixed(2)} across ${wat.n} days (${Math.abs(wat.r) < 0.4 ? 'weak' : Math.abs(wat.r) < 0.7 ? 'moderate' : 'strong'} ${wat.r < 0 ? 'negative' : 'positive'} relationship).`)) : noData()),
       card('3-day recount survival by hapa', d3.total ? barChart({ labels: d3.units, series: [{ name: 'Survival', values: d3.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: v => (v * 100).toFixed(0) + '%', target: 0.97, targetLabel: '97%' }) : noData())));
     // 5 stocking + transfers
-    body.append(g(card('Stocking numbers audit', table(['Date', 'ABW (g)', 'Required (g)', 'Target fry', 'Actual (g)', 'Variance', 'Est. stocked', 'Diff.'], st.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), { v: pct(r.variance, 1), cls: Math.abs(r.variance) <= 0.05 ? 'good' : 'poor' }, num(r.est, 0), num(r.diff, 0)]), { num: [1, 2, 3, 4, 5, 6, 7] })),
-      card('Incubation to pond transfer audit (morning stocking)', table(['Date', 'Time', 'Tray °C', 'Bucket, no fish', 'Bucket, with fish', 'Pond °C', 'Variance (<2)'], tf.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])} – ${num(r.tray[1])}`, `${num(r.bwo[0])} – ${num(r.bwo[1])}`, `${num(r.bw[0])} – ${num(r.bw[1])}`, num(r.pond), { v: `${num(r.variance[0])} – ${num(r.variance[1])}`, cls: r.variance[1] < 2 && r.variance[0] > -2 ? 'good' : 'poor' }])))));
+    body.append(g(card('Stocking numbers audit (weights in g, counts in pcs)', table(['Date', 'ABW (g)', 'Required (g)', 'Target fry (pcs)', 'Actual (g)', 'Variance (%)', 'Est. stocked (pcs)', 'Diff. (pcs)'], st.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), { v: pct(r.variance, 1), cls: Math.abs(r.variance) <= 0.05 ? 'good' : 'poor' }, num(r.est, 0), num(r.diff, 0)]), { num: [1, 2, 3, 4, 5, 6, 7] })),
+      card('Incubation to pond transfer audit (morning stocking, temperatures in °C)', table(['Date', 'Time', 'Tray (°C)', 'Bucket, no fish (°C)', 'Bucket, with fish (°C)', 'Pond (°C)', 'Variance (°C, <2)'], tf.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])} – ${num(r.tray[1])}`, `${num(r.bwo[0])} – ${num(r.bwo[1])}`, `${num(r.bw[0])} – ${num(r.bw[1])}`, num(r.pond), { v: `${num(r.variance[0])} – ${num(r.variance[1])}`, cls: r.variance[1] < 2 && r.variance[0] > -2 ? 'good' : 'poor' }])))));
     // 6 eggs
     body.append(g(card('Egg stage separation rating', has(eg.trend) ? lineChart({ labels: eg.labels, series: [{ name: 'ABP rating (1–5)', values: eg.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, valueLabels: true }) : noData()),
-      card(`Jars rated 0–2 stars (${eg.low.length} of ${eg.total})`, table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', '% Overall', 'Stars'], eg.low.slice(0, 40).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), { v: num(r.mixed_h), cls: 'redtxt' }, pct(r.overall), { v: r.star, cls: 'poor' }])))));
+      card(`Jars rated 0–2 stars (${eg.low.length} of ${eg.total} jars; heights in cm)`, table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', 'Overall (%)', 'Rating (stars)'], eg.low.slice(0, 40).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), { v: num(r.mixed_h), cls: 'redtxt' }, pct(r.overall), { v: r.star, cls: 'poor' }])))));
     // 7 flips, bottom rope, exchange
     {   // pond preparation scoring: latest record per pond, flipped in the selected week's month, lowest overall first
       const mon = weekRange(y, w).sun.toISOString().slice(0, 7), latest = new Map();
@@ -53,7 +53,7 @@ export async function render({ view, ctx }) {
       const pp = [...latest.values()].sort((a, b) => (a.overall_score ?? 9) - (b.overall_score ?? 9));
       const sb = v => v == null ? '–' : { v: pct(v, 0), cls: band(v, 0.91, 0.75) };
       body.append(h('div', { class: 'mt' }, card(`Pond preparation scoring (${pp.length} pond${pp.length === 1 ? '' : 's'} flipped this month)`,
-        table(['Pond', 'Flipped', 'Stocked', 'Preparation', 'Water quality', 'Post-stocking', 'Overall', 'Rating (0–5)', 'Action points'],
+        table(['Pond', 'Flipped', 'Stocked', 'Preparation (%)', 'Water quality (%)', 'Post-stocking (%)', 'Overall (%)', 'Rating (0–5)', 'Action points'],
           pp.map(r => [r.pond, fmtDate(r.flipping_date), r.stocking_date ? fmtDate(r.stocking_date) : '–', sb(r.prep_score), sb(r.wq_score), sb(r.post_score), sb(r.overall_score), r.rating ?? '–', r.action_points || '–']), { empty: 'No scored ponds this month' }),
         h('div', { class: 'note' }, 'Preparation = average of 9 stage scores (KPIs met ÷ 5). Overall = average of preparation and post-stocking. Rating bands: <75% = 1, 75–80% = 2, 81–90% = 3, 91–95% = 4, 96–99% = 4.5, 100% = 5.'))));
     }
@@ -61,13 +61,13 @@ export async function render({ view, ctx }) {
       const { st, ponds } = fl.matrix[k]; const P = ponds.slice(0, 14);
       if (!P.length) return card(`Pond flipping: ${label}`, noData('No ponds in progress'));
       const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v, cls: v > x.expected ? 'late' : '' }; })]);
-      return card(`Pond flipping: ${label}: days per stage`, table(['Stage', 'Expected', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
+      return card(`Pond flipping: ${label}: days per stage`, table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
         h('div', { class: 'note' }, 'Red = more days than expected. A pond leaves this list automatically once its last stage has run its expected days.'));
     })));
     body.append(g(card('Pond flipping: ponds in progress (all weeks)', table(A.flipHead, fl.progress.map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })),
       card('Hapa exchange compliance', has(hx.trend) ? lineChart({ labels: hx.labels, series: [{ name: 'Exchanged / scheduled', values: hx.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true }) : noData())));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
-      br[k].ponds.length ? table(['Pond', 'Hapas audited', 'Hapas failed'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
+      br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
   };
   weekPicker(ctx, data, draw); view.append(body); draw();
 }
