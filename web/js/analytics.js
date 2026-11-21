@@ -26,10 +26,12 @@ export function workstation(data, y, w, n = 13) {
 }
 
 export function biosecurity(data, y, w) {          // same shape as the PPT slide: every week from the first audit, gaps joined, category table with a rating band
-  const d = inYear(data.biosecurity_audits, y).filter(r => r.rating_value != null && r.analysis_category !== 'Not scored');
+  const all = inYear(data.biosecurity_audits, y).filter(r => !r.superseded);       // rows of dates the Biosecurity dashboard covers replace the Excel rows (see migration 0008)
+  const typed = new Map(all.filter(r => r.analysis_category === 'Overall (typed)' && r.rating_value != null).map(r => [r.iso_week, +r.rating_value]));   // overall typed in the Excel, as in the Biosecurity dashboard
+  const d = all.filter(r => r.rating_value != null && r.analysis_category !== 'Not scored' && r.analysis_category !== 'Overall (typed)');
   const byWeek = group(d, r => r.iso_week), have = [...byWeek.keys()].filter(x => x <= w).sort((a, b) => a - b);
   const first = have[0] ?? w, weeks = Array.from({ length: w - first + 1 }, (_, i) => first + i);
-  const overall = weeks.map(x => byWeek.has(x) ? mean([...group(byWeek.get(x), r => r.analysis_category).values()].map(g => mean(g.map(r => r.rating_value)))) : null);
+  const overall = weeks.map(x => typed.has(x) ? typed.get(x) : byWeek.has(x) ? mean([...group(byWeek.get(x), r => r.analysis_category).values()].map(g => mean(g.map(r => r.rating_value)))) : null);
   const cur = group(byWeek.get(w) || [], r => r.analysis_category);
   const cats = [...cur].map(([k, g]) => ({ category: k, n: g.length, score: mean(g.map(r => r.rating_value)) })).sort((a, b) => b.n - a.n || a.category.localeCompare(b.category));
   const lowest = [...cats].sort((a, b) => a.score - b.score);

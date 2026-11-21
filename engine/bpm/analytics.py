@@ -59,7 +59,12 @@ def bio_weekly_overall(bio, year, upto):
     """Overall = equal-weighted mean of the category averages present that week (matches the Excel summary)."""
     d = bio[(bio.iso_year == year) & bio.scored]
     cat = d.groupby(['iso_week', 'analysis_category'])['rating_value'].mean().groupby('iso_week').mean()
-    return [(w, float(cat[w]) if w in cat.index else None) for w in range(int(cat.index.min()), upto + 1)] if len(cat) else []
+    t = bio[(bio.iso_year == year) & (bio.analysis_category == 'Overall (typed)') & bio.rating_value.notna()]
+    typed = {int(w): float(v) for w, v in zip(t.iso_week, t.rating_value)}          # overall typed in the Excel (same as the Biosecurity dashboard)
+    weeks = [int(x) for x in cat.index] + list(typed)
+    if not weeks: return []
+    lo = min(weeks)
+    return [(w, typed[w] if w in typed else float(cat[w]) if w in cat.index else None) for w in range(lo, upto + 1)]
 
 def bio_category_week(bio, year, week):
     d = bio[(bio.iso_year == year) & (bio.iso_week == week) & bio.scored]

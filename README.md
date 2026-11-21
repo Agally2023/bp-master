@@ -52,3 +52,6 @@ Migration `0005_rls_initplan.bpm.sql` evaluates RLS helper functions once per qu
 
 ## Phone layout
 Below 900px the menu becomes a drawer (hamburger button), grids and forms go single-column, tables scroll inside their own box. Test: `python3 tests/ui_mobile.py` (serve `web/` on port 8765 first).
+
+## Biosecurity dashboard link
+BP Master reads the Biosecurity dashboard's data from the shared Supabase project (`bio_log`). Migration `0008_biosecurity_link.bpm.sql` mirrors every entry into `bpm_biosecurity_audits` (`source = 'bio_log'`) with the same scoring and six core categories, and keeps it in sync on insert, edit and delete. Excel-imported rows for dates the Biosecurity dashboard already covers are kept but flagged `superseded` and not scored. The overall % typed by hand in the Excel (weeks 34, 36-40, `OVERALL_TYPED` in that dashboard) is stored as `source = 'typed'` rows and shown instead of the calculated value, so the weekly overall matches in both apps. If you change `OVERALL_TYPED` there, update those rows here.

@@ -28,7 +28,9 @@ def day3(rows):
 
 def biosecurity(rows):
     d = _dates(_df(rows), 'audit_date')
-    if not d.empty: d['scored'] = d['rating_value'].notna() & (d['analysis_category'] != 'Not scored')
+    if not d.empty:
+        if 'superseded' in d: d = d[~d['superseded'].fillna(False).astype(bool)].copy()       # Biosecurity-dashboard dates replace the Excel rows
+        d['scored'] = d['rating_value'].notna() & ~d['analysis_category'].isin(['Not scored', 'Overall (typed)'])
     return d
 
 def parasitology(rows):
