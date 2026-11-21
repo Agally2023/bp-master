@@ -8,8 +8,9 @@ COMMENT_MAP = {'workstation': ['workstation'], 'biosecurity': ['biosecurity'], '
                'stocking': ['stocking'], 'transfers': ['transfers'], 'eggs': ['egg'], 'flipping': ['flipping'], 'bottom_rope': ['bottom_rope_nursery', 'bottom_rope_broodstock'],
                'hapa_exchange': ['hapa_exchange']}
 
-def build_week(T, year, week, out, template, stage_defs, overrides=None, images=None, exclude=(), ras='RAS2'):
+def build_week(T, year, week, out, template, stage_defs, overrides=None, images=None, exclude=(), ras='RAS2', photo_src=None):
     """T: {module_key: [row dicts]}; overrides: {section_key: comment text}; images: [{section_key, slot, kind, path}]; exclude: section keys to drop."""
+    flip_prog = flip_tot = None
     ws = F.workstation(T.get('workstation_audits', [])); nur = F.bottom_rope(T.get('bottom_rope_audits', []), 'nursery'); bro = F.bottom_rope(T.get('bottom_rope_audits', []), 'broodstock')
     d3 = F.day3(T.get('day3_recounts', []))
     tr = A.workstation_trend(ws, year, week); nc = A.workstation_noncompliant(ws, year, week); sub = A.day3_week(d3, year, week)
@@ -47,7 +48,7 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
             as_of = min(_dt.date.today(), sun if isinstance(sun, _dt.date) else sun.date())
             lastx = {k: (stage_defs.get(k) or [{}])[-1].get('expected') for k in tot}
             tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month, tot['nursery'], as_of, lastx['nursery']); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month, tot['broodstock'], as_of, lastx['broodstock'])
-            prog = {k: A.flip_progress(fl, k, tot[k], as_of, lastx[k]) for k in tot if tot[k]}
+            prog = {k: A.flip_progress(fl, k, tot[k], as_of, lastx[k]) for k in tot if tot[k]}; flip_prog, flip_tot = prog, tot
             extra['flip'] = dict(nursery=(tn, en), broodstock=(tb, eb))
             cm['flipping'] = C.flipping(week, prog, A.flip_overdue(tn, en) + A.flip_overdue(tb, eb), tot)
     if T.get('hapa_exchanges'):
@@ -68,5 +69,22 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
         for r in T['pond_prep_scoring']:
             if str(r.get('flipping_date', ''))[:7] == sun.strftime('%Y-%m') and (r['pond'] not in latest or str(r['flipping_date']) > str(latest[r['pond']]['flipping_date'])): latest[r['pond']] = r
         media.add_prep_slide(out, list(latest.values()), sun.strftime('%B %Y'))
-    media.finish(out, week, images or [], set(exclude))
+    images = list(images or [])
+    if photo_src: images += _auto_photos(photo_src, images, flip_prog, flip_tot)
+    media.finish(out, week, images, set(exclude))
     return cm
+
+
+def _auto_photos(src, images, prog, tot):
+    """Fill the two picture grids when nobody uploaded photos by hand. src: {'bio': rows, 'pond': rows, 'fetch': fn(bucket, path) -> local file}."""
+    out, have = [], {i['section_key'] for i in images if i.get('kind') == 'photo'}
+    fetch = src['fetch']
+    if 'bio_photos' not in have:
+        for n, p in enumerate(A.pick_bio_photos(src.get('bio') or []), 1):
+            f = fetch('biosecurity-photos', p['row']['file_path'])
+            if f: out.append(dict(section_key='bio_photos', slot=n, kind='photo', path=f, caption=p['caption']))
+    if 'flip_photos' not in have and prog:
+        for n, p in enumerate(A.pick_pond_photos(src.get('pond') or [], prog, tot or {}), 1):
+            f = fetch('bpm-report-images', p['row']['storage_path'])
+            if f: out.append(dict(section_key='flip_photos', slot=n, kind='photo', path=f, caption=p['caption']))
+    return out

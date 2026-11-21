@@ -47,6 +47,12 @@ class DemoDB {
   async setCaption(im, caption) { im.caption = caption; return im; }
   async removeImage(im) { this.images = this.images.filter(i => i.id !== im.id); }
   async imageUrl(im) { return im.storage_path; }
+  async bioPhotos() { return []; }
+  async bioPhotoUrl() { return ''; }
+  async pondPhotos() { return (this.pp ||= []).slice().sort((a, b) => String(b.photo_date).localeCompare(String(a.photo_date))); }
+  async addPondPhoto(file, pond, stage, date) { const r = { id: uuid(), pond, stage, photo_date: date, storage_path: URL.createObjectURL(file) }; (this.pp ||= []).push(r); return r; }
+  async removePondPhoto(r) { this.pp = (this.pp || []).filter(x => x.id !== r.id); }
+  async pondPhotoUrl(r) { return r.storage_path; }
 }
 
 class SupabaseDB {
@@ -168,5 +174,18 @@ class SupabaseDB {
   async setCaption(im, caption) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'PATCH', body: JSON.stringify({ caption }) }); }
   async removeImage(im) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${im.storage_path}`, { method: 'DELETE' }); } catch { } }
   async imageUrl(im) { const j = await (await this._f(`/storage/v1/object/sign/${BUCKET}/${im.storage_path}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this.base + '/storage/v1' + j.signedURL; }
+  async _sign(bucket, path) { const j = await (await this._f(`/storage/v1/object/sign/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this.base + '/storage/v1' + j.signedURL; }
+  // Biosecurity dashboard photos (table bio_photos, private bucket biosecurity-photos) for a date range
+  async bioPhotos(from, to) { return (await this._f(`/rest/v1/bio_photos?select=id,log_date,location,item,note,file_path&log_date=gte.${from}&log_date=lte.${to}&order=log_date.desc,id.desc`)).json(); }
+  async bioPhotoUrl(path) { return this._sign('biosecurity-photos', path); }
+  async pondPhotos() { return (await this._f(`/rest/v1/${P}pond_photos?select=*&order=photo_date.desc,created_at.desc&limit=500`)).json(); }
+  async addPondPhoto(file, pond, stage, date) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, ''), path = `pond/${uuid()}.${ext}`;
+    await this._f(`/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false' }, body: file });
+    const r = await this._f(`/rest/v1/${P}pond_photos`, { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ pond, stage: stage || null, photo_date: date, storage_path: path }) });
+    return (await r.json())[0];
+  }
+  async removePondPhoto(r) { await this._f(`/rest/v1/${P}pond_photos?id=eq.${r.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${r.storage_path}`, { method: 'DELETE' }); } catch { } }
+  async pondPhotoUrl(r) { return this._sign(BUCKET, r.storage_path); }
 }
 export const db = isDemo() ? new DemoDB() : new SupabaseDB();

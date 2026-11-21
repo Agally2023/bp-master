@@ -154,3 +154,22 @@ export function draftComment(key, a) {
     default: return '';
   }
 }
+
+// ---- picture grids (the report fills them automatically) ----
+const dmy = d => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
+/** Biosecurity: up to 4 photos of the week, newest first, one per item/location before any repeat. rows come from bio_photos. */
+export function pickBioPhotos(rows, n = 4) {
+  const seen = new Set(), first = [], rest = [];
+  for (const r of rows) { const k = r.item + '|' + r.location; (seen.has(k) ? rest : first).push(r); seen.add(k); }
+  return first.concat(rest).slice(0, n).map(r => ({ path: r.file_path, caption: [r.item, r.location, dmy(r.log_date)].filter(Boolean).join(', '), bio: true }));
+}
+/** Pond flipping: the latest photo of every pond still in progress, whatever week it was taken. */
+export function pickPondPhotos(data, y, w, photos) {
+  const latest = new Map(); for (const p of photos) { const k = String(p.pond).trim().toLowerCase(); if (!latest.has(k)) latest.set(k, p); }   // photos arrive newest first
+  const seen = new Set(), out = [];
+  for (const r of flips(data, y, w).progress) {
+    const k = String(r.pond).trim().toLowerCase(), p = latest.get(k); if (!p || seen.has(k)) continue; seen.add(k);
+    out.push({ row: p, caption: [r.pond, p.stage || `${r.done} of ${r.total} stages done`, dmy(p.photo_date)].join(', ') });
+  }
+  return out;
+}

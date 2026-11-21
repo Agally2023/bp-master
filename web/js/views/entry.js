@@ -26,7 +26,7 @@ export async function render({ view }) {
     const m = modByKey(current);
     const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
     const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('h2', {}, m.label), tabs, pane));
-    if (tab === 'form') pane.append(formFor(m, () => { })); else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
+    if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
   }
   drawSide(); drawMain();
 }
@@ -94,4 +94,30 @@ function formFor(m, saved) {
     } catch (x) { msg.append(h('div', { class: 'err-msg' }, 'Could not save: ' + x.message)); } finally { btn.disabled = false; }
   });
   showDerived(); return form;
+}
+
+// Pond photos: upload once while a pond is being prepared; the report shows the latest photo of every pond in progress in its picture grid.
+function pondPhotos() {
+  const box = h('div', { class: 'card mt' }), list = h('div', { class: 'ppgrid' });
+  const pond = h('input', { placeholder: 'Pond, e.g. A12', maxlength: 20, required: true, 'aria-label': 'Pond' }), stage = h('input', { placeholder: 'Stage / status (optional)', maxlength: 40, 'aria-label': 'Stage or status' });
+  const date = h('input', { type: 'date', value: todayIso(), max: todayIso(), 'aria-label': 'Photo date' });
+  const file = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', multiple: true, 'aria-label': 'Photos' });
+  const msg = h('div', { class: 'muted' });
+  const draw = async () => {
+    clear(list); let rows = []; try { rows = await db.pondPhotos(); } catch (e) { list.append(h('div', { class: 'muted' }, 'Could not load photos: ' + e.message)); return; }
+    if (!rows.length) { list.append(h('div', { class: 'muted' }, 'No pond photos yet.')); return; }
+    for (const r of rows.slice(0, 24)) {
+      const img = h('img', { alt: r.pond }); db.pondPhotoUrl(r).then(u => { img.src = u; });
+      const del = db.user.role === 'admin' ? h('button', { class: 'btn danger sm', onclick: async () => { if (confirm('Delete this photo?')) { await db.removePondPhoto(r); draw(); } } }, 'Delete') : null;
+      list.append(h('div', { class: 'ppitem' }, img, h('div', { class: 'cap' }, [r.pond, r.stage, fmtDate(r.photo_date)].filter(Boolean).join(', ')), del));
+    }
+  };
+  const form = h('form', { class: 'row', onsubmit: async e => {
+    e.preventDefault(); if (!pond.value.trim() || !file.files.length) { msg.textContent = 'Enter the pond and choose at least one photo.'; return; }
+    msg.textContent = 'Uploading…';
+    try { for (const f of file.files) { if (f.size > 8e6) { toast(f.name + ' is over 8 MB', true); continue; } await db.addPondPhoto(f, pond.value.trim(), stage.value.trim(), date.value); } await db.audit('upload', 'pond_photo', pond.value.trim()); file.value = ''; msg.textContent = 'Saved. The report picks it up automatically.'; draw(); }
+    catch (x) { msg.textContent = 'Could not upload: ' + x.message; }
+  } }, pond, stage, date, file, h('button', { class: 'btn', type: 'submit' }, 'Add photos'));
+  box.append(h('h2', {}, 'Pond photos'), h('p', { class: 'muted' }, 'Add photos while a pond is in progress. The weekly report shows the latest photo of every pond still in progress, in a picture grid, automatically. When the pond is complete it drops off by itself.'), form, msg, list);
+  draw(); return box;
 }

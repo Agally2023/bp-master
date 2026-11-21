@@ -55,3 +55,8 @@ Below 900px the menu becomes a drawer (hamburger button), grids and forms go sin
 
 ## Biosecurity dashboard link
 BP Master reads the Biosecurity dashboard's data from the shared Supabase project (`bio_log`). Migration `0008_biosecurity_link.bpm.sql` mirrors every entry into `bpm_biosecurity_audits` (`source = 'bio_log'`) with the same scoring and six core categories, and keeps it in sync on insert, edit and delete. Excel-imported rows for dates the Biosecurity dashboard already covers are kept but flagged `superseded` and not scored. The overall % typed by hand in the Excel (weeks 34, 36-40, `OVERALL_TYPED` in that dashboard) is stored as `source = 'typed'` rows and shown instead of the calculated value, so the weekly overall matches in both apps. If you change `OVERALL_TYPED` there, update those rows here.
+
+## Picture grids (automatic)
+- **Biosecurity Images**: the report takes up to 4 photos taken in the Biosecurity dashboard during the report week (`bio_photos`), newest first, one per item/location before any repeat, captioned "item, location, date".
+- **Images of Flipped Ponds Progress**: upload pond photos once on Entry > Pond Flipping > Pond photos. The report shows the latest photo of every pond still in progress (any week), captioned "pond, stage, date". A new 2x2 slide is added for every 4 ponds; a pond drops off when its flipping completes.
+- A photo uploaded by hand into a slot on the Reports page overrides the automatic ones for that grid. With no photos at all the slide is left out, so last week's pictures never reappear.

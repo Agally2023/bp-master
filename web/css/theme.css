@@ -256,3 +256,10 @@ td.redtxt{color:#e00000;font-weight:700}
 /* data-entry values are blue, as in the Excel template */
 .f input:not([type=checkbox]),.f select,.f textarea{color:#0000FF}
 :root[data-theme=amoled] .f input,:root[data-theme=amoled] .f select,:root[data-theme=amoled] .f textarea{color:#6C9BFF}
+
+/* picture grids */
+.slot.auto{border-style:solid;border-color:#9fc9a6;cursor:default}
+.autotag{position:absolute;left:6px;top:6px;z-index:2;background:#0E812E;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px}
+.ppgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.ppitem{display:flex;flex-direction:column;gap:4px;min-width:0}.ppitem img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:#eef3ee}
+.ppitem .cap{border:0;padding:0;background:none;font-size:12px}

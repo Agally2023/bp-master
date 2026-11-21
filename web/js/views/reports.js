@@ -1,4 +1,4 @@
-import { h, clear, pct, num, fmtDate, toast, download } from '../util.js';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js';
 import { S, ensure } from '../state.js';
 import { db } from '../db.js';
 import * as A from '../analytics.js';
@@ -46,6 +46,7 @@ export async function render({ view, ctx }) {
     clear(body); const { y, w } = S.week; const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
     let R = await db.report(y, w, false); const calc = Object.fromEntries(SECTIONS.map(s => [s.key, s.an(data, y, w)]));
     if (!R) { body.append(h('div', { class: 'card' }, h('h2', {}, `No report for Week ${w}, ${y} yet`), h('p', { class: 'muted' }, 'Creating a report drafts comments from the data. You can edit every comment, add photos and attach analysed graphs.'), canEdit ? h('button', { class: 'btn', onclick: async () => { await db.report(y, w, true); await db.audit('create', 'report', `${y}-${w}`); draw(); } }, `Create Week ${w} report`) : null)); return; }
+    R.auto = await autoPhotos(data, y, w);
     const { report } = R, locked = ['approved', 'exported'].includes(report.status);
     const secState = key => R.sections.find(s => s.section_key === key) || { comment: null, include: true };
     // status bar
@@ -91,18 +92,29 @@ function captionBar(im, disabled) {
   [P, S, D].forEach(i => i.addEventListener('input', save));
   return h('div', { class: 'capbar' }, P, S, D);
 }
+// Picture grids fill themselves: biosecurity = photos taken in the Biosecurity dashboard that week; flipping = latest photo of each pond in progress.
+async function autoPhotos(data, y, w) {
+  const out = { bio_photos: [], flip_photos: [] };
+  try { const r = weekRange(y, w); out.bio_photos = A.pickBioPhotos(await db.bioPhotos(r.monIso, r.sunIso)).map(p => ({ ...p, get: () => db.bioPhotoUrl(p.path) })); } catch { }
+  try { out.flip_photos = A.pickPondPhotos(data, y, w, await db.pondPhotos()).map(p => ({ caption: p.caption, get: () => db.pondPhotoUrl(p.row) })); } catch { }
+  return out;
+}
 function photoGrid(R, s, disabled, redraw) {
   const grid = h('div', { class: 'slots', style: 'grid-template-columns:repeat(2,1fr);flex:1' });
   for (let slot = 1; slot <= 4; slot++) {
     const im = R.images.find(i => i.section_key === s.key && i.slot === slot && i.kind === 'photo');
+    const au = !im && (R.auto?.[s.key] || [])[slot - 1];
     const f = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
     const box = h('div', { class: 'slot', tabindex: 0, role: 'button', 'aria-label': `Photo ${slot}`, onclick: e => { if (!disabled && e.target.tagName !== 'BUTTON') f.click(); } }, f, h('span', {}, im ? '' : `+ Photo ${slot}`));
     f.onchange = async () => { const file = f.files[0]; if (!file) return; try { await db.putImage(R.report.id, s.key, slot, 'photo', file); await db.audit('upload', 'report_image', `${s.key}:${slot}`); redraw(); } catch (e) { toast(e.message, true); } };
     if (im) { const img = h('img', { alt: im.caption || `Photo ${slot}` }); db.imageUrl(im).then(u => { img.src = u; }); box.append(img); if (!disabled) box.append(h('button', { class: 'btn danger sm', style: 'position:absolute;right:4px;top:4px;z-index:2', onclick: async e => { e.stopPropagation(); await db.removeImage(im); redraw(); } }, '✕')); }
+    if (au) { box.classList.add('auto'); box.querySelector('span').textContent = ''; const img = h('img', { alt: au.caption }); au.get().then(u => { img.src = u; }).catch(() => { box.querySelector('span').textContent = 'Photo unavailable'; }); box.append(img, h('span', { class: 'autotag' }, 'Auto')); }
     const wrap = h('div', { class: 'slotwrap' }, box);
-    if (im) wrap.append(captionBar(im, disabled));
+    if (im) wrap.append(captionBar(im, disabled)); else if (au) wrap.append(h('div', { class: 'cap', style: 'text-align:center' }, au.caption));
     grid.append(wrap);
   }
+  const more = (R.auto?.[s.key] || []).length - 4;
+  if (more > 0) return h('div', {}, grid, h('div', { class: 'muted', style: 'margin-top:6px' }, `+${more} more photo${more > 1 ? 's' : ''} go on additional slides in the PowerPoint.`));
   return grid;
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));

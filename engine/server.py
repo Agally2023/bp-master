@@ -68,7 +68,21 @@ class H(BaseHTTPRequestHandler):
                 for im in sb(f"/rest/v1/bpm_report_images?report_id=eq.{rep[0]['id']}&select=section_key,slot,kind,storage_path,caption", tok):
                     p = os.path.join(tmp, f"img_{im['section_key']}_{im['slot']}_{im['kind']}" + os.path.splitext(im['storage_path'])[1])
                     open(p, 'wb').write(sb('/storage/v1/object/authenticated/bpm-report-images/' + urllib.parse.quote(im['storage_path']), tok, raw=True)); images.append({**im, 'path': p})
-            pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude)
+            src = None
+            if LOCAL is None:       # picture grids fill themselves from the Biosecurity dashboard's photos and the pond photos
+                import datetime as _dt
+                mon = _dt.date.fromisocalendar(year, week, 1); sun = mon + _dt.timedelta(days=6)
+                def get(q):
+                    try: return sb(q, tok)
+                    except Exception as e: print('photo query failed', repr(e), file=sys.stderr); return []
+                def fetch(bucket, path):
+                    try:
+                        p = os.path.join(tmp, 'auto_' + str(abs(hash(bucket + path))) + os.path.splitext(path)[1])
+                        open(p, 'wb').write(sb(f'/storage/v1/object/authenticated/{bucket}/' + urllib.parse.quote(path), tok, raw=True)); return p
+                    except Exception as e: print('photo download failed', repr(e), file=sys.stderr); return None
+                src = dict(bio=get(f'/rest/v1/bio_photos?select=id,log_date,location,item,file_path&log_date=gte.{mon}&log_date=lte.{sun}&order=log_date.desc,id.desc'),
+                           pond=get('/rest/v1/bpm_pond_photos?select=pond,stage,photo_date,storage_path&order=photo_date.desc,created_at.desc&limit=500'), fetch=fetch)
+            pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude, photo_src=src)
             data = open(out, 'rb').read(); self.send_response(200); self._cors()
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'); self.send_header('Content-Length', str(len(data))); self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(data)
         except (KeyError, ValueError, json.JSONDecodeError): self._err(400, 'bad request')

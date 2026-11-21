@@ -184,3 +184,28 @@ def flip_overdue(piv, expected):
             if v == v and v is not None and v > expected.get(stg, 99):
                 out.append((pond, stg, int(v), int(expected[stg])))
     return out
+
+
+# ---------------- picture grids (filled automatically) ----------------
+def _dmy(d):
+    d = str(d)[:10].split('-'); return f'{d[2]}/{d[1]}/{d[0]}' if len(d) == 3 else str(d)
+
+def pick_bio_photos(rows, n=4):
+    """Biosecurity: up to n photos of the week, newest first, one per item/location before any repeat. rows: bio_photos, newest first."""
+    seen, first, rest = set(), [], []
+    for r in rows:
+        k = (r.get('item'), r.get('location')); (rest if k in seen else first).append(r); seen.add(k)
+    return [dict(row=r, caption=', '.join(x for x in (r.get('item'), r.get('location'), _dmy(r.get('log_date'))) if x)) for r in (first + rest)[:n]]
+
+def pick_pond_photos(photos, progress, totals):
+    """Pond flipping: the latest photo of every pond still in progress, whatever week it was taken.
+    photos: bpm_pond_photos newest first; progress: {kind: [(pond, scheduled, stages_done)]}; totals: {kind: stage count}."""
+    latest = {}
+    for p in photos: latest.setdefault(str(p['pond']).strip().lower(), p)
+    seen, out = set(), []
+    for kind in ('nursery', 'broodstock'):
+        for pond, _, n in progress.get(kind, []):
+            k = str(pond).strip().lower(); p = latest.get(k)
+            if p is None or k in seen: continue
+            seen.add(k); out.append(dict(row=p, caption=', '.join([str(pond), p.get('stage') or f'{n} of {totals.get(kind)} stages done', _dmy(p.get('photo_date'))])))
+    return out
