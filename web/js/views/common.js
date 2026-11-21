@@ -10,7 +10,7 @@ export function weekPicker(ctx, data, onChange) {
   avail.sort((a, b) => b.y * 100 + b.w - (a.y * 100 + a.w));
   const sel = h('select', { 'aria-label': 'Report week' }, avail.map(a => h('option', { value: `${a.y}-${a.w}`, selected: a.y === S.week.y && a.w === S.week.w }, `Week ${a.w}, ${a.y}`)));
   const rng = h('span', { class: 'muted' });
-  const upd = () => { const r = weekRange(S.week.y, S.week.w); rng.textContent = `${fmtDate(r.monIso)} – ${fmtDate(r.sunIso, 'short')}`; };
+  const upd = () => { const r = weekRange(S.week.y, S.week.w); rng.textContent = `${fmtDate(r.monIso)} – ${fmtDate(r.sunIso)}`; };
   sel.onchange = () => { const [y, w] = sel.value.split('-').map(Number); setWeek(y, w); upd(); onChange(); };
   upd(); ctx.append(rng, sel);
 }
