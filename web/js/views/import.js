@@ -1,5 +1,8 @@
 import { h, clear, num, download } from '../util.js';
-import { openWorkbook } from '../xlsx.js';
+import { openWorkbook, zipLib } from '../xlsx.js';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js';
+import { modByKey } from '../state.js';
+import { toast } from '../util.js';
 import { detectModules, parseSheet, validate, withHashes } from '../engine.js';
 import { S, invalidate } from '../state.js';
 import { db } from '../db.js';
@@ -73,6 +76,21 @@ async function card(fname, sha, wb, m, spec) {
 }
 export async function batchesPanel() {
   const b = await db.batches();
-  return h('div', { class: 'tw' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, ['When', 'Form', 'File', 'Read', 'Loaded', 'Rejected'].map(x => h('th', {}, x)))),
-    h('tbody', {}, b.length ? b.slice(0, 40).map(x => h('tr', {}, h('td', {}, (x.created_at || '').slice(0, 16).replace('T', ' ')), h('td', {}, x.module), h('td', {}, x.filename), h('td', { class: 'num' }, x.rows_read), h('td', { class: 'num' }, x.rows_loaded), h('td', { class: 'num' }, x.rows_rejected))) : [h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'No imports yet'))])));
+  return h('div', { class: 'tw' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, ['When', 'Form', 'File', 'Read', 'Loaded', 'Rejected', 'Export'].map(x => h('th', {}, x)))),
+    h('tbody', {}, b.length ? b.slice(0, 40).map(x => h('tr', {}, h('td', {}, (x.created_at || '').slice(0, 16).replace('T', ' ')), h('td', {}, x.module), h('td', {}, x.filename), h('td', { class: 'num' }, x.rows_read), h('td', { class: 'num' }, x.rows_loaded), h('td', { class: 'num' }, x.rows_rejected), h('td', {}, exportBatchBtn(x)))) : [h('tr', {}, h('td', { colspan: 7, class: 'empty' }, 'No imports yet'))])));
+}
+
+// Export the rows that one imported file loaded, in the Victory Farms template style.
+function exportBatchBtn(x) {
+  const m = modByKey(x.module); if (!m) return '';
+  const b = h('button', { class: 'btn sec sm', type: 'button', onclick: async () => {
+    b.disabled = true; const old = b.textContent; b.textContent = '…';
+    try {
+      const rows = (await db.load(m.key)).filter(r => r.batch_id === x.id);
+      if (!rows.length) { toast('No stored rows for this import (nothing was loaded, or the data was removed)', true); return; }
+      const logo = await fetch('assets/vf-icon.png').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+      download(`${String(x.filename || m.key).replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]+/g, '_')}_${m.key}.xlsx`, await buildXlsx(await zipLib(), [moduleSheet(m, rows)], logo));
+    } catch (e) { toast('Export failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = old; }
+  } }, 'Export');
+  return b;
 }
