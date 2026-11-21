@@ -1,5 +1,5 @@
 // Dependency-free SVG charts in the Victory Farms palette.
-export const PAL = ['#0E812E', '#CB8306', '#C30015', '#00BDF0', '#002060', '#7030A0'];
+export const PAL = ['#0E812E', '#CB8306', '#D7263D', '#00BDF0', '#3B6FD4', '#9B59D0'];
 const NS = 'http://www.w3.org/2000/svg';
 const el = (t, a = {}, txt) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
 const fmtDef = v => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.0+$/, '');
@@ -20,7 +20,7 @@ function frame(o) {
   const f = o.fmt || fmtDef;
   for (let i = 0; i <= 4; i++) {
     const v = lo + (hi - lo) * i / 4;
-    svg.append(el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: '#e3e9e3' }), el('text', { x: m.l - 6, y: y(v) + 3, 'text-anchor': 'end', fill: '#555' }, f(v)));
+    svg.append(el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'gl' }), el('text', { x: m.l - 6, y: y(v) + 3, 'text-anchor': 'end', fill: '#555' }, f(v)));
   }
   const step = Math.ceil(o.labels.length / (o.maxLabels || 14));
   // axis titles (every chart carries both)
@@ -30,7 +30,7 @@ function frame(o) {
 }
 function finish(c, o) {
   const { svg, m, y } = c;
-  if (o.target != null) svg.append(el('line', { x1: m.l, x2: c.W - m.r, y1: y(o.target), y2: y(o.target), stroke: '#C30015', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }), el('text', { x: c.W - m.r, y: y(o.target) - 4, 'text-anchor': 'end', fill: '#C30015' }, o.targetLabel || 'Target'));
+  if (o.target != null) svg.append(el('line', { x1: m.l, x2: c.W - m.r, y1: y(o.target), y2: y(o.target), stroke: '#D7263D', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }), el('text', { x: c.W - m.r, y: y(o.target) - 4, 'text-anchor': 'end', fill: '#D7263D' }, o.targetLabel || 'Target'));
   const wrap = document.createElement('div'); wrap.className = 'chartbox';
   if (o.title) { const t = document.createElement('div'); t.className = 'chart-title'; t.textContent = o.title; wrap.append(t); }
   wrap.append(svg);

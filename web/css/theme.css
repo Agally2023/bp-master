@@ -172,7 +172,60 @@ textarea{min-height:90px;resize:vertical}
 
 /* Victory Farms icon at the top right of every dashboard card that holds a table or a chart */
 .card:has(table.t,.chart){position:relative}
-.card:has(table.t,.chart)::after{content:"";position:absolute;top:12px;right:14px;width:34px;height:35px;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
-.card:has(table.t,.chart) h2{padding-right:46px}
+.card:has(table.t,.chart)::after{content:"";position:absolute;top:12px;right:14px;width:104px;height:31px;background:url(../assets/victoryfarms-logo-crop.png) no-repeat right center/contain;pointer-events:none}
+.card:has(table.t,.chart) h2{padding-right:120px}
 td.redtxt{color:#e00000;font-weight:700}
 .slide::after{content:"";position:absolute;top:2%;right:1.5%;width:5.5%;aspect-ratio:1;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
+
+/* ---------- theme switch ---------- */
+.theme-fab{position:fixed;right:14px;bottom:14px;z-index:40;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px 0 10px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-size:12px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,.18);opacity:.92}
+.theme-fab:hover{opacity:1}
+@media (max-width:900px){.theme-fab{bottom:10px;right:10px;min-height:0;height:36px}}
+
+/* ---------- AMOLED: true black, dimmer text that follows the room light (see js/theme.js) ---------- */
+:root[data-theme=amoled]{
+  color-scheme:dark; --txt:hsl(0 0% var(--txt-l,88%));
+  --bg:#000; --card:#0a0b0a; --ink:var(--txt); --ink-2:hsl(130 6% calc(var(--txt-l,88%) - 30%)); --line:#1c211d; --navy:#0e2a5e;
+  --note:#0b2614; --good:#0f3a1a; --avg:#473705; --poor:#4a1218; --grey:#6d6d6d;
+  --vf-green:#2fb457; --vf-green-dk:#1c8a3f; --vf-green-xdk:#06210f;
+}
+:root[data-theme=amoled] body{background:#000;color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+:root[data-theme=amoled] a{color:#4cd07a}
+:root[data-theme=amoled] .side{background:#000;border-right:1px solid #16231a}
+:root[data-theme=amoled] .side .brand{background:#000}
+:root[data-theme=amoled] nav button[aria-current=page]{background:#103a1c;color:#7be59d}
+:root[data-theme=amoled] nav button:hover{background:#0f1a12}
+:root[data-theme=amoled] .top{background:#000;border-bottom-color:var(--line)}
+:root[data-theme=amoled] .card,:root[data-theme=amoled] .kpi,:root[data-theme=amoled] .imp,:root[data-theme=amoled] .sec,:root[data-theme=amoled] .login .box,:root[data-theme=amoled] .modlist{background:var(--card);border-color:var(--line)}
+:root[data-theme=amoled] .kpi{border-left-color:#2fb457}
+:root[data-theme=amoled] input,:root[data-theme=amoled] select,:root[data-theme=amoled] textarea,:root[data-theme=amoled] .cap,:root[data-theme=amoled] .menu-btn{background:#050605;border-color:#2a332c;color:var(--ink)}
+:root[data-theme=amoled] .btn{background:#1c8a3f;border-color:#1c8a3f;color:#fff}
+:root[data-theme=amoled] .btn.sec{background:#0a0b0a;color:#7be59d;border-color:#2a332c}
+:root[data-theme=amoled] .btn.danger{background:#a8101c;border-color:#a8101c}
+:root[data-theme=amoled] .btn.ghost{background:transparent;color:inherit}
+:root[data-theme=amoled] .icon-btn{color:#7be59d;border-color:#243026}.icon-btn:hover{background:#0f1a12}
+:root[data-theme=amoled] .derived,:root[data-theme=amoled] .drop,:root[data-theme=amoled] .slot{background:#070907;border-color:#2a4a33}
+:root[data-theme=amoled] table.t th{background:var(--navy);color:#e8eefc}
+:root[data-theme=amoled] table.t tr:nth-child(even) td{background:#0d0f0d}
+:root[data-theme=amoled] td.good{color:#b9f3c8}:root[data-theme=amoled] td.avg{color:#ffe08a}:root[data-theme=amoled] td.poor{color:#ffb3ba}
+:root[data-theme=amoled] td.late{background:#b3121f!important}
+:root[data-theme=amoled] td.redtxt{color:#ff6b6b}
+:root[data-theme=amoled] .pill{background:#14201a;color:#7be59d}.pill.err{background:var(--poor);color:#ffb3ba}.pill.warn{background:var(--avg);color:#ffe08a}.pill.info{background:#0d2a3d;color:#8fd3f5}.pill.ok{background:var(--good);color:#b9f3c8}
+:root[data-theme=amoled] .err-msg{background:var(--poor);color:#ffb3ba}
+:root[data-theme=amoled] .up,:root[data-theme=amoled] .kpi .d.good{color:#4cd07a}:root[data-theme=amoled] .down,:root[data-theme=amoled] .kpi .d.bad{color:#ff6b6b}
+:root[data-theme=amoled] .chart text{fill:hsl(0 0% calc(var(--txt-l,88%) - 12%))}
+:root[data-theme=amoled] .chart .ax{stroke:#2a332c}:root[data-theme=amoled] .chart .gl{stroke:#161b17}
+:root[data-theme=amoled] .modlist button:hover{background:#0f1a12}
+:root[data-theme=amoled] .note,:root[data-theme=amoled] .comment{background:var(--note);color:var(--ink)}
+:root[data-theme=amoled] .toast{background:#1a1f1b;color:var(--ink);border:1px solid #2a332c}
+:root[data-theme=amoled] .slide{background:#0a0b0a;border-color:#222a24;box-shadow:none;color:var(--ink)}
+:root[data-theme=amoled] .slide .sfoot,:root[data-theme=amoled] .slide .sno{color:#777}
+:root[data-theme=amoled] .theme-fab{background:#0a0b0a;border-color:#2a332c;box-shadow:none}
+:root[data-theme=amoled] ::-webkit-scrollbar{background:#000}:root[data-theme=amoled] ::-webkit-scrollbar-thumb{background:#26302a;border-radius:6px}
+:root[data-theme=amoled] .login{background:#000}
+:root[data-theme=amoled] ::selection{background:#1c8a3f;color:#fff}
+@media (prefers-reduced-motion:no-preference){body,.card,.side,.top{transition:background-color .35s,color .35s,border-color .35s}}
+:root[data-theme=amoled] .card h2{color:#d8efdf}
+:root[data-theme=amoled] .chart-title,:root[data-theme=amoled] .imp h3,:root[data-theme=amoled] .sec>summary,:root[data-theme=amoled] .modlist h4,:root[data-theme=amoled] .derived b,:root[data-theme=amoled] .kpi .v,:root[data-theme=amoled] .tabs button[aria-selected=true]{color:#6fe093}
+:root[data-theme=amoled] .tabs button{color:var(--ink-2)}
+:root[data-theme=amoled] .side .brand img{height:30px;max-width:150px}
