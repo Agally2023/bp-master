@@ -71,11 +71,14 @@ label.f .hint{font-weight:400;font-size:12px;color:var(--grey)}
 
 /* ---------- tables ---------- */
 .tw{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:460px}
+/* Victory Farms Excel template look: light-navy header, thin rules, no grid; entered values blue, calculated black */
+table.t{--tint:#D6E3FF;--entered:#0000FF}
 table.t{border-collapse:collapse;width:100%;font-size:13px}
 table.t th.num{text-align:right}
-table.t th{background:var(--navy);color:#fff;position:sticky;top:0;padding:7px 9px;text-align:left;white-space:nowrap;z-index:1}
-table.t td{padding:6px 9px;border-top:1px solid var(--line);white-space:nowrap}
-table.t tr:nth-child(even) td{background:#f8fbf8}
+table.t th{background:var(--tint);color:#002060;border-bottom:1.5px solid #002060;position:sticky;top:0;padding:7px 9px;text-align:left;white-space:nowrap;z-index:1}
+table.t td{padding:6px 9px;border-top:0;white-space:nowrap}
+table.t td.in{color:var(--entered)}
+table.t tr:has(td.tot) td{font-weight:700;color:inherit;border-top:1.5px solid #002060}
 td.good{background:var(--good)!important}td.avg{background:var(--avg)!important}td.poor{background:var(--poor)!important}td.late{background:#ff3b3b!important;color:#fff;font-weight:700}
 td.num{text-align:right}
 
@@ -205,8 +208,8 @@ td.redtxt{color:#e00000;font-weight:700}
 :root[data-theme=amoled] .btn.ghost{background:transparent;color:inherit}
 :root[data-theme=amoled] .icon-btn{color:#7be59d;border-color:#243026}.icon-btn:hover{background:#0f1a12}
 :root[data-theme=amoled] .derived,:root[data-theme=amoled] .drop,:root[data-theme=amoled] .slot{background:#070907;border-color:#2a4a33}
-:root[data-theme=amoled] table.t th{background:var(--navy);color:#e8eefc}
-:root[data-theme=amoled] table.t tr:nth-child(even) td{background:#0d0f0d}
+:root[data-theme=amoled] table.t{--tint:#0d1a33;--entered:#6C9BFF}
+:root[data-theme=amoled] table.t th{color:#cfe0ff;border-bottom-color:#6C9BFF}
 :root[data-theme=amoled] td.good{color:#b9f3c8}:root[data-theme=amoled] td.avg{color:#ffe08a}:root[data-theme=amoled] td.poor{color:#ffb3ba}
 :root[data-theme=amoled] td.late{background:#b3121f!important}
 :root[data-theme=amoled] td.redtxt{color:#ff6b6b}
@@ -249,3 +252,7 @@ td.redtxt{color:#e00000;font-weight:700}
 .prev .sw i{flex:1;border-radius:3px;background:#0E812E;opacity:.9}
 .prev .t-light{background:#f4f8f4;border:1px solid #dfe7df}.prev .t-amoled{background:#000;border:1px solid #1c211d}.prev .t-auto{background:linear-gradient(90deg,#f4f8f4 50%,#000 50%);border:1px solid #888}
 #app:not([hidden]) ~ .theme-fab{display:none}  /* inside the app the theme lives in Settings */
+
+/* data-entry values are blue, as in the Excel template */
+.f input:not([type=checkbox]),.f select,.f textarea{color:#0000FF}
+:root[data-theme=amoled] .f input,:root[data-theme=amoled] .f select,:root[data-theme=amoled] .f textarea{color:#6C9BFF}

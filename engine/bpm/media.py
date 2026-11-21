@@ -124,6 +124,51 @@ def no_red_bars(prs):
                     except Exception:
                         pass
 
+def restyle_tables(prs):
+    """Victory Farms Excel template look for every table: light-navy header with bold navy text and a thin navy rule,
+    no grid, total row with a thin top rule, numbers right-aligned, entered values blue (0000FF), calculated columns black."""
+    import re
+    from lxml import etree
+    A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    NAVY, TINT, BLUE = RGBColor(0x00, 0x20, 0x60), RGBColor(0xD6, 0xE3, 0xFF), RGBColor(0x00, 0x00, 0xFF)
+    num = re.compile(r'[\(\-–]?\s*[\d.,]+\s*(%|x)?\)?$'); date = re.compile(r'\d{1,2}/\d{1,2}/\d{2,4}$')
+    calc = re.compile(r'%|score|total|average|avg|rate|compliance|survival|overall|rating|variance|diff', re.I)
+    def line(tag, on):
+        ln = etree.Element(f'{{{A}}}{tag}')
+        if on:
+            ln.set('w', '12700'); sf = etree.SubElement(ln, f'{{{A}}}solidFill'); etree.SubElement(sf, f'{{{A}}}srgbClr').set('val', '002060')
+        else:
+            ln.set('w', '0'); etree.SubElement(ln, f'{{{A}}}noFill')
+        return ln
+    def borders(cell, top, bottom):
+        tcPr = cell._tc.get_or_add_tcPr()
+        for t in ('lnL', 'lnR', 'lnT', 'lnB'):
+            for e in tcPr.findall(f'{{{A}}}{t}'): tcPr.remove(e)
+        for i, (t, on) in enumerate((('lnL', 0), ('lnR', 0), ('lnT', top), ('lnB', bottom))): tcPr.insert(i, line(t, on))
+    for s in prs.slides:
+        for sh in s.shapes:
+            if not (getattr(sh, 'has_table', False) and sh.has_table): continue
+            tbl = sh.table; nr = len(tbl.rows); sid = tbl._tbl.tblPr.find(f'{{{A}}}tableStyleId')
+            if sid is not None: sid.text = '{2D5ABB26-0587-4C30-8999-92F81FD0307C}'      # No Style, No Grid
+            heads = [tbl.cell(0, c).text for c in range(len(tbl.columns))]
+            for c, h in enumerate(heads):
+                ce = tbl.cell(0, c); ce.fill.solid(); ce.fill.fore_color.rgb = TINT; borders(ce, False, True)
+                for p in ce.text_frame.paragraphs:
+                    for r in p.runs: r.font.bold = True; r.font.color.rgb = NAVY
+            for r in range(1, nr):
+                total = tbl.cell(r, 0).text.strip().lower() in ('total', 'overall')
+                for c in range(len(tbl.columns)):
+                    ce = tbl.cell(r, c); borders(ce, total, False); txt = ce.text.strip()
+                    filled = ce.fill.type == 1 and ce.fill.fore_color.type == 1 and str(ce.fill.fore_color.rgb) not in ('DDEBF7', 'FFFFFF')
+                    for p in ce.text_frame.paragraphs:
+                        if num.match(txt): p.alignment = PP_ALIGN.RIGHT
+                        for run in p.runs:
+                            if total: run.font.bold = True; run.font.color.rgb = RGBColor(0, 0, 0)
+                            elif filled: pass
+                            elif (num.match(txt) and not calc.search(heads[c])) or date.match(txt): run.font.color.rgb = BLUE
+                            else: run.font.color.rgb = RGBColor(0, 0, 0)
+                    if total and not filled: ce.fill.background()
+
 def finish(out, week, images, exclude):
     prs = Presentation(out); by = {}
     for im in images: by.setdefault((im['section_key'], im['kind']), []).append(im)
@@ -141,6 +186,7 @@ def finish(out, week, images, exclude):
         i, _ = find_slide(prs, key)
         if i is not None:
             sid = list(lst)[i]; prs.part.drop_rel(sid.rId); lst.remove(sid)
+    restyle_tables(prs)
     add_table_logos(prs)
     no_red_bars(prs)
     prs.save(out)
