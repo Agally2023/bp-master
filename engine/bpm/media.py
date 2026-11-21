@@ -65,7 +65,7 @@ LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
 def add_table_logos(prs):
     """Victory Farms logo at the top right of every slide except the cover."""
     if not LOGO.exists(): return
-    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.10); h = int(w * ih / iw)
+    iw, ih = Image.open(LOGO).size; w = int(prs.slide_width * 0.08); h = int(w * ih / iw)
     for i, s in enumerate(prs.slides):
         if i > 0:   # every slide except the cover
             x = prs.slide_width - w - int(prs.slide_width * 0.015); y = int(prs.slide_height * 0.012)

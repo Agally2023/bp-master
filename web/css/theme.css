@@ -228,4 +228,3 @@ td.redtxt{color:#e00000;font-weight:700}
 :root[data-theme=amoled] .card h2{color:#d8efdf}
 :root[data-theme=amoled] .chart-title,:root[data-theme=amoled] .imp h3,:root[data-theme=amoled] .sec>summary,:root[data-theme=amoled] .modlist h4,:root[data-theme=amoled] .derived b,:root[data-theme=amoled] .kpi .v,:root[data-theme=amoled] .tabs button[aria-selected=true]{color:#6fe093}
 :root[data-theme=amoled] .tabs button{color:var(--ink-2)}
-:root[data-theme=amoled] .side .brand img{height:30px;max-width:150px}
