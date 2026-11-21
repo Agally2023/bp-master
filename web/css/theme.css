@@ -228,3 +228,24 @@ td.redtxt{color:#e00000;font-weight:700}
 :root[data-theme=amoled] .card h2{color:#d8efdf}
 :root[data-theme=amoled] .chart-title,:root[data-theme=amoled] .imp h3,:root[data-theme=amoled] .sec>summary,:root[data-theme=amoled] .modlist h4,:root[data-theme=amoled] .derived b,:root[data-theme=amoled] .kpi .v,:root[data-theme=amoled] .tabs button[aria-selected=true]{color:#6fe093}
 :root[data-theme=amoled] .tabs button{color:var(--ink-2)}
+
+/* ---------- settings: text size (zoom), density, reduced motion ---------- */
+.app{zoom:var(--z,1)}
+.app{min-height:calc(100vh / var(--z,1))}.side{height:calc(100vh / var(--z,1))}
+:root[data-density=compact] table.t td,:root[data-density=compact] table.t th{padding:3px 8px}
+:root[data-density=compact] .card{padding:10px 12px}:root[data-density=compact] .view{padding-top:12px}:root[data-density=compact] .kpi{padding:8px 12px}
+:root[data-motion=reduce] *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+.set-grid{display:grid;gap:14px;max-width:880px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.set-row:first-of-type{border-top:0}.set-row .lbl{font-weight:700}.set-row .hint{font-size:12.5px;color:var(--ink-2);max-width:460px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 14px;cursor:pointer;font-weight:600;color:var(--ink);min-width:64px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--vf-green);color:#fff}
+.prev{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.prev button{border:2px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;text-align:left;background:transparent;color:inherit}
+.prev button[aria-pressed=true]{border-color:var(--vf-green)}
+.prev .sw{height:54px;border-radius:8px;margin-bottom:6px;display:flex;gap:4px;padding:6px;align-items:flex-end}
+.prev .sw i{flex:1;border-radius:3px;background:#0E812E;opacity:.9}
+.prev .t-light{background:#f4f8f4;border:1px solid #dfe7df}.prev .t-amoled{background:#000;border:1px solid #1c211d}.prev .t-auto{background:linear-gradient(90deg,#f4f8f4 50%,#000 50%);border:1px solid #888}
+#app:not([hidden]) ~ .theme-fab{display:none}  /* inside the app the theme lives in Settings */
