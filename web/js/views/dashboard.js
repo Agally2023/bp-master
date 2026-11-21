@@ -3,6 +3,9 @@ import { S, ensure } from '../state.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
+import { zipLib } from '../xlsx.js';
+import { exportXlsx, collectTables } from '../xlsxout.js';
+import { download, toast } from '../util.js';
 import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js';
 
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
@@ -69,5 +72,16 @@ export async function render({ view, ctx }) {
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
       br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
   };
-  weekPicker(ctx, data, draw); view.append(body); draw();
+  weekPicker(ctx, data, draw);
+  const exp = h('button', { class: 'btn ghost', title: 'Download every table on this page as an Excel workbook in the Victory Farms template format' }, 'Export tables to Excel');
+  exp.onclick = async () => {
+    const tables = collectTables(body); if (!tables.length) return toast('Nothing to export yet', true);
+    exp.disabled = true; try {
+      const { y, w } = S.week, r = weekRange(y, w);
+      let logo = null; try { const b = new Uint8Array(await (await fetch('assets/vf-icon.png')).arrayBuffer()); logo = { bytes: b, w: 109, h: 113 }; } catch {}
+      const blob = await exportXlsx(await zipLib(), tables, `Week ${w}, ${y} (${fmtDate(r.monIso)} – ${fmtDate(r.sunIso)})`, logo);
+      download(`VF_BP_Dashboard_Week_${w}_${y}.xlsx`, blob);
+    } catch (e) { toast('Export failed: ' + e.message, true); } finally { exp.disabled = false; }
+  };
+  view.append(h('div', { class: 'mt', style: 'display:flex;justify-content:flex-end' }, exp), body); draw();
 }
