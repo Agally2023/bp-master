@@ -4,6 +4,9 @@ import { db } from '../db.js';
 import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js';
 import { importPanel, batchesPanel } from './import.js';
 import { table } from './common.js';
+import { zipLib } from '../xlsx.js';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js';
+import { download } from '../util.js';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -22,7 +25,7 @@ export async function render({ view }) {
   }
   async function drawMain() {
     clear(main);
-    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('h2', {}, 'Import from Excel: all audit files'), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
+    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
     const m = modByKey(current);
     const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
     const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('h2', {}, m.label), tabs, pane));
@@ -36,7 +39,7 @@ async function records(m) {
   try { ({ rows, total } = await db.recent(m.key, m.dateField, 100)); }   // only the latest 100 rows, not the whole table
   catch { await ensure([m.key]); const all = S.data[m.key] || []; total = all.length; rows = all.slice().sort((a, b) => String(b[m.dateField] || '').localeCompare(String(a[m.dateField] || ''))).slice(0, 100); }
   const cols = m.fields.filter(f => !f.virtual && f.type !== 'stages').slice(0, 9);
-  return h('div', {}, h('div', { class: 'muted' }, `${total.toLocaleString()} records stored · showing latest ${rows.length}`),
+  return h('div', {}, h('div', { class: 'row' }, h('span', { class: 'muted' }, `${total.toLocaleString()} records stored · showing latest ${rows.length}`), exportBtn([m], m.label, 'Export all to Excel')),
     table(cols.map(f => f.label), rows.map(r => cols.map(f => { const v = r[f.name]; return v == null ? '' : typeof v === 'number' ? num(v, 3) : String(v); })), { empty: 'No records yet. Use the form or import an Excel file.' }));
 }
 
@@ -120,4 +123,18 @@ function pondPhotos() {
   } }, pond, stage, date, file, h('button', { class: 'btn', type: 'submit' }, 'Add photos'));
   box.append(h('h2', {}, 'Pond photos'), h('p', { class: 'muted' }, 'Add photos while a pond is in progress. The weekly report shows the latest photo of every pond still in progress, in a picture grid, automatically. When the pond is complete it drops off by itself.'), form, msg, list);
   draw(); return box;
+}
+
+// Excel export of every stored record (not just the 100 shown), in the Victory Farms template style.
+function exportBtn(mods, name, label) {
+  const b = h('button', { class: 'btn sec', type: 'button', onclick: async () => {
+    b.disabled = true; const old = b.textContent; b.textContent = 'Preparing…';
+    try {
+      const JSZip = await zipLib(); const logo = await fetch('assets/vf-icon.png').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+      const sheets = []; for (const m of mods) { const rows = await db.load(m.key); if (mods.length === 1 || rows.length) sheets.push(moduleSheet(m, rows)); }
+      if (!sheets.length) { toast('No records to export yet', true); return; }
+      download(`${name.replace(/[^A-Za-z0-9]+/g, '_')}_${todayIso()}.xlsx`, await buildXlsx(JSZip, sheets, logo)); await db.audit('export', 'excel', name);
+    } catch (e) { toast('Export failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = old; }
+  } }, label);
+  return b;
 }

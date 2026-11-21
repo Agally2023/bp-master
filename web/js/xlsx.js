@@ -77,7 +77,7 @@ export async function openWorkbook(buf) {
 
 // JSZip (98 KB) is only needed when a workbook is opened, so it is fetched on first use instead of on every page load.
 let zipP;
-function zipLib() {
+export function zipLib() {
   if (globalThis.JSZip) return Promise.resolve(globalThis.JSZip);
   return zipP ||= new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = 'vendor/jszip.min.js';

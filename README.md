@@ -60,3 +60,6 @@ BP Master reads the Biosecurity dashboard's data from the shared Supabase projec
 - **Biosecurity Images**: the report takes up to 4 photos taken in the Biosecurity dashboard during the report week (`bio_photos`), newest first, one per item/location before any repeat, captioned "item, location, date".
 - **Images of Flipped Ponds Progress**: upload pond photos once on Entry > Pond Flipping > Pond photos. The report shows the latest photo of every pond still in progress (any week), captioned "pond, stage, date". A new 2x2 slide is added for every 4 ponds; a pond drops off when its flipping completes.
 - A photo uploaded by hand into a slot on the Reports page overrides the automatic ones for that grid. With no photos at all the slide is left out, so last week's pictures never reappear.
+
+## Excel export
+Entry > any module > Records > "Export all to Excel" downloads every stored record of that module; Entry > "Import all" page > "Export all data to Excel" downloads one workbook with a sheet per module. Files follow the Victory Farms Excel template: navy title, light-navy header with a thin rule, entered values blue, calculated values black, dates dd/mm/yyyy, logo top right. Everything is built in the browser (`web/js/xlsxwrite.js`), so no data leaves the app.
