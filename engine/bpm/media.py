@@ -74,6 +74,38 @@ def add_table_logos(prs):
                     sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
             pic = s.shapes.add_picture(str(LOGO), Emu(x), Emu(y), Emu(w), Emu(h)); pic.name = 'VF Logo (table)'
 
+def add_prep_slide(out, rows, month, anchor='flip'):
+    """Native "Pond Preparation Scoring" table slide, placed after the pond-flipping slides. rows: dicts from bpm_pond_prep_scoring."""
+    from . import deck
+    if not rows: return
+    prs = Presentation(out)
+    last = max((i for i, s in enumerate(prs.slides) if anchor in _texts(s).lower()), default=None)
+    if last is None: return
+    layout = prs.slides[last].slide_layout; s = prs.slides.add_slide(layout)
+    if s.shapes.title is not None: s.shapes.title.text = 'Pond Preparation Scoring'
+    else:
+        tb = s.shapes.add_textbox(Emu(int(prs.slide_width * 0.04)), Emu(int(prs.slide_height * 0.03)), Emu(int(prs.slide_width * 0.8)), Emu(int(prs.slide_height * 0.09)))
+        r = tb.text_frame.paragraphs[0].add_run(); r.text = 'Pond Preparation Scoring'; r.font.size = Pt(28); r.font.bold = True; r.font.color.rgb = RGBColor(0x0E, 0x81, 0x2E)
+    for ph in list(s.placeholders):
+        if ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
+            ph._element.getparent().remove(ph._element)
+    pct = lambda v: '-' if v is None or v != v else f'{float(v) * 100:.1f}%'
+    d8 = lambda v: '-' if not v else '/'.join(str(v)[:10].split('-')[::-1])
+    rows = sorted(rows, key=lambda r: (r.get('overall_score') is None, r.get('overall_score') or 0))[:14]
+    body = [[r['pond'], d8(r.get('flipping_date')), d8(r.get('stocking_date')), pct(r.get('prep_score')), pct(r.get('wq_score')), pct(r.get('post_score')), pct(r.get('overall_score')),
+             '-' if r.get('rating') is None else f"{float(r['rating']):g}", r.get('action_points') or '-'] for r in rows]
+    W, H = prs.slide_width, prs.slide_height
+    anchor_box = type('A', (), dict(left=Emu(int(W * 0.04)), top=Emu(int(H * 0.15)), width=Emu(int(W * 0.92))))()
+    def fill(r, c, v):
+        if c in (3, 4, 5, 6) and v != '-':
+            x = float(v[:-1]); return deck.GOOD if x >= 91 else deck.AVG if x >= 75 else deck.POOR
+    deck.table(s, anchor_box, ['Pond', 'Flipped', 'Stocked', 'Preparation', 'Water quality', 'Post-stocking', 'Overall', 'Rating (0-5)', 'Action points'], body,
+               [8, 10, 10, 10, 10, 10, 9, 8, 25], deck.BLUE_DARK, font=9, fill_fn=fill)
+    note = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * 0.88)), Emu(int(W * 0.92)), Emu(int(H * 0.06)))
+    note.text_frame.word_wrap = True; r = note.text_frame.paragraphs[0].add_run()
+    r.text = f'Ponds flipped in {month}, lowest overall score first. Overall = average of preparation (stage KPIs met / 5) and post-stocking results.'; r.font.size = Pt(10); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+    move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
+
 def finish(out, week, images, exclude):
     prs = Presentation(out); by = {}
     for im in images: by.setdefault((im['section_key'], im['kind']), []).append(im)

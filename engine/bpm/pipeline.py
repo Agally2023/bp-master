@@ -63,5 +63,10 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
             if mine and k in cm: cm[k] = mine
     deck.build(template, out, year, week, sun + dt.timedelta(days=2), tr, nc, cm, sub, title,
                {'nursery': (gn, A.bottom_rope_by_pond(nur, year, week)), 'broodstock': (gb, A.bottom_rope_by_pond(bro, year, week))}, extra)
+    if T.get('pond_prep_scoring'):          # latest scored record per pond for ponds flipped in the report's month
+        latest = {}
+        for r in T['pond_prep_scoring']:
+            if str(r.get('flipping_date', ''))[:7] == sun.strftime('%Y-%m') and (r['pond'] not in latest or str(r['flipping_date']) > str(latest[r['pond']]['flipping_date'])): latest[r['pond']] = r
+        media.add_prep_slide(out, list(latest.values()), sun.strftime('%B %Y'))
     media.finish(out, week, images or [], set(exclude))
     return cm
