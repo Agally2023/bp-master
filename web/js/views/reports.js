@@ -139,7 +139,7 @@ async function generate(report) {
     toast('Building the PowerPoint… the first request after idle can take up to a minute.');
     const r = await callReportService({ year: report.iso_year, week: report.iso_week, report_id: report.id });
     if (!r.ok) { const t = await r.text(); let m = t; try { m = JSON.parse(t).error || t; } catch { } throw new Error(m || r.statusText); }
-    download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); toast('PowerPoint downloaded');
+    download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); const wn = r.headers.get('X-Report-Warnings'); toast(wn ? 'PowerPoint downloaded, but some sections were skipped: ' + wn : 'PowerPoint downloaded', !!wn);
   } catch (e) { toast('Export failed: ' + e.message, true); }
 }
 function pack(R, calc) {

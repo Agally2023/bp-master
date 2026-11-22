@@ -46,7 +46,9 @@ class H(BaseHTTPRequestHandler):
         try:
             n = int(self.headers.get('Content-Length', 0))
             if n > MAX_BODY: return self._err(413, 'too large')
-            body = json.loads(self.rfile.read(n) or '{}'); year, week = int(body['year']), int(body['week'])
+            body = json.loads(self.rfile.read(n) or '{}')
+            try: year, week = int(body['year']), int(body['week'])
+            except (KeyError, TypeError, ValueError): return self._err(400, 'year and week are required')
             if not (2020 <= year <= 2100 and 1 <= week <= 53): return self._err(400, 'bad week')
             tmp = tempfile.mkdtemp(prefix='bpm_'); out = os.path.join(tmp, f'VF_BP_Week_{week}.pptx'); images, overrides, exclude = [], {}, []
             if LOCAL is not None:
@@ -84,9 +86,10 @@ class H(BaseHTTPRequestHandler):
                            pond=get('/rest/v1/bpm_pond_photos?select=pond,stage,photo_date,storage_path&order=photo_date.desc,created_at.desc&limit=500'), fetch=fetch)
             pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude, photo_src=src)
             data = open(out, 'rb').read(); self.send_response(200); self._cors()
-            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'); self.send_header('Content-Length', str(len(data))); self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(data)
-        except (KeyError, ValueError, json.JSONDecodeError): self._err(400, 'bad request')
-        except Exception as e: print('ERROR', repr(e), file=sys.stderr); self._err(500, 'report build failed')
+            self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'); self.send_header('Content-Length', str(len(data))); self.send_header('Cache-Control', 'no-store'); self.send_header('X-Report-Warnings', ' | '.join(pipeline.WARNINGS).encode('ascii', 'replace').decode()[:900]); self.send_header('Access-Control-Expose-Headers', 'X-Report-Warnings'); self.end_headers(); self.wfile.write(data)
+        except json.JSONDecodeError: self._err(400, 'bad request')
+        except Exception as e:      # a build problem is a server error, never "bad request": log the full traceback and say what failed
+            import traceback; traceback.print_exc(file=sys.stderr); self._err(500, f'report build failed: {type(e).__name__}: {e}'[:300])
 
 if __name__ == '__main__':
     if '--local' in sys.argv:

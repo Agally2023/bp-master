@@ -180,21 +180,25 @@ def finish(out, week, images, exclude):
             _, s = find_slide(prs, key)
             if s is not None: replace_chart_with_picture(s, im['path'], SLIDE_KEY[key][1])
     for key, title, anchor in (('flip_photos', 'Images of Flipped Ponds Progress', 'flipping'), ('bio_photos', 'Biosecurity Images', 'ras_water')):
-        ph = sorted(by.get((key, 'photo'), []), key=lambda x: x['slot'])
-        ti = next((i for i, s in enumerate(prs.slides) if _texts(s).strip().lower().startswith(title.lower())), None)   # the template's own picture slide holds last week's photos
-        pos = ti if ti is not None else (find_slide(prs, anchor)[0] + 1 if find_slide(prs, anchor)[0] is not None else None)
-        if pos is not None and ph and key not in exclude:
-            chunks = [ph[k:k + 4] for k in range(0, len(ph), 4)]            # a new 2x2 grid slide for every 4 photos
-            for n, c in enumerate(chunks):
-                photo_slide(prs, pos - 1 + n, title if n == 0 else f'{title} ({n + 1})', [(p['path'], p.get('caption') or '') for p in c], pos if ti is not None else pos - 1)
-            if ti is not None: _drop(prs, ti + len(chunks))
-        elif ti is not None: _drop(prs, ti)                              # no photos for this week: never show last week's pictures
+        try:
+            ph = sorted(by.get((key, 'photo'), []), key=lambda x: x['slot'])
+            ti = next((i for i, s in enumerate(prs.slides) if _texts(s).strip().lower().startswith(title.lower())), None)   # the template's own picture slide holds last week's photos
+            pos = ti if ti is not None else (find_slide(prs, anchor)[0] + 1 if find_slide(prs, anchor)[0] is not None else None)
+            if pos is not None and ph and key not in exclude:
+                chunks = [ph[k:k + 4] for k in range(0, len(ph), 4)]            # a new 2x2 grid slide for every 4 photos
+                for n, c in enumerate(chunks):
+                    photo_slide(prs, pos - 1 + n, title if n == 0 else f'{title} ({n + 1})', [(p['path'], p.get('caption') or '') for p in c], pos if ti is not None else pos - 1)
+                if ti is not None: _drop(prs, ti + len(chunks))
+            elif ti is not None: _drop(prs, ti)                              # no photos for this week: never show last week's pictures
+        except Exception as e:
+            from .pipeline import warn; warn('Picture grid ' + title, e)
     lst = prs.slides._sldIdLst
     for key in sorted(exclude & set(SLIDE_KEY), key=lambda k: 0):  # excluded sections lose their slide
         i, _ = find_slide(prs, key)
         if i is not None:
             sid = list(lst)[i]; prs.part.drop_rel(sid.rId); lst.remove(sid)
-    restyle_tables(prs)
-    add_table_logos(prs)
-    no_red_bars(prs)
+    from .pipeline import warn      # cosmetic passes must never stop the report from being produced
+    for name, fn in (('Table styling', restyle_tables), ('Logos', add_table_logos), ('Chart colours', no_red_bars)):
+        try: fn(prs)
+        except Exception as e: warn(name, e)
     prs.save(out)
