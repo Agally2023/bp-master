@@ -72,13 +72,15 @@ label.f .hint{font-weight:400;font-size:12px;color:var(--grey)}
 /* ---------- tables ---------- */
 .tw{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:460px}
 /* Victory Farms Excel template look: light-navy header, thin rules, no grid; entered values blue, calculated black */
-table.t{--tint:#D6E3FF;--entered:#0000FF}
+table.t{--tint:#D6E3FF;--entered:#0000FF;font-family:Calibri,Carlito,'Segoe UI',system-ui,sans-serif}
 table.t{border-collapse:collapse;width:100%;font-size:13px}
 table.t th.num{text-align:right}
-table.t th{background:var(--tint);color:#002060;border-bottom:1.5px solid #002060;position:sticky;top:0;padding:7px 9px;text-align:left;white-space:nowrap;z-index:1}
+table.t th{background:#002060;color:#fff;border-bottom:0;position:sticky;top:0;padding:7px 9px;text-align:left;white-space:nowrap;z-index:1}
 table.t td{padding:6px 9px;border-top:0;white-space:nowrap}
 table.t td.in{color:var(--entered)}
-table.t tr:has(td.tot) td{font-weight:700;color:inherit;border-top:1.5px solid #002060}
+table.t tr:has(td.tot) td{font-weight:400;color:inherit;border-top:1px solid #262626}
+/* table title band (template row 8): light navy, bold, spans the card */
+.card:has(table.t)>h2{background:var(--tint,#D6E3FF);color:#262626;padding:6px 52px 6px 10px;margin:-2px -2px 10px;border-radius:6px 6px 0 0;font-size:15px}
 td.good{background:var(--good)!important}td.avg{background:var(--avg)!important}td.poor{background:var(--poor)!important}td.late{background:#ff3b3b!important;color:#fff;font-weight:700}
 td.num{text-align:right}
 
@@ -176,7 +178,6 @@ textarea{min-height:90px;resize:vertical}
 /* Victory Farms V icon at the top right corner of cards that hold a table (not on every card) */
 .card:has(table.t){position:relative}
 .card:has(table.t)::after{content:"";position:absolute;top:10px;right:12px;width:36px;height:36px;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
-.card:has(table.t) h2{padding-right:52px}
 td.redtxt{color:#e00000;font-weight:700}
 .slide:has(table)::after{content:"";position:absolute;top:2%;right:1.5%;width:5.5%;aspect-ratio:1;background:url(../assets/vf-icon.png) no-repeat center/contain;pointer-events:none}
 
@@ -209,7 +210,8 @@ td.redtxt{color:#e00000;font-weight:700}
 :root[data-theme=amoled] .icon-btn{color:#7be59d;border-color:#243026}.icon-btn:hover{background:#0f1a12}
 :root[data-theme=amoled] .derived,:root[data-theme=amoled] .drop,:root[data-theme=amoled] .slot{background:#070907;border-color:#2a4a33}
 :root[data-theme=amoled] table.t{--tint:#0d1a33;--entered:#6C9BFF}
-:root[data-theme=amoled] table.t th{color:#cfe0ff;border-bottom-color:#6C9BFF}
+:root[data-theme=amoled] table.t th{background:#0d1a33;color:#cfe0ff}
+:root[data-theme=amoled] .card:has(table.t)>h2{background:#0d1a33;color:#cfe0ff}
 :root[data-theme=amoled] td.good{color:#b9f3c8}:root[data-theme=amoled] td.avg{color:#ffe08a}:root[data-theme=amoled] td.poor{color:#ffb3ba}
 :root[data-theme=amoled] td.late{background:#b3121f!important}
 :root[data-theme=amoled] td.redtxt{color:#ff6b6b}
@@ -263,3 +265,7 @@ td.redtxt{color:#e00000;font-weight:700}
 .ppgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
 .ppitem{display:flex;flex-direction:column;gap:4px;min-width:0}.ppitem img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:#eef3ee}
 .ppitem .cap{border:0;padding:0;background:none;font-size:12px}
+
+/* table label bar: light-navy band with a bold label, as the template's "Item 1 - In USD" rows */
+.card:has(table.t)>h2{background:#D6E3FF;color:#000;padding:6px 10px;border-radius:3px;font-size:14px;font-weight:700}
+:root[data-theme=amoled] .card:has(table.t)>h2{background:#0d1a33;color:#cfe0ff}

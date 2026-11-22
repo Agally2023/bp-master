@@ -130,7 +130,7 @@ function exportBtn(mods, name, label) {
   const b = h('button', { class: 'btn sec', type: 'button', onclick: async () => {
     b.disabled = true; const old = b.textContent; b.textContent = 'Preparing…';
     try {
-      const JSZip = await zipLib(); const logo = await fetch('assets/vf-icon.png').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+      const JSZip = await zipLib(); const logo = await fetch('assets/vf-xlsx-logo.jpg').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
       const sheets = []; for (const m of mods) { const rows = await db.load(m.key); if (mods.length === 1 || rows.length) sheets.push(moduleSheet(m, rows)); }
       if (!sheets.length) { toast('No records to export yet', true); return; }
       download(`${name.replace(/[^A-Za-z0-9]+/g, '_')}_${todayIso()}.xlsx`, await buildXlsx(JSZip, sheets, logo)); await db.audit('export', 'excel', name);
