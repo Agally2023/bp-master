@@ -32,6 +32,7 @@ class DemoDB {
   }
   async batches() { return this.batchesL.slice().reverse(); }
   async recordBatch(b) { if (this.batchesL.some(x => x.module === b.module && x.file_sha256 === b.file_sha256)) return false; this.batchesL.push({ id: uuid(), created_at: new Date().toISOString(), ...b }); return true; }
+  async syncFiles() { return { demo: true }; }
   async audit(action, entity, entity_id, meta) { this.auditL.push({ at: new Date().toISOString(), action, entity, entity_id, meta }); }
   async report(y, w, create) {
     let r = this.reports.find(x => x.iso_year === y && x.iso_week === w);
@@ -149,6 +150,14 @@ class SupabaseDB {
   }
   async batches() { return this.load('import_batches', '&order=created_at.desc&limit=50').then(r => r.slice(0, 50)); }
   async recordBatch(b) { try { await this._f(`/rest/v1/${P}import_batches`, { method: 'POST', body: JSON.stringify(b) }); return true; } catch (e) { if (/duplicate|unique|409/i.test(e.message)) return false; throw e; } }
+  async syncFiles() {   // Edge Function qc-sync: pulls changed Quality Control workbooks from SharePoint (admin/auditor only; checked server-side)
+    if (this.tok && Date.now() > this.exp - 60000 && this.refresh_token) await this._refresh();
+    const r = await fetch(this.base + '/functions/v1/qc-sync', { method: 'POST', headers: this._h(), body: '{}' });
+    let j = {}; try { j = await r.json(); } catch { }
+    if (r.status === 503) return { notConfigured: true };
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
   async audit(action, entity, entity_id, meta) { try { await this._f(`/rest/v1/${P}audit_log`, { method: 'POST', body: JSON.stringify({ action, entity, entity_id: String(entity_id ?? ''), meta: meta || {} }) }); } catch { } }
   async report(y, w, create) {
     let r = (await (await this._f(`/rest/v1/${P}reports?iso_year=eq.${y}&iso_week=eq.${w}&select=*`)).json())[0];

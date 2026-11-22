@@ -25,10 +25,10 @@ export async function render({ view }) {
   }
   async function drawMain() {
     clear(main);
-    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
+    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), syncBtn(), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
     const m = modByKey(current);
     const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
-    const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
+    const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), syncBtn(), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
     if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
   }
   drawSide(); drawMain();
@@ -123,6 +123,22 @@ function pondPhotos() {
   } }, pond, stage, date, file, h('button', { class: 'btn', type: 'submit' }, 'Add photos'));
   box.append(h('h2', {}, 'Pond photos'), h('p', { class: 'muted' }, 'Add photos while a pond is in progress. The weekly report shows the latest photo of every pond still in progress, in a picture grid, automatically. When the pond is complete it drops off by itself.'), form, msg, list);
   draw(); return box;
+}
+
+// Pull changed Quality Control workbooks from SharePoint (3-day recounts, egg jars and ratings) without uploading files.
+function syncBtn() {
+  const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Quality Control files on SharePoint', onclick: async () => {
+    b.disabled = true; const old = b.textContent; b.textContent = 'Syncing…';
+    try {
+      const r = await db.syncFiles();
+      if (r.demo) { toast('Sync needs the live app (demo mode has no SharePoint link)', true); return; }
+      if (r.notConfigured) { toast('Sync is not switched on yet: the Microsoft app details are still to be added (see supabase/SYNC_SETUP.md). Import the files with Import for now.', true); return; }
+      const res = r.results || []; const bad = res.filter(x => x.status === 'error');
+      toast(bad.length ? 'Sync problem: ' + bad[0].message : res.every(x => x.status === 'unchanged') ? 'Already up to date: the files have not changed' : 'Synced: ' + res.filter(x => x.status === 'ok').map(x => x.key.replace(/_/g, ' ')).join(', '), !!bad.length);
+      for (const k of ['day3_recounts', 'egg_volumetric_jars', 'egg_separation_ratings']) { invalidate(k); S.data[k] = undefined; } await db.audit('sync', 'sharepoint', 'qc');
+    } catch (e) { toast('Sync failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = old; }
+  } }, 'Sync files from SharePoint');
+  return b;
 }
 
 // Excel export of every stored record (not just the 100 shown), in the Victory Farms template style.

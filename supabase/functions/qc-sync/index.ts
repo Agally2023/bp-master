@@ -6,7 +6,15 @@ import { PONDS } from "./ponds.ts";
 const env = (k: string) => Deno.env.get(k) ?? "";
 const SB = env("SUPABASE_URL"), SRK = env("SUPABASE_SERVICE_ROLE_KEY");
 const sbH = { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" };
-const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json" } });
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-sync-key", "Access-Control-Allow-Methods": "POST, GET, OPTIONS" };
+const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
+// Callers: pg_cron (x-sync-key) or a signed-in admin/auditor from the app's Data Entry page (their JWT is checked against bpm_profiles).
+async function allowed(req: Request) {
+  if (env("SYNC_KEY") && req.headers.get("x-sync-key") === env("SYNC_KEY")) return "cron";
+  const a = req.headers.get("authorization") ?? ""; if (!a.startsWith("Bearer ")) return null;
+  const r = await fetch(`${SB}/rest/v1/rpc/app_role`, { method: "POST", headers: { apikey: SRK, Authorization: a, "Content-Type": "application/json" }, body: "{}" });
+  if (!r.ok) return null; const role = await r.json(); return role === "admin" || role === "auditor" ? role : null;
+}
 
 async function sha256(t: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
@@ -156,7 +164,8 @@ async function syncOne(src: Record<string, any>, token: string, force: boolean) 
 }
 
 Deno.serve(async (req) => {
-  if (!env("SYNC_KEY") || req.headers.get("x-sync-key") !== env("SYNC_KEY")) return json({ error: "unauthorized" }, 401);
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (!(await allowed(req))) return json({ error: "unauthorized" }, 401);
   if (!env("MS_TENANT_ID") || !env("MS_CLIENT_ID") || !env("MS_CLIENT_SECRET")) return json({ error: "Microsoft app not configured yet (MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET secrets missing)" }, 503);
   const url = new URL(req.url); const force = url.searchParams.get("force") === "1"; const only = url.searchParams.get("source");
   const results: unknown[] = [];
