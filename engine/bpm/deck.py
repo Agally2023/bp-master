@@ -378,3 +378,107 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
     ns.shapes._spTree.append(copy.deepcopy(protos['box'])); bx = ns.shapes[-1]
     bx.left, bx.top, bx.width, bx.height = Emu(300000), Emu(4700000), Emu(7600000), Emu(900000)
     set_lines(bx, comments['hapa_exchange'], size=14)
+"""Egg-separation 0-2 rating table for the weekly BP report (slide 9).
+
+Drop into engine/bpm/ and call from the function in deck.py that fills the
+egg separation slide, after the chart has been replaced:
+
+    from .lowrated_table import fill_low_rated_table
+    fill_low_rated_table(slide, egg_rows, total_jars)
+
+egg_rows: iterable of dicts with keys
+    date (datetime.date), week, pond, incubator, height, mixed,
+    stage1 (0-1 or None), overall (0-1 or None), rating (0-5)
+total_jars: number of jars audited that week (for the commentary line).
+"""
+from pptx.util import Pt, Emu
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+
+HEADERS = ["Date", "Week", "Pond ID", "Incubator No.", "Total Egg Height (cm)",
+           "Mixed Stages Height (cm)", "% Stage 1", "% Overall Score", "Star Rating"]
+COL_W = [0.13, 0.07, 0.10, 0.10, 0.13, 0.14, 0.10, 0.12, 0.11]
+NAVY = RGBColor(0x0B, 0x2A, 0x5B)
+RED = RGBColor(0xC0, 0, 0)
+TABLE_NAME = "Egg Separation 0-2 Table"
+
+
+def _fmt_num(v):
+    if v is None:
+        return ""
+    return f"{v:g}" if isinstance(v, (int, float)) else str(v)
+
+
+def _pct(v, dp):
+    return "" if v is None else f"{v * 100:.{dp}f}%"
+
+
+def _cell(c, text, bold=False, color=RGBColor(0, 0, 0), fill=None, size=7):
+    c.margin_left = c.margin_right = Emu(30000)
+    c.margin_top = c.margin_bottom = Emu(8000)
+    c.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = c.text_frame.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = str(text)
+    r.font.size, r.font.bold, r.font.color.rgb = Pt(size), bold, color
+    if fill is not None:
+        c.fill.solid(); c.fill.fore_color.rgb = fill
+    else:
+        c.fill.background()
+
+
+def _find(slide, name):
+    return next((s for s in slide.shapes if s.name == name), None)
+
+
+def fill_low_rated_table(slide, rows, total_jars, max_rating=2,
+                         picture_names=("Picture 15",),
+                         marker_names=("Picture 19",),
+                         note_name="TextBox 20"):
+    low = sorted((r for r in rows if r["rating"] is not None and r["rating"] <= max_rating),
+                 key=lambda r: (r["date"], str(r["pond"])))
+    # slot = old table, else the pasted picture
+    old = _find(slide, TABLE_NAME) or next((s for n in picture_names if (s := _find(slide, n))), None)
+    if old is None:
+        raise RuntimeError("slide has no egg-separation table slot "
+                           f"(looked for {TABLE_NAME!r} and {picture_names})")
+    L, T, W, H = old.left, old.top, old.width, old.height
+    for s in [old] + [m for n in marker_names if (m := _find(slide, n))]:
+        s._element.getparent().remove(s._element)
+
+    mixed_n = sum(1 for r in low if (r["mixed"] or 0) > 0)
+    if low:
+        gf = slide.shapes.add_table(len(low) + 1, len(HEADERS), L, T, W, H)
+        gf.name = TABLE_NAME
+        t = gf.table
+        t._tbl.tblPr.set("bandRow", "0"); t._tbl.tblPr.set("firstRow", "0")
+        for i, w in enumerate(COL_W):
+            t.columns[i].width = int(W * w)
+        rh = int(min(H / (len(low) + 1), Emu(210000)))
+        for row in t.rows:
+            row.height = rh
+        for j, h in enumerate(HEADERS):
+            _cell(t.cell(0, j), h, True, RGBColor(255, 255, 255), NAVY, 6.5)
+        for i, r in enumerate(low, 1):
+            vals = [r["date"].strftime("%d/%m/%Y"), r["week"], r["pond"], r["incubator"],
+                    _fmt_num(r["height"]), _fmt_num(r["mixed"] or 0),
+                    _pct(r["stage1"], 1), _pct(r["overall"], 0), r["rating"]]
+            for j, v in enumerate(vals):
+                hot = j == 5 and (r["mixed"] or 0) > 0
+                _cell(t.cell(i, j), v, hot, RED if hot else RGBColor(0, 0, 0),
+                      RGBColor(0xF2, 0xF2, 0xF2) if i % 2 == 0 else None)
+    else:
+        tb = slide.shapes.add_textbox(L, T, W, Emu(400000)); tb.name = TABLE_NAME
+        tb.text_frame.text = f"No jars rated 0-{max_rating} this week"
+
+    note = _find(slide, note_name)
+    if note is not None and note.has_text_frame:
+        runs = note.text_frame.paragraphs[0].runs
+        msg = (f"{len(low)} jars rated 0-{max_rating}; {mixed_n} with mixed stages "
+               f"out of {total_jars} jars audited")
+        if runs:
+            runs[0].text = msg
+            for extra in runs[1:]:
+                extra.text = ""
+    return {"low_rated": len(low), "mixed": mixed_n, "total": total_jars}
