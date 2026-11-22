@@ -62,7 +62,13 @@ export async function render({ view }) {
     folder('BP Pond Files', 'Pond audit workbooks: flipping, broodstock stocking density and sex ratio.'),
     folder('BP Incubation Files', 'Incubation audit workbooks: workstations, stocking, parasitology, 3-day recounts.'),
     folder('BP Other Files', 'Other Best Practice files.'));
+  let srcs = []; try { srcs = await db.load('sync_sources') || []; } catch { /* table not present in demo mode */ }
+  const ago = t => { if (!t) return 'never'; const m = Math.round((Date.now() - new Date(t)) / 60000); return m < 2 ? 'just now' : m < 90 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; };
+  const sync = card('Automatic updates from SharePoint',
+    ...(srcs.length ? srcs.map(x => row(x.label, `${x.file_name || ''} - latest data ${x.latest_data_date || 'not loaded yet'}. ${x.last_message || 'Waiting for the first sync.'}`,
+      h('span', { class: 'pill' }, x.last_status === 'ok' ? 'Updated ' + ago(x.last_run) : x.last_status === 'unchanged' ? 'Up to date (' + ago(x.last_run) + ')' : x.last_status === 'error' ? 'Error' : 'Not started')))
+      : [row('Not set up', 'The sync service has no sources in this mode.', h('span', { class: 'pill' }, '-'))]));
   const wrap = h('div', { class: 'set-grid' }); view.append(wrap);
   const render2 = () => { clear(view); render({ view }); };
-  wrap.append(appearance, session, account, links, about);
+  wrap.append(appearance, session, account, links, sync, about);
 }
