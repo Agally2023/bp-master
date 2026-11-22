@@ -2,6 +2,9 @@ import { S } from './state.js';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
 import { mean, sum, weekRange } from './util.js';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
+// Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
+const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 100 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 100 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 100), w: m % 100, stale: true } : { y, w, stale: false }; };
+export const asOfNote = (a, w) => a && a.stale ? `No week ${w} data yet - showing latest available: week ${a.w}` : '';
 const inYear = (rows, y) => (rows || []).filter(r => r.iso_year === y);
 const group = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
 const weeksTo = (week, n) => Array.from({ length: Math.min(n, week) }, (_, i) => week - Math.min(n, week) + 1 + i);
@@ -20,9 +23,9 @@ export function workstation(data, y, w, n = 13) {
   const d = inYear(data.workstation_audits, y), g = group(d, r => r.iso_week);
   const weeks = weeksTo(w, n);
   const trend = weeks.map(x => g.has(x) ? mean(g.get(x).map(r => r.score)) : null);
-  const nc = inWeek(data.workstation_audits, y, w).filter(r => r.score < 1).sort((a, b) => (a.audit_date + (a.audit_time || '')).localeCompare(b.audit_date + (b.audit_time || '')));
+  const wkNC = lastWk((data.workstation_audits || []).filter(r => r.score < 1), y, w), nc = inWeek(data.workstation_audits, wkNC.y, wkNC.w).filter(r => r.score < 1).sort((a, b) => (a.audit_date + (a.audit_time || '')).localeCompare(b.audit_date + (b.audit_time || '')));
   const reasons = {}; for (const r of nc) { const t = String(r.reason || '').trim().toLowerCase(); if (!t || ['n/a', 'none'].includes(t)) continue; const hit = REASONS.filter(([, rx]) => rx.test(t)).map(x => x[0]); for (const k of hit.length ? hit : ['Other']) reasons[k] = (reasons[k] || 0) + 1; }
-  return { labels: weeks.map(wl), trend, current: trend.at(-1), nc, reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 3), audits: inWeek(data.workstation_audits, y, w).length };
+  return { labels: weeks.map(wl), trend, current: trend.at(-1), nc, ncAsOf: wkNC, reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 3), audits: inWeek(data.workstation_audits, y, w).length };
 }
 
 export function biosecurity(data, y, w) {          // same shape as the PPT slide: every week from the first audit, gaps joined, category table with a rating band
@@ -64,21 +67,21 @@ export function day3(data, y, w) {
 }
 
 export function stocking(data, y, w) {
-  const g = group(inWeek(data.stocking_audits, y, w), r => r.audit_date);
-  return [...g].sort().map(([dt, rows]) => ({ date: dt, n: rows.length, abw: mean(rows.map(r => r.abw)), req: mean(rows.map(r => r.req)), target: mean(rows.map(r => r.target)), actual: mean(rows.map(r => r.actual)), variance: mean(rows.map(r => r.variance)), est: mean(rows.map(r => r.est)), diff: mean(rows.map(r => r.diff)) }));
+  const a = lastWk(data.stocking_audits, y, w), g = group(inWeek(data.stocking_audits, a.y, a.w), r => r.audit_date);
+  return Object.assign([...g].sort().map(([dt, rows]) => ({ date: dt, n: rows.length, abw: mean(rows.map(r => r.abw)), req: mean(rows.map(r => r.req)), target: mean(rows.map(r => r.target)), actual: mean(rows.map(r => r.actual)), variance: mean(rows.map(r => r.variance)), est: mean(rows.map(r => r.est)), diff: mean(rows.map(r => r.diff)) })), { asOf: a });
 }
 
 export function transfers(data, y, w) {       // Reporting-tab rule: variance = bucket temp (with fish) − pond temp
-  const rows = inWeek(data.fry_transfers, y, w), g = group(rows, r => r.date);
+  const a = lastWk(data.fry_transfers, y, w), rows = inWeek(data.fry_transfers, a.y, a.w), g = group(rows, r => r.date);
   const mm = (a, k) => { const v = a.map(r => r[k]).filter(x => x != null); return v.length ? [Math.min(...v), Math.max(...v)] : [null, null]; };
-  return [...g].sort().map(([dt, a]) => { const pond = mm(a, 'pond_temp')[0], bw = mm(a, 'bucket_temp_w'); return { date: dt, time: a[0].stock_time, n: a.length, tray: mm(a, 'tray_temp'), bwo: mm(a, 'bucket_temp_wo'), bw, pond, variance: [bw[0] - pond, bw[1] - pond] }; });
+  return Object.assign([...g].sort().map(([dt, x]) => { const pond = mm(x, 'pond_temp')[0], bw = mm(x, 'bucket_temp_w'); return { date: dt, time: x[0].stock_time, n: x.length, tray: mm(x, 'tray_temp'), bwo: mm(x, 'bucket_temp_wo'), bw, pond, variance: [bw[0] - pond, bw[1] - pond] }; }), { asOf: a });
 }
 
 export function eggs(data, y, w, n = 13) {
   const abp = inYear(data.egg_separation_ratings, y), g = group(abp, r => r.iso_week), weeks = weeksTo(w, n);
   const trend = weeks.map(x => g.has(x) ? mean(g.get(x).map(r => r.abp_rating)) : null);
-  const jars = inWeek(data.egg_volumetric_jars, y, w), low = jars.filter(r => r.star <= 2).sort((a, b) => (a.date + a.pond).localeCompare(b.date + b.pond));
-  return { labels: weeks.map(wl), trend, current: trend.at(-1), low, total: jars.length, mixed: low.filter(r => (r.mixed_h || 0) > 0).length };
+  const jw = lastWk(data.egg_volumetric_jars, y, w), jars = inWeek(data.egg_volumetric_jars, jw.y, jw.w), low = jars.filter(r => r.star <= 2).sort((a, b) => (a.date + a.pond).localeCompare(b.date + b.pond));
+  return { labels: weeks.map(wl), trend, current: trend.at(-1), low, jarsAsOf: jw, total: jars.length, mixed: low.filter(r => (r.mixed_h || 0) > 0).length };
 }
 
 export function bottomRope(data, y, w, n = 12) {
@@ -86,8 +89,8 @@ export function bottomRope(data, y, w, n = 12) {
   for (const kind of ['Nursery', 'Broodstock']) {
     const rows = d.filter(r => String(r.unit_type).toLowerCase() === kind.toLowerCase());
     const trend = weeks.map(x => { const g = rows.filter(r => r.iso_week === x); return g.length ? g.filter(r => r.hapa_failed).length / g.length : null; });
-    const cur = rows.filter(r => r.iso_week === w), bp = [...group(cur, r => r.pond_id)].sort().map(([p, g]) => ({ pond: p, audited: g.length, failed: g.filter(r => r.hapa_failed).length }));
-    out[kind] = { labels: weeks.map(wl), trend, current: trend.at(-1), ponds: bp };
+    const aw = lastWk(rows, y, w), cur = rows.filter(r => r.iso_week === aw.w && r.iso_year === aw.y), bp = [...group(cur, r => r.pond_id)].sort().map(([p, g]) => ({ pond: p, audited: g.length, failed: g.filter(r => r.hapa_failed).length }));
+    out[kind] = { labels: weeks.map(wl), trend, current: trend.at(-1), ponds: bp, asOf: aw };
   }
   return out;
 }

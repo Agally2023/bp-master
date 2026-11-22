@@ -72,24 +72,28 @@ def parasitology(p, i, by_stage, week, ras):
     lines.append("[Add comment]")
     return lines
 
+def _stale(df):
+    a = getattr(df, 'attrs', {}).get('asof')
+    return f"Week {a[1]} data shown: no newer records have been entered yet." if a and a[2] else None
+
 def stocking(daily):
     v = daily['variance']
     ok = int((v.abs() <= 0.05).sum())
-    return [f"The daily average variance ranged from {v.min():.1%} to {v.max():.1%}; {ok} of {len(v)} days were within the ±5% limit.",
-            "[Add comment]"]
+    return [x for x in [_stale(daily), f"The daily average variance ranged from {v.min():.1%} to {v.max():.1%}; {ok} of {len(v)} days were within the ±5% limit.",
+            "[Add comment]"] if x]
 
 def transfers(t):
     if t.empty:
         return ["No fry transfers were audited this week.", "[Add comment]"]
     lo, hi = t['temp_var_min'].min(), t['temp_var_max'].max()
-    return [f"Temperature variance between incubation water and pond water ranged from {lo:.1f} to {hi:.1f}°C across {int(t['n'].sum())} audited hapa stockings.",
-            "[Add comment, e.g. acclimation practice]"]
+    return [x for x in [_stale(t), f"Temperature variance between incubation water and pond water ranged from {lo:.1f} to {hi:.1f}°C across {int(t['n'].sum())} audited hapa stockings.",
+            "[Add comment, e.g. acclimation practice]"] if x]
 
 def egg(trend, low, total, mixed):
     cur = trend[-1][1]; prev = trend[-2][1] if len(trend) > 1 else None
     cmp_ = '' if prev is None or cur is None else (f", {'an improvement' if cur > prev + 0.05 else 'a decline' if cur < prev - 0.05 else 'no real change'} compared with last week ({prev:.2f})")
     return [f"The weekly average egg stage separation was {cur:.2f}{cmp_}." if cur is not None else "No egg separation ratings this week.",
-            f"About {len(low)} of {total} jars scored 0-2 stars; {mixed} of them had mixed stages.", "[Add comment]"]
+            (f"About {len(low)} of {total} jars scored 0-2 stars; {mixed} of them had mixed stages." + (f" (Jars: {_stale(low)[:-1]})" if _stale(low) else "")), "[Add comment]"]
 
 def flipping(week, progress, overdue, total=None):
     """Pond flipping is progressive: list every pond still in progress, whatever week it started in."""

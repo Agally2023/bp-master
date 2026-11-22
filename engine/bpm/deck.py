@@ -157,6 +157,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     cur = ws_trend[-1][1]
     shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.1%}'
     pic = shape(s, 'Picture 5'); anchor = pic
+    _nc0 = ws_nc
     ws_nc = ws_nc.sort_values(['score', 'audit_date'])           # worst audits first
     rows = [[r.audit_date.strftime('%d/%m/%Y'), r.ras, f'{r.score:.1%}', r.noncompliant_island or '', r.employee_responsible or '', r.reason or '']
             for r in ws_nc.itertuples()]
@@ -164,6 +165,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     if rows:
         g = table(s, anchor, ['Date', 'RAS', 'Score (%)', 'Name of non-compliant island', 'Employee responsible', 'Reason for non-compliance'],
                   rows, [9, 6, 6, 21, 21, 37], BLUE_DARK, font=7)
+        asof_note(s, anchor, _nc0, week)
         bottom = g.top + g.height
     else:
         bottom = anchor.top
@@ -195,6 +197,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
         num = [PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6
         table(s, pic, ['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)', 'Failed: position (no.)', 'Failed: missing hook (no.)', 'Failed: not tied (no.)', 'Failed: missing posts (no.)'],
               body, [10, 9, 9, 9, 11, 9, 11], BLUE_LIGHT, total_last=True, align=num)
+        asof_note(s, pic, by_pond, week)
         pic._element.getparent().remove(pic._element)
         set_lines(shape(s, box_name), comments[f'bottom_rope_{key}'], size=14)
     keep = {1, 2, 8, 12, 13}
@@ -284,6 +287,16 @@ def bar_replace(sh, cats, vals, fmt, title, xt, yt):
         r = ax.axis_title.text_frame.paragraphs[0].runs[0]; r.font.size = Pt(10); r.font.bold = True
     return gf
 
+def asof_note(slide, anchor, df, week):
+    """When a weekly table has no rows for the report week, it shows the latest earlier week: say so above the table."""
+    a = getattr(df, 'attrs', {}).get('asof')
+    if not a or not a[2]:
+        return
+    tb = slide.shapes.add_textbox(anchor.left, Emu(max(0, anchor.top - 210000)), anchor.width, Emu(200000))
+    tf = tb.text_frame; tf.margin_left = tf.margin_top = tf.margin_bottom = 0; tf.word_wrap = True
+    r = tf.paragraphs[0].add_run(); r.text = f'No Week {week} data yet - showing latest available: Week {a[1]}'
+    r.font.size = Pt(9); r.font.italic = True; r.font.bold = True; r.font.color.rgb = RGBColor(0xC0, 0x00, 0x00)
+
 def _drop_shape(sh):
     sh._element.getparent().remove(sh._element)
 
@@ -297,7 +310,7 @@ def batch3(prs, year, week, comments, x):
                      f'{r.variance:.1%}', f'{r.est:,.0f}', f"{r['diff']:,.0f}"] for i, r in d.iterrows()]
             table(s, pic, ['Date', 'Calc. ABW (g)', 'Required weight (g)', 'Target fry number (pcs)', 'Actual weight (g)', 'Variance (%)', 'Est. fry stocked (pcs)', 'Diff. (pcs)'],
                   rows, [9, 8, 10, 10, 10, 8, 10, 7], BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 7)
-            _drop_shape(pic); set_lines(shape(s, 'TextBox 17'), comments['stocking'], size=14)
+            asof_note(s, pic, d, week); _drop_shape(pic); set_lines(shape(s, 'TextBox 17'), comments['stocking'], size=14)
         else:
             _drop_shape(shape(s, 'Picture 4')); _drop_shape(shape(s, 'TextBox 17'))
         if 'transfers' in x:
@@ -308,21 +321,21 @@ def batch3(prs, year, week, comments, x):
                      rng(r, 'temp_var'), *( (f'{pz[i][0]:.1f}', f'{pz[i][1]:.1%}') if i in pz else ('-', '-') )] for i, r in t.iterrows()]
             table(s, pic, ['Date', 'Stocking time', 'Tray temp (\u00b0C) min-max', 'Bucket, no fish (\u00b0C)', 'Bucket, with fish (\u00b0C)', 'Pond temp (\u00b0C)', 'Variance (<2) min-max', 'Parasite intensity', 'Parasite prevalence'],
                   rows or [['-'] * 9], [9, 9, 11, 11, 11, 8, 11, 9, 10], BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 8)
-            _drop_shape(pic); set_lines(shape(s, 'TextBox 13'), comments['transfers'], size=14)
+            asof_note(s, pic, t, week); _drop_shape(pic); set_lines(shape(s, 'TextBox 13'), comments['transfers'], size=14)
         else:
             _drop_shape(shape(s, 'Picture 8')); _drop_shape(shape(s, 'TextBox 13'))
         if 'egg' in x:
             e = x['egg']
             replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}"
-            pic = shape(s, 'Picture 15'); low = e['low']; more = max(0, len(low) - 7); low = low.head(7)
+            pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low; more = max(0, len(low) - 7); low = low.head(7)
             rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.1%}', int(r.star)] for r in low.itertuples()]
             if more:
                 rows.append([f'+{more} more', '', '', '', '', '', ''])
             table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', 'Overall (%)', 'Rating (stars)'],
                   rows or [['-'] * 7], [11, 7, 9, 12, 11, 9, 6], BLUE_DARK, font=7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6, width=Emu(3700000),
                   color_fn=lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c == 4 and v not in ('', '-') else None)  # mixed-stage height in red
-            _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
+            asof_note(s, pic, _low0, week); _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
             set_lines(shape(s, 'TextBox 18'), [comments['egg'][0]], size=14)
         else:
             for n in ('Chart 22', 'Oval 11', 'Picture 15', 'TextBox 20', 'TextBox 18', 'TextBox 21', 'Picture 19'):

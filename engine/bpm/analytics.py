@@ -2,6 +2,23 @@
 from __future__ import annotations
 import pandas as pd
 
+
+def latest_week(df, year, week, wcol='iso_week', ycol='iso_year'):
+    """(year, week) to show for a weekly table: the selected week if it has rows, otherwise the most recent earlier week that does."""
+    if df is None or not len(df):
+        return year, week
+    if ((df[ycol] == year) & (df[wcol] == week)).any():
+        return year, week
+    d = df[(df[ycol] < year) | ((df[ycol] == year) & (df[wcol] < week))]
+    if not len(d):
+        return year, week
+    m = d.assign(_k=d[ycol] * 100 + d[wcol])['_k'].max()
+    return int(m // 100), int(m % 100)
+
+def _asof(out, y, w, year, week):
+    out.attrs['asof'] = (y, w, (y, w) != (year, week))
+    return out
+
 def workstation_trend(ws: pd.DataFrame, year: int, week: int, n_weeks: int = 13):
     d = ws[ws.iso_year == year]
     wk = d.groupby('iso_week')['score'].mean()
@@ -9,8 +26,9 @@ def workstation_trend(ws: pd.DataFrame, year: int, week: int, n_weeks: int = 13)
     return [(w, float(wk[w]) if w in wk.index else None) for w in weeks]
 
 def workstation_noncompliant(ws: pd.DataFrame, year: int, week: int):
-    d = ws[(ws.iso_year == year) & (ws.iso_week == week) & (ws.score < 1)].sort_values(['audit_date', 'audit_time'])
-    return d[['audit_date', 'ras', 'score', 'noncompliant_island', 'employee_responsible', 'reason']]
+    y, w = latest_week(ws[ws.score < 1], year, week)
+    d = ws[(ws.iso_year == y) & (ws.iso_week == w) & (ws.score < 1)].sort_values(['audit_date', 'audit_time'])
+    return _asof(d[['audit_date', 'ras', 'score', 'noncompliant_island', 'employee_responsible', 'reason']], y, w, year, week)
 
 REASON_CATS = [('Lunch break', r'lunch'), ('Breakfast / tea break', r'breakfast|tea'), ('Stocking / transfer duties', r'stock|transfer'),
                ('Recount / sampling', r'recount|sampl'), ('Meeting', r'meeting|briefing'), ('Sump / maintenance', r'sump|repair|maint'),
@@ -38,14 +56,15 @@ def bottom_rope_weekly(br: pd.DataFrame, year: int, upto_week: int):
     return g
 
 def bottom_rope_by_pond(br: pd.DataFrame, year: int, week: int):
-    d = br[(br.iso_year == year) & (br.iso_week == week)].copy()
+    y, w = latest_week(br, year, week)
+    d = br[(br.iso_year == y) & (br.iso_week == w)].copy()
     d['f_pos'] = (d.wrong_position_ropes > 0) & d.hapa_failed
     d['f_hook'] = d.missing_hook > 0
     d['f_tie'] = d.not_tied > 0
     d['f_post'] = d.missing_posts > 0
     g = d.groupby('pond_id').agg(audited=('hapa_failed', 'size'), failed=('hapa_failed', 'sum'),
                                  pos=('f_pos', 'sum'), hook=('f_hook', 'sum'), tie=('f_tie', 'sum'), post=('f_post', 'sum')).astype(int)
-    return g.sort_index()
+    return _asof(g.sort_index(), y, w, year, week)
 
 def day3_week(d3: pd.DataFrame, year: int, week: int):
     d = d3[(d3.iso_year == year) & (d3.iso_week == week)].sort_values(['recount_date', 'unit'])
@@ -109,13 +128,15 @@ def water_vs_prevalence(water, par, d0, d1):
 
 # ================= batch 3 =================
 def stocking_daily(st, year, week):
-    d = st[(st.iso_year == year) & (st.iso_week == week)]
+    y, w = latest_week(st, year, week)
+    d = st[(st.iso_year == y) & (st.iso_week == w)]
     g = d.groupby('date').agg(abw=('abw', 'mean'), req=('req', 'mean'), target=('target', 'mean'), actual=('actual', 'mean'),
                               variance=('variance', 'mean'), est=('est', 'mean'), diff=('diff', 'mean'), n=('abw', 'size'))
-    return g
+    return _asof(g, y, w, year, week)
 
 def transfer_temps(tf, year, week):
-    d = tf[(tf.iso_year == year) & (tf.iso_week == week)]
+    y, w = latest_week(tf, year, week)
+    d = tf[(tf.iso_year == y) & (tf.iso_week == w)]
     agg = {}
     for k in ('tray_temp', 'bucket_temp_wo', 'bucket_temp_w', 'pond_temp', 'temp_var'):
         agg[k + '_min'] = (k, 'min'); agg[k + '_max'] = (k, 'max')
@@ -123,7 +144,7 @@ def transfer_temps(tf, year, week):
     # Reporting-tab rule: variance = bucket temp (with fish) min/max minus the day's pond temp (min)
     g['temp_var_min'] = g['bucket_temp_w_min'] - g['pond_temp_min']
     g['temp_var_max'] = g['bucket_temp_w_max'] - g['pond_temp_min']
-    return g
+    return _asof(g, y, w, year, week)
 
 def egg_weekly(eg, year, week, n_weeks=13):
     d = eg[eg.iso_year == year].groupby('iso_week')['abp'].mean()
@@ -137,8 +158,9 @@ def hapa_exchange_weekly(hx, year, week, n_weeks=12):
     return out
 
 def jars_low(vol, year, week, max_star=2):
-    d = vol[(vol.iso_year == year) & (vol.iso_week == week)]
-    low = d[d.star <= max_star].sort_values(['date', 'pond'])
+    y, w = latest_week(vol, year, week)
+    d = vol[(vol.iso_year == y) & (vol.iso_week == w)]
+    low = _asof(d[d.star <= max_star].sort_values(['date', 'pond']), y, w, year, week)
     return low, len(d), int((low.mixed_h.fillna(0) > 0).sum())
 
 def flip_progress(fl, kind, total, as_of=None, last_expected=None):

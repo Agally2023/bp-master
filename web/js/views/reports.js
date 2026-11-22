@@ -13,7 +13,7 @@ const pc0 = v => (v * 100).toFixed(0) + '%';
 // Section list = slide order of the weekly deck.
 const SECTIONS = [
   { key: 'workstation', title: 'Incubation Workstation Compliance', slide: 2, an: (d, y, w) => A.workstation(d, y, w),
-    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason]))] },
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, sn(a.ncAsOf), table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason]))] },
   { key: 'biosecurity', title: 'Biosecurity and Hygiene', slide: 3, an: (d, y, w) => A.biosecurity(d, y, w),
     body: a => [bioTable(a, pct), has(a.overall) ? lineChart({ labels: a.labels, series: [{ name: 'Overall rating', values: a.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', area: true, joinGaps: true, valueLabels: true, maxLabels: 30, w: 760, h: 210 }) : null] },
   { key: 'bio_photos', title: 'Biosecurity: audit photos', slide: 4, photos: 4, an: () => ({}), body: () => [] },
@@ -24,11 +24,11 @@ const SECTIONS = [
   { key: 'day3', title: '3-Day Recount Survival', slide: 7, an: (d, y, w) => A.day3(d, y, w),
     body: a => [a.total ? barChart({ labels: a.units, series: [{ name: 'Survival', values: a.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: pc0, target: 0.97, targetLabel: '97%', h: 200 }) : null] },
   { key: 'stocking', title: 'Stocking Numbers Audit', slide: 8, an: (d, y, w) => A.stocking(d, y, w),
-    body: a => [table(['Date', 'ABW (g)', 'Required (g)', 'Target (pcs)', 'Actual (g)', 'Var. (%)', 'Est. (pcs)', 'Diff. (pcs)'], a.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), pct(r.variance, 1), num(r.est, 0), num(r.diff, 0)]))] },
+    body: a => [sn(a.asOf), table(['Date', 'ABW (g)', 'Required (g)', 'Target (pcs)', 'Actual (g)', 'Var. (%)', 'Est. (pcs)', 'Diff. (pcs)'], a.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), pct(r.variance, 1), num(r.est, 0), num(r.diff, 0)]))] },
   { key: 'transfers', title: 'Incubation to Pond Transfer Audit (Morning stocking)', slide: 8, an: (d, y, w) => A.transfers(d, y, w),
-    body: a => [table(['Date', 'Time', 'Tray (°C)', 'Bucket no fish (°C)', 'Bucket with fish (°C)', 'Pond (°C)', 'Variance (°C)'], a.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])}–${num(r.tray[1])}`, `${num(r.bwo[0])}–${num(r.bwo[1])}`, `${num(r.bw[0])}–${num(r.bw[1])}`, num(r.pond), `${num(r.variance[0])}–${num(r.variance[1])}`]))] },
+    body: a => [sn(a.asOf), table(['Date', 'Time', 'Tray (°C)', 'Bucket no fish (°C)', 'Bucket with fish (°C)', 'Pond (°C)', 'Variance (°C)'], a.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])}–${num(r.tray[1])}`, `${num(r.bwo[0])}–${num(r.bwo[1])}`, `${num(r.bw[0])}–${num(r.bw[1])}`, num(r.pond), `${num(r.variance[0])}–${num(r.variance[1])}`]))] },
   { key: 'eggs', title: 'Egg Stage Separation Rating', slide: 9, an: (d, y, w) => A.eggs(d, y, w),
-    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.slice(0, 7).map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.slice(0, 7).map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
   { key: 'flipping', title: 'Pond Flipping (ponds in progress)', slide: 10, an: (d, y, w) => A.flips(d, y, w),
     body: a => [table(A.flipHead, a.progress.slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
@@ -37,6 +37,7 @@ const SECTIONS = [
   { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 13, an: (d, y, w) => A.hapaExchange(d, y, w),
     body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Exchanged / scheduled', values: a.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: pc0, h: 200 }) : null] },
 ];
+const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };
 
 export async function render({ view, ctx }) {
