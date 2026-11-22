@@ -28,7 +28,7 @@ const SECTIONS = [
   { key: 'transfers', title: 'Incubation to Pond Transfer Audit (Morning stocking)', slide: 8, an: (d, y, w) => A.transfers(d, y, w),
     body: a => [sn(a.asOf), table(['Date', 'Time', 'Tray (°C)', 'Bucket no fish (°C)', 'Bucket with fish (°C)', 'Pond (°C)', 'Variance (°C)'], a.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])}–${num(r.tray[1])}`, `${num(r.bwo[0])}–${num(r.bwo[1])}`, `${num(r.bw[0])}–${num(r.bw[1])}`, num(r.pond), `${num(r.variance[0])}–${num(r.variance[1])}`]))] },
   { key: 'eggs', title: 'Egg Stage Separation Rating', slide: 9, an: (d, y, w) => A.eggs(d, y, w),
-    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.slice(0, 7).map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
   { key: 'flipping', title: 'Pond Flipping (ponds in progress)', slide: 10, an: (d, y, w) => A.flips(d, y, w),
     body: a => [table(A.flipHead, a.progress.slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },

@@ -73,7 +73,9 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
             extra['transfers'] = A.transfer_temps(F.transfers(T['fry_transfers']), year, week); cm['transfers'] = C.transfers(extra['transfers'])
     except Exception as e: warn('Transfers', e)
     try:
-        if T.get('egg_separation_ratings') and T.get('egg_volumetric_jars'):
+        if T.get('egg_separation_ratings') or T.get('egg_volumetric_jars'):
+            if not (T.get('egg_separation_ratings') and T.get('egg_volumetric_jars')):
+                raise ValueError('needs both egg_separation_ratings and egg_volumetric_jars; one is empty, so the egg slide was left out')
             eg, vol = F.egg_separation(T['egg_separation_ratings']), F.egg_volumetric(T['egg_volumetric_jars'])
             trend = A.egg_weekly(eg, year, week); low, tot, mixed = A.jars_low(vol, year, week); extra['egg'] = dict(trend=trend, low=low); cm['egg'] = C.egg(trend, low, tot, mixed)
     except Exception as e: warn('Egg separation', e)

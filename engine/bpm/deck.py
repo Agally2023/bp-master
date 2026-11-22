@@ -300,6 +300,30 @@ def asof_note(slide, anchor, df, week):
 def _drop_shape(sh):
     sh._element.getparent().remove(sh._element)
 
+EGG_HEAD = ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', 'Overall (%)', 'Rating (stars)']
+EGG_W = [11, 7, 9, 12, 11, 9, 6]
+
+def _egg_low_tables(s, pic, note, rows):
+    """Egg stage separation: list ALL jars rated 0-2. Font shrinks (7 -> 5pt) so the list fits between the slide's chart row and the
+    comment box; if it still cannot fit, the rows continue in a second table beside the first. Nothing is ever cut off."""
+    avail = note.top - pic.top - 120000
+    W = note.width if note.left >= pic.left else pic.width      # as wide as the comment box under it
+    red = lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c == 4 and v not in ('', '-') and float(v) > 0 else None   # mixed-stage height > 0 in red
+    al = [PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6
+    fits = lambda n, f, hdr: (n + hdr) * f * 12700 * 2.1 <= avail
+    n = len(rows)
+    if n == 0:
+        table(s, pic, EGG_HEAD, [['-'] * 7], EGG_W, BLUE_DARK, font=7, align=al, width=Emu(W)); return
+    for f in (7, 6.5, 6, 5.5, 5):
+        if fits(n, f, 1):
+            table(s, pic, EGG_HEAD, rows, EGG_W, BLUE_DARK, font=f, align=al, width=Emu(W), color_fn=red); return
+    half = (n + 1) // 2; gap = 100000; w2 = int((W - gap) / 2)           # two side-by-side tables (their headers wrap to 2 lines)
+    f = next((f for f in (6, 5.5, 5, 4.5) if fits(half, f, 2)), 4.5)
+    for k, chunk in enumerate((rows[:half], rows[half:])):
+        if not chunk: continue
+        g = table(s, pic, EGG_HEAD, chunk, EGG_W, BLUE_DARK, font=f, align=al, width=Emu(w2), color_fn=red)
+        g.left = Emu(pic.left + k * (w2 + gap))
+
 def batch3(prs, year, week, comments, x):
     done = set(); S = lambda n: prs.slides[n - 1]
     if any(k in x for k in ('stocking', 'transfers', 'egg')):
@@ -328,13 +352,11 @@ def batch3(prs, year, week, comments, x):
             e = x['egg']
             replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}"
-            pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low; more = max(0, len(low) - 7); low = low.head(7)
-            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, f'{r.total_h:.1f}', f'{r.mixed_h:.1f}', f'{r.overall:.1%}', int(r.star)] for r in low.itertuples()]
-            if more:
-                rows.append([f'+{more} more', '', '', '', '', '', ''])
-            table(s, pic, ['Date', 'Pond', 'Incubator', 'Total egg height (cm)', 'Mixed height (cm)', 'Overall (%)', 'Rating (stars)'],
-                  rows or [['-'] * 7], [11, 7, 9, 12, 11, 9, 6], BLUE_DARK, font=7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * 6, width=Emu(3700000),
-                  color_fn=lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c == 4 and v not in ('', '-') else None)  # mixed-stage height in red
+            pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low
+            nz = lambda v, f: '-' if v is None or v != v else format(v, f)
+            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, nz(r.total_h, '.1f'), nz(r.mixed_h, '.1f'), nz(r.overall, '.1%'), int(r.star)] for r in low.itertuples()]
+            _egg_low_tables(s, pic, shape(s, 'TextBox 20'), rows)       # every jar rated 0-2 is listed, never truncated
+            for stray in [sh for sh in s.shapes if sh.name == 'Picture 19']: _drop_shape(stray)   # empty red template marker beside the table
             asof_note(s, pic, _low0, week); _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
             set_lines(shape(s, 'TextBox 18'), [comments['egg'][0]], size=14)
         else:
