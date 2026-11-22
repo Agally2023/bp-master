@@ -21,3 +21,7 @@ create policy bpm_sync_log_sel on public.bpm_sync_log for select to authenticate
 insert into public.bpm_sync_sources (key, label, drive_id, item_id, file_name) values
  ('day3_recounts', '3-Day Pond Survival (Recounts)',
   'b!UKPwc-7EFUyeY6SYVQMRTn8yXaKWnAdPh-I4mvi7xlk8YSCyoEZwSJNsf9uUzmq1', '0122JKVXX7VNCSXZ626VA2B4OB2EAK4RSO', 'VF 3-Day pond Survival.xlsx');
+insert into public.bpm_sync_sources (key, label, drive_id, item_id, file_name) values
+ ('egg_volumetric_jars', 'Egg Volumetric Data (jars, star ratings)', 'b!UKPwc-7EFUyeY6SYVQMRTn8yXaKWnAdPh-I4mvi7xlk8YSCyoEZwSJNsf9uUzmq1', '0122JKVXWG2MMEHNLIQRFI7OCEWFIIUC5S', 'VF Egg Collection Monitoring Data.xlsx'),
+ ('egg_separation_ratings', 'Egg Separation Ratings (ABP)', 'b!UKPwc-7EFUyeY6SYVQMRTn8yXaKWnAdPh-I4mvi7xlk8YSCyoEZwSJNsf9uUzmq1', '0122JKVXWG2MMEHNLIQRFI7OCEWFIIUC5S', 'VF Egg Collection Monitoring Data.xlsx')
+ on conflict (key) do nothing;

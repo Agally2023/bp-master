@@ -2,7 +2,7 @@
 
 Edge Function `qc-sync` (project gtokqbahkdjwyasagosi) reads the Quality Control workbooks straight from SharePoint
 with a **read-only app registration** and loads new rows into Supabase. Sources are listed in `bpm_sync_sources`
-(3-Day Pond Survival is registered). Re-running is safe: rows are matched by the same `row_hash` the Import page uses,
+(3-Day Pond Survival, Egg Volumetric Data and Egg Separation Ratings are registered). Re-running is safe: rows are matched by the same `row_hash` the Import page uses,
 and a file is only downloaded when SharePoint says it changed. Status shows in Settings > Automatic updates.
 
 ## 1. IT admin: register the Microsoft app (about 10 min)
