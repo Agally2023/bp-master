@@ -387,7 +387,8 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
         ns.shapes._spTree.append(copy.deepcopy(protos['oval'])); ov = ns.shapes[-1]
         ov.left, ov.top = Emu(8050000), Emu(top)
         ov.fill.solid(); ov.fill.fore_color.rgb = rgb
-        v = series[-1][1]; ov.text_frame.paragraphs[0].runs[0].text = 'n/a' if v is None else f'{v:.1%}'
+        v = series[-1][1]; lastrec = H.get('last_pns' if k == 0 else 'last_bs')
+        ov.text_frame.paragraphs[0].runs[0].text = f'{v:.1%}' if v is not None else (f'Wk {lastrec[0]}: {lastrec[1]:.1%}' if lastrec else 'n/a')
     ns.shapes._spTree.append(copy.deepcopy(protos['box'])); bx = ns.shapes[-1]
     bx.left, bx.top, bx.width, bx.height = Emu(300000), Emu(4700000), Emu(7600000), Emu(900000)
     set_lines(bx, comments['hapa_exchange'], size=14)

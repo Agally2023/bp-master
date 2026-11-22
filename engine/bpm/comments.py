@@ -107,7 +107,11 @@ def flipping(week, progress, overdue, total=None):
     lines.append("[Add comment]")
     return lines
 
-def hapa_exchange(pns, bs, week):
-    a = pns[-1][1]; b = bs[-1][1]
-    f = lambda x: 'n/a' if x is None else f"{x:.0%}"
-    return [f"Hapa exchange compliance for the nursery (PNS) was {f(a)} and for the broodstock (BS) ponds was {f(b)} in week {week}.", "[Add comment]"]
+def hapa_exchange(pns, bs, week, last_pns=None, last_bs=None):
+    """Two separate figures: nursery (PNS) and broodstock (BS). A unit with nothing scheduled this week reports its last recorded week."""
+    f = lambda x: f"{x:.0%}"
+    def one(series, last, name):
+        v = series[-1][1] if series else None
+        if v is not None: return f"{name} was {f(v)}"
+        return f"{name}: no exchanges scheduled in week {week} (last recorded week {last[0]}: {f(last[1])})" if last else f"{name}: no exchanges recorded"
+    return [f"Hapa exchange compliance: {one(pns, last_pns, 'nursery (PNS)')}; {one(bs, last_bs, 'broodstock (BS) ponds')}.", "[Add comment]"]

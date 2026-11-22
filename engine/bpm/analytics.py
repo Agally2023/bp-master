@@ -157,6 +157,12 @@ def hapa_exchange_weekly(hx, year, week, n_weeks=12):
         out.append((w, float(d.loc[w, 'a'] / d.loc[w, 't']) if w in d.index and d.loc[w, 't'] > 0 else None))
     return out
 
+def hapa_last_recorded(hx, year, week):
+    """(week, rate) of the most recent week up to `week` with exchanges scheduled, or None."""
+    d = hx[(hx.iso_year == year) & (hx.iso_week <= week)].groupby('iso_week').agg(t=('to_exchange', 'sum'), a=('exchanged', 'sum'))
+    d = d[d.t > 0]
+    return None if d.empty else (int(d.index.max()), float(d.loc[d.index.max(), 'a'] / d.loc[d.index.max(), 't']))
+
 def jars_low(vol, year, week, max_star=2):
     y, w = latest_week(vol, year, week)
     d = vol[(vol.iso_year == y) & (vol.iso_week == w)]

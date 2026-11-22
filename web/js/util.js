@@ -19,8 +19,10 @@ export function h(tag, attrs, ...kids) {
 export const $ = (s, r = document) => r.querySelector(s);
 export function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
 export function toast(msg, bad) {
+  // "x is not a function" / "is not defined" after a deploy = this tab still holds older copies of some script files: tell the user how to fix it
+  if (bad && /is not a function|is not defined|does not provide an export/i.test(String(msg))) msg = String(msg) + '. The app was updated while this page was open: reload the page (Ctrl+Shift+R) and try again.';
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (bad ? ' bad' : '');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = 'toast', 3600);
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.className = 'toast', bad ? 9000 : 3600);
 }
 // Victory Farms format: % with one decimal, negatives in ( ), smaller numbers with 2 decimals, dates dd/mm/yyyy
 export const pct = (v, d = 1) => v == null || Number.isNaN(v) ? '–' : v < 0 ? '(' + Math.abs(v * 100).toFixed(1) + '%)' : (v * 100).toFixed(1) + '%';

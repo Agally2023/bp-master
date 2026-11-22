@@ -23,7 +23,8 @@ export async function render({ view, ctx }) {
       kpi('3-day survival (avg)', pct(d3.avg, 1), { cls: 'cyan', note: d3.total ? `${d3.failed}/${d3.total} below 97%` : '', good: d3.failed === 0 }),
       kpi('Parasite prevalence', pct(par.prevalence, 1), { note: par.intensity != null ? 'intensity ' + num(par.intensity, 1) : '', cls: 'red' }),
       kpi('Egg separation (ABP)', eg.current == null ? '–' : eg.current.toFixed(2), { note: eg.low.length + ' jar(s) at 0–2 stars' }),
-      kpi('Hapa exchange', pct(hx.current, 0), { cls: 'gold' })));
+      kpi('Hapa exchange: Nursery', pct(hx.nursery.current, 1), { note: hx.nursery.current == null && hx.nursery.last ? `last: wk ${hx.nursery.last.w}, ${pct(hx.nursery.last.v, 1)}` : '', cls: 'gold' }),
+      kpi('Hapa exchange: Broodstock', pct(hx.broodstock.current, 1), { note: hx.broodstock.current == null && hx.broodstock.last ? `last: wk ${hx.broodstock.last.w}, ${pct(hx.broodstock.last.v, 1)}` : '', cls: 'gold' })));
     const g = (...k) => h('div', { class: 'grid g2 mt' }, ...k);
     // 1 workstation
     body.append(g(card('Incubation workstation compliance trend', has(ws.trend) ? lineChart({ labels: ws.labels, series: [{ name: 'Compliance', values: ws.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', target: 1, targetLabel: '100%', valueLabels: true }) : noData(),
@@ -66,7 +67,10 @@ export async function render({ view, ctx }) {
         h('div', { class: 'note' }, 'Red = more days than expected. A pond leaves this list automatically once its last stage has run its expected days.'));
     })));
     body.append(g(card('Pond flipping: ponds in progress (all weeks)', table(A.flipHead, fl.progress.map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })),
-      card('Hapa exchange compliance', has(hx.trend) ? lineChart({ labels: hx.labels, series: [{ name: 'Exchanged / scheduled', values: hx.trend }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true }) : noData())));
+      card('Hapa exchange compliance (exchanged / scheduled, %)', has(hx.nursery.trend) || has(hx.broodstock.trend)
+        ? h('div', {}, lineChart({ labels: hx.labels, series: [{ name: 'Nursery (PNS)', values: hx.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: hx.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: hx.labels.length <= 14 }),
+          ...[['Nursery (PNS)', hx.nursery], ['Broodstock (BS)', hx.broodstock]].map(([nm, u]) => h('div', { class: 'note' }, u.current != null ? `${nm}: ${pct(u.current, 1)} this week` : u.last ? `${nm}: no exchanges scheduled this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)}` : `${nm}: no exchanges recorded`)))
+        : noData())));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
   };

@@ -95,11 +95,22 @@ export function bottomRope(data, y, w, n = 12) {
   return out;
 }
 
+// Hapa exchange compliance is reported as TWO separate curves, each with its own percentage: Nursery (PNS) and Broodstock (BS).
+// There is deliberately no combined curve. "last" = the most recent week (up to the selected one) that had exchanges scheduled, so a unit
+// with no data this week still shows where it stood.
 export function hapaExchange(data, y, w, n = 12) {
-  const d = inYear(data.hapa_exchanges, y), weeks = weeksTo(w, n);
-  const trend = weeks.map(x => { const g = d.filter(r => r.iso_week === x); const t = sum(g.map(r => r.to_exchange)); return g.length && t ? sum(g.map(r => r.exchanged)) / t : null; });
-  return { labels: weeks.map(wl), trend, current: trend.at(-1) };
+  const all = inYear(data.hapa_exchanges, y);
+  const rate = g => { const t = sum(g.map(r => r.to_exchange)); return g.length && t ? sum(g.map(r => r.exchanged)) / t : null; };
+  const by = kind => all.filter(r => String(r.kind).toLowerCase() === kind);
+  const lastOf = d => { for (let x = w; x >= 1; x--) { const v = rate(d.filter(r => r.iso_week === x)); if (v != null) return { w: x, v }; } return null; };
+  const units = { nursery: by('nursery'), broodstock: by('broodstock') }, last = { nursery: lastOf(units.nursery), broodstock: lastOf(units.broodstock) };
+  // Both curves share one axis. If a unit has no data inside the last n weeks, the window is widened (up to 30 weeks) so its curve is still drawn.
+  for (const k of Object.keys(last)) if (last[k] && last[k].w < w - n + 1) n = Math.min(30, w - last[k].w + 6);
+  const weeks = weeksTo(w, n);
+  const one = k => { const trend = weeks.map(x => rate(units[k].filter(r => r.iso_week === x))); return { trend, current: trend.at(-1), last: last[k] }; };
+  return { labels: weeks.map(wl), nursery: one('nursery'), broodstock: one('broodstock') };
 }
+export const hapaUnits = [['nursery', 'Nursery (PNS)'], ['broodstock', 'Broodstock (BS)']];
 
 // Pond flipping is progressive. A pond stays "in progress" until its preparation is complete, and that is worked out automatically:
 // either every stage has a recorded value, or every stage before the last is recorded and the last stage (final fill & maturation)
@@ -148,7 +159,7 @@ export function draftComment(key, a) {
     case 'stocking': return a.length ? `Daily average variance ranged ${p(Math.min(...a.map(r => r.variance)))} to ${p(Math.max(...a.map(r => r.variance)))}; ${a.filter(r => Math.abs(r.variance) <= 0.05).length} of ${a.length} days within ±5%.` : 'No stocking audits this week.';
     case 'transfers': return a.length ? `Temperature variance (bucket with fish vs pond) ranged ${Math.min(...a.map(r => r.variance[0])).toFixed(1)} to ${Math.max(...a.map(r => r.variance[1])).toFixed(1)}°C across ${sum(a.map(r => r.n))} audited hapa stockings.` : 'No fry transfers audited this week.';
     case 'eggs': return a.current == null ? 'No egg separation ratings this week.' : `Weekly average egg stage separation was ${a.current.toFixed(2)}; ${a.low.length} of ${a.total} jars scored 0–2 stars (${a.mixed} with mixed stages).`;
-    case 'hapa_exchange': return a.current == null ? 'No hapa exchanges scheduled this week.' : `Hapa exchange compliance was ${p(a.current)} this week.`;
+    case 'hapa_exchange': { const t = (k, name) => a[k].current != null ? `${name} ${p(a[k].current)}` : a[k].last ? `${name} no exchanges scheduled this week (last recorded week ${a[k].last.w}: ${p(a[k].last.v)})` : `${name} no exchanges recorded`; return `Hapa exchange compliance: ${t('nursery', 'nursery (PNS)')}; ${t('broodstock', 'broodstock (BS)')}.`; }
     case 'bottom_rope': return ['Nursery', 'Broodstock'].map(k => {
       const t = a[k].ponds.reduce((n, x) => n + x.audited, 0), f = a[k].ponds.reduce((n, x) => n + x.failed, 0);
       return t ? `${k}: total of ${t} hapas were audited; ${f} failed the audit metrics, a non-conformance of ${p(f / t)} (${f ? 'still fail' : 'meets the standard'}).` : `${k}: no bottom rope audits were recorded this week.`;

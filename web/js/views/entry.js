@@ -130,6 +130,7 @@ function syncBtn() {
   const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Quality Control files on SharePoint', onclick: async () => {
     b.disabled = true; const old = b.textContent; b.textContent = 'Syncing…';
     try {
+      if (typeof db.syncFiles !== 'function') { toast('This page is running an older copy of the app. Reload it (Ctrl+Shift+R) and press Sync again.', true); return; }
       const r = await db.syncFiles();
       if (r.demo) { toast('Sync needs the live app (demo mode has no SharePoint link)', true); return; }
       if (r.notConfigured) { toast('Sync is not switched on yet: the Microsoft app details are still to be added (see supabase/SYNC_SETUP.md). Import the files with Import for now.', true); return; }

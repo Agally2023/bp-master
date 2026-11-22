@@ -93,7 +93,13 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:
         if T.get('hapa_exchanges'):
             hn, hb = F.hapa_exchange(T['hapa_exchanges'], 'nursery'), F.hapa_exchange(T['hapa_exchanges'], 'broodstock')
-            pns, bs = A.hapa_exchange_weekly(hn, year, week), A.hapa_exchange_weekly(hb, year, week); extra['hapa'] = dict(pns=pns, bs=bs); cm['hapa_exchange'] = C.hapa_exchange(pns, bs, week)
+            lp = A.hapa_last_recorded(hn, year, week) if not hn.empty else None; lb = A.hapa_last_recorded(hb, year, week) if not hb.empty else None
+            nw = 12                                               # both curves share one axis; widen it (max 30 weeks) if a unit has no data in the last 12 weeks
+            for l in (lp, lb):
+                if l and l[0] < week - nw + 1: nw = min(30, week - l[0] + 6)
+            pns, bs = A.hapa_exchange_weekly(hn, year, week, nw), A.hapa_exchange_weekly(hb, year, week, nw)
+            lp = A.hapa_last_recorded(hn, year, week) if not hn.empty else None; lb = A.hapa_last_recorded(hb, year, week) if not hb.empty else None
+            extra['hapa'] = dict(pns=pns, bs=bs, last_pns=lp, last_bs=lb); cm['hapa_exchange'] = C.hapa_exchange(pns, bs, week, lp, lb)
     except Exception as e: warn('Hapa exchange', e)
     for sec, text in (overrides or {}).items():                  # comments edited by people replace the drafts
         lines = [l.strip() for l in (text or '').split('\n') if l.strip()]
