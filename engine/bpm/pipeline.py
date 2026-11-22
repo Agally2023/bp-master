@@ -96,9 +96,8 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
         if T.get('hapa_exchanges'):
             hn, hb = F.hapa_exchange(T['hapa_exchanges'], 'nursery'), F.hapa_exchange(T['hapa_exchanges'], 'broodstock')
             lp = A.hapa_last_recorded(hn, year, week) if not hn.empty else None; lb = A.hapa_last_recorded(hb, year, week) if not hb.empty else None
-            nw = 12                                               # both curves share one axis; widen it (max 30 weeks) if a unit has no data in the last 12 weeks
-            for l in (lp, lb):
-                if l and l[0] < week - nw + 1: nw = min(30, week - l[0] + 6)
+            fw = [x for x in (A.hapa_first_week(hn, year, week) if not hn.empty else None, A.hapa_first_week(hb, year, week) if not hb.empty else None) if x]
+            nw = min(52, max(12, week - min(fw) + 1)) if fw else 12   # both curves run across one shared axis, from the first week with data
             pns, bs = A.hapa_exchange_weekly(hn, year, week, nw), A.hapa_exchange_weekly(hb, year, week, nw)
             lp = A.hapa_last_recorded(hn, year, week) if not hn.empty else None; lb = A.hapa_last_recorded(hb, year, week) if not hb.empty else None
             extra['hapa'] = dict(pns=pns, bs=bs, last_pns=lp, last_bs=lb); cm['hapa_exchange'] = C.hapa_exchange(pns, bs, week, lp, lb)

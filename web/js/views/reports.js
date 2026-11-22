@@ -35,7 +35,7 @@ const SECTIONS = [
   { key: 'bottom_rope', title: 'Bottom Rope Non-Conformance (Nursery & Broodstock)', slide: 12, an: (d, y, w) => A.bottomRope(d, y, w),
     body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? barChart({ labels: a[k].labels, series: [{ name: '% hapas failed the audit', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: pc0, valueLabels: true, maxLabels: 30, h: 190, title: 'Bottom rope non-conformance: ' + k }) : null) },
   { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 13, an: (d, y, w) => A.hapaExchange(d, y, w),
-    body: a => [has(a.nursery.trend) || has(a.broodstock.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Nursery (PNS)', values: a.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: a.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, fmt: pc0, h: 200 }) : null,
+    body: a => [has(a.nursery.trend) || has(a.broodstock.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Nursery (PNS)', values: a.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: a.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, joinGaps: true, fmt: pc0, h: 200 }) : null,
       h('div', { class: 'note' }, [['Nursery (PNS)', a.nursery], ['Broodstock (BS)', a.broodstock]].map(([nm, u]) => u.current != null ? `${nm}: ${pc0(u.current)}` : u.last ? `${nm}: none this week (last: wk ${u.last.w}, ${pc0(u.last.v)})` : `${nm}: no data`).join('   ·   '))] },
 ];
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };

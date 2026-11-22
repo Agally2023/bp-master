@@ -163,6 +163,10 @@ def hapa_last_recorded(hx, year, week):
     d = d[d.t > 0]
     return None if d.empty else (int(d.index.max()), float(d.loc[d.index.max(), 'a'] / d.loc[d.index.max(), 't']))
 
+def hapa_first_week(hx, year, week):
+    d = hx[(hx.iso_year == year) & (hx.iso_week <= week) & (hx.to_exchange > 0)]
+    return None if d.empty else int(d.iso_week.min())
+
 def jars_low(vol, year, week, max_star=2):
     y, w = latest_week(vol, year, week)
     d = vol[(vol.iso_year == y) & (vol.iso_week == w)]

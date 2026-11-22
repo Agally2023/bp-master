@@ -104,8 +104,10 @@ export function hapaExchange(data, y, w, n = 12) {
   const by = kind => all.filter(r => String(r.kind).toLowerCase() === kind);
   const lastOf = d => { for (let x = w; x >= 1; x--) { const v = rate(d.filter(r => r.iso_week === x)); if (v != null) return { w: x, v }; } return null; };
   const units = { nursery: by('nursery'), broodstock: by('broodstock') }, last = { nursery: lastOf(units.nursery), broodstock: lastOf(units.broodstock) };
-  // Both curves share one axis. If a unit has no data inside the last n weeks, the window is widened (up to 30 weeks) so its curve is still drawn.
-  for (const k of Object.keys(last)) if (last[k] && last[k].w < w - n + 1) n = Math.min(30, w - last[k].w + 6);
+  // Both curves run across ONE shared axis from the first week that has any exchange data up to the selected week (max 52 weeks), so each
+  // curve is drawn in full and nothing looks cut off. Weeks without exchanges are joined by the line (see joinGaps in the charts).
+  const first = Math.min(...all.filter(r => r.iso_week <= w && r.to_exchange > 0).map(r => r.iso_week), w);
+  n = Math.min(52, Math.max(n, w - first + 1));
   const weeks = weeksTo(w, n);
   const one = k => { const trend = weeks.map(x => rate(units[k].filter(r => r.iso_week === x))); return { trend, current: trend.at(-1), last: last[k] }; };
   return { labels: weeks.map(wl), nursery: one('nursery'), broodstock: one('broodstock') };

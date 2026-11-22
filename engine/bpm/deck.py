@@ -5,6 +5,7 @@ from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
 from pptx.util import Emu, Pt
+from pptx.oxml.ns import qn
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 def shape(slide, name, nth=0):
@@ -398,13 +399,19 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
     cd.add_series('PNS Exchange Rate', [v for _, v in pns]); cd.add_series('BS Exchange Rate', [v for _, v in bs])
     gf = ns.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(300000), Emu(900000), Emu(7600000), Emu(3600000), cd)
     ch = gf.chart; ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False
-    ch.has_title = False; ch.font.size = Pt(12)
+    dense = len(pns) > 16
+    ch.has_title = False; ch.font.size = Pt(8 if dense else 12)
     ch.category_axis.has_title = True; ch.category_axis.axis_title.text_frame.text = 'ISO week'; ch.value_axis.has_title = True; ch.value_axis.axis_title.text_frame.text = 'Exchanged / scheduled (%)'
+    cd_el = ch._chartSpace.chart                               # weeks without exchanges: join the points so each curve runs across unbroken
+    for e in cd_el.findall(qn('c:dispBlanksAs')): cd_el.remove(e)
+    db = cd_el.makeelement(qn('c:dispBlanksAs'), {'val': 'span'}); pv = cd_el.find(qn('c:plotVisOnly'))
+    (pv.addnext(db) if pv is not None else cd_el.append(db))
     va = ch.value_axis; va.minimum_scale = 0.5; va.maximum_scale = 1.1; va.tick_labels.number_format = '0%'; va.tick_labels.number_format_is_linked = False
     va.major_gridlines.format.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
     for se, rgb in zip(ch.plots[0].series, (RGBColor(0xBF, 0x90, 0x00), RGBColor(0x1E, 0x7B, 0x3A))):
         se.format.line.color.rgb = rgb; se.format.line.width = Pt(2.25); se.smooth = False
         se.marker.format.fill.solid(); se.marker.format.fill.fore_color.rgb = rgb; se.marker.format.line.color.rgb = rgb
+        if dense: se.marker.size = 4
     for k, (series, rgb, top) in enumerate(((pns, RGBColor(0xBF, 0x90, 0x00), 1500000), (bs, RGBColor(0x1E, 0x7B, 0x3A), 2150000))):
         ns.shapes._spTree.append(copy.deepcopy(protos['oval'])); ov = ns.shapes[-1]
         ov.left, ov.top = Emu(8050000), Emu(top)
