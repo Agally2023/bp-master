@@ -15,6 +15,21 @@ def warn(section, e):
     import sys, traceback
     traceback.print_exc(file=sys.stderr); WARNINGS.append(f'{section}: {type(e).__name__}: {e}'[:160])
 
+# A chart with no data points (e.g. no Day-3 recounts logged that week) makes python-pptx raise
+# "ValueError: chart data contains no categories" and used to abort the whole export.
+# Instead, drop the empty chart from the slide and report it through the X-Report-Warnings header.
+_replace_chart = deck.replace_chart
+
+def _safe_replace_chart(sh, cats, *args, **kwargs):
+    if not cats:
+        name = sh.name
+        sh._element.getparent().remove(sh._element)
+        WARNINGS.append(f'Chart {name} omitted: no data for this week')
+        return
+    return _replace_chart(sh, cats, *args, **kwargs)
+
+deck.replace_chart = _safe_replace_chart
+
 def build_week(T, year, week, out, template, stage_defs, overrides=None, images=None, exclude=(), ras='RAS2', photo_src=None):
     """T: {module_key: [row dicts]}; overrides: {section_key: comment text}; images: [{section_key, slot, kind, path}]; exclude: section keys to drop."""
     flip_prog = flip_tot = None; WARNINGS.clear()
@@ -30,13 +45,16 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:
         if T.get('biosecurity_audits'):
             bio = F.biosecurity(T['biosecurity_audits']); ov, cat = A.bio_weekly_overall(bio, year, week), A.bio_category_week(bio, year, week)
-            extra['bio'] = dict(overall=ov, cat=cat, band=A.rating_band); cm['biosecurity'] = C.biosecurity(ov, cat)
+            if ov:      # no scored biosecurity rows this year: leave the slide's chart out rather than crash
+                cm['biosecurity'] = C.biosecurity(ov, cat); extra['bio'] = dict(overall=ov, cat=cat, band=A.rating_band)
     except Exception as e: warn('Biosecurity', e)
     try:
         if T.get('ras_water_volume') or T.get('ras_parasite_prevalence'):
             w_, p_ = F.ras_water(T.get('ras_water_volume', [])), F.ras_prevalence(T.get('ras_parasite_prevalence', []))
             if not w_.empty and not p_.empty:
-                rows, r_, n_ = A.water_vs_prevalence(w_, p_, pd.Timestamp(mon), pd.Timestamp(sun)); extra['water'] = dict(rows=rows); cm['ras_water'] = C.ras_water(rows, r_, n_, week)
+                rows, r_, n_ = A.water_vs_prevalence(w_, p_, pd.Timestamp(mon), pd.Timestamp(sun))
+                if rows:    # no water/prevalence readings in this week: skip the slide's chart
+                    cm['ras_water'] = C.ras_water(rows, r_, n_, week); extra['water'] = dict(rows=rows)
     except Exception as e: warn('RAS water', e)
     try:
         if T.get('parasitology_samples'):
