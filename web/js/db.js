@@ -62,7 +62,11 @@ class SupabaseDB {
   _h(extra) { return { apikey: this.key, Authorization: 'Bearer ' + (this.tok || this.key), 'Content-Type': 'application/json', ...extra }; }
   async _f(path, opt = {}) {
     if (this.tok && Date.now() > this.exp - 60000 && this.refresh_token && !opt.noRefresh) await this._refresh();
-    const r = await fetch(this.base + path, { ...opt, headers: this._h(opt.headers) });
+    let r; const get = !opt.method || opt.method === 'GET';
+    for (let a = 0; ; a++) {   // a dropped connection ("Failed to fetch", common on mobile data) is retried for reads
+      try { r = await fetch(this.base + path, { ...opt, headers: this._h(opt.headers) }); break; }
+      catch (e) { if (!get || a >= 2) throw new Error('Could not reach the server. Check your connection and try again.'); await new Promise(res => setTimeout(res, 600 * (a + 1))); }
+    }
     if (!r.ok) { let m = r.statusText; try { const j = await r.json(); m = j.msg || j.message || j.error_description || j.error || m; } catch { } throw new Error(m || ('HTTP ' + r.status)); }
     return r;
   }
