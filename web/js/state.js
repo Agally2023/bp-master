@@ -6,7 +6,7 @@ export const modByKey = k => S.reg.modules.find(m => m.key === k);
 // Data Entry and Import need the full rows, so they reload a table that was loaded slim.
 export const SLIM = {
  "biosecurity_audits": "id,audit_date,location,category,metric,reported_pct,rating,rating_value,analysis_category,iso_year,iso_week,source,superseded",
- "bottom_rope_audits": "id,unit_type,audit_date,iso_year,iso_week,pond_id,hapa_no,top_position,middle_position,bottom_position,not_tied,missing_hook,total_ropes,missing_posts,wrong_position_ropes,non_conformances,hapa_failed,comment",
+ "bottom_rope_audits": "id,unit_type,audit_date,iso_year,iso_week,pond_id,hapa_no,top_position,middle_position,bottom_position,not_tied,missing_hook,total_ropes,missing_posts,wrong_position_ropes,non_conformances,hapa_failed,comment,sinkers",
  "broodstock_density": "id,date,pond,hapa_no,unit_id,female_count,male_count,female_biomass,male_biomass,target_biomass,target_stocking_density_range,sex_ratio_compliant,stocking_density_compliant,iso_year,iso_week",
  "day3_recounts": "id,stocking_date,unit,pond,hapa,batch_code,in_abw,in_fish_no,recount_date,iso_year,iso_week,recount_pcs,recount_abw,survival",
  "egg_separation_ratings": "id,date,incubation_rating,abp_rating,comments,iso_year,iso_week",

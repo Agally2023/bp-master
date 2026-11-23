@@ -210,6 +210,12 @@
      "req": false
     },
     {
+     "name": "sinkers",
+     "label": "Sinkers (no.)",
+     "type": "int",
+     "req": false
+    },
+    {
      "name": "missing_posts",
      "label": "Missing posts",
      "type": "int",
@@ -292,7 +298,8 @@
       "total_ropes": "total ropes",
       "missing_posts": "missing posts",
       "wrong_position_ropes": "wrong position",
-      "comment": "comment"
+      "comment": "comment",
+      "sinkers": "sinkers"
      }
     },
     {
@@ -313,7 +320,8 @@
       "total_ropes": "total ropes",
       "missing_posts": "missing posts",
       "wrong_position_ropes": "wrong position",
-      "comment": "comment"
+      "comment": "comment",
+      "sinkers": "sinkers"
      }
     }
    ]

@@ -125,6 +125,22 @@ export function broodDensity(data, y, w, n = 12) {
   const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return { w: weeks[i], v: a[i] }; return null; };
   return { week: w, labels: weeks.map(wl), ratio, density, target_density: DENS_TARGET, hapas: (by.get(w) || []).length, lastRatio: last(ratio), lastDensity: last(density), thisWeek: by.has(w) };
 }
+// Sinkers per hapa at the bottom rope check. Standard: broodstock 20, nursery 4 (maximum counted). Each hapa scores min(1, sinkers / standard);
+// the weekly curve is the average of those scores, so both units sit on one % axis. Only hapas with a recorded sinker count are included.
+export const SINKER_STD = { nursery: 4, broodstock: 20 };
+export function sinkers(data, y, w, n = 12) {
+  const all = inYear(data.bottom_rope_audits, y).filter(r => r.iso_week <= w && r.sinkers != null);
+  const first = all.length ? Math.min(...all.map(r => r.iso_week)) : w; n = Math.min(52, Math.max(n, w - first + 1));
+  const weeks = weeksTo(w, n), one = k => {
+    const rows = all.filter(r => String(r.unit_type).toLowerCase() === k), by = group(rows, r => r.iso_week), std = SINKER_STD[k];
+    const trend = weeks.map(x => { const g = by.get(x) || []; return g.length ? mean(g.map(r => Math.min(1, (+r.sinkers || 0) / std))) : null; });
+    const avg = weeks.map(x => { const g = by.get(x) || []; return g.length ? mean(g.map(r => Math.min(+r.sinkers || 0, std))) : null; });
+    const short = (by.get(w) || []).filter(r => (+r.sinkers || 0) < std).length;
+    let li = -1; for (let i = trend.length - 1; i >= 0; i--) if (trend[i] != null) { li = i; break; }
+    return { trend, avg, std, hapas: (by.get(w) || []).length, short, last: li >= 0 ? { w: weeks[li], v: trend[li], avg: avg[li] } : null };
+  };
+  return { labels: weeks.map(wl), nursery: one('nursery'), broodstock: one('broodstock') };
+}
 export const hapaUnits = [['nursery', 'Nursery (PNS)'], ['broodstock', 'Broodstock (BS)']];
 
 // Pond flipping is progressive. A pond stays "in progress" until its preparation is complete, and that is worked out automatically:
