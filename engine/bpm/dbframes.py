@@ -88,3 +88,7 @@ def hapa_exchange(rows, kind):
     d = d[d.kind == kind].copy()
     for c in ('to_exchange', 'exchanged'): d[c] = pd.to_numeric(d[c], errors='coerce').fillna(0)
     return _dates(d, 'scheduled', 'actual_date')
+
+
+def broodstock(rows):
+    return _dates(_df(rows, 'broodstock_density'), 'date')

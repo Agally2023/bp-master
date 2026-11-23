@@ -116,3 +116,13 @@ def hapa_exchange(pns, bs, week, last_pns=None, last_bs=None):
         if v is not None: return f"{name} was {f(v)}"
         return f"{name}: no exchanges scheduled in week {week} (last recorded week {last[0]}: {f(last[1])})" if last else f"{name}: no exchanges recorded"
     return [f"Hapa exchange compliance: {one(pns, last_pns, 'nursery (PNS)')}; {one(bs, last_bs, 'broodstock (BS) ponds')}.", "[Add comment]"]
+
+
+def brood(bd, week):
+    """Sex ratio (standard 3 females : 1 male) and stocking density (target kg/m2) for the broodstock hapas recounted."""
+    def one(name, last, this_week, fmt):
+        if last is None: return f"{name}: no recounts recorded"
+        return f"{name} {fmt(last[1])}" + ('' if this_week and last[0] == week else f" (no recounts in week {week}; last recorded week {last[0]})")
+    sr = one('sex ratio was', bd['last_ratio'], bd['this_week'], lambda v: f"{v:.2f}:1, {v / 3:.0%} of the 3:1 standard")
+    de = one('mean stocking density was', bd['last_density'], bd['this_week'], lambda v: f"{v:.2f} kg/m2, {v / bd['target_density']:.0%} of the {bd['target_density']:g} kg/m2 target")
+    return [f"Broodstock {sr}; {de}." + (f" {bd['hapas']} hapas were recounted this week." if bd['this_week'] else ''), "[Add comment]"]

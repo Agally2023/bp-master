@@ -6,7 +6,7 @@ import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
 import { weekPicker, table, band, bioTable } from './common.js';
 
-const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
+const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
 const CFG = window.BPM_CONFIG || {};
 const has = a => a.some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
@@ -32,11 +32,17 @@ const SECTIONS = [
   { key: 'flipping', title: 'Pond Flipping (ponds in progress)', slide: 10, an: (d, y, w) => A.flips(d, y, w),
     body: a => [table(A.flipHead, a.progress.slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
-  { key: 'bottom_rope', title: 'Bottom Rope Non-Conformance (Nursery & Broodstock)', slide: 12, an: (d, y, w) => A.bottomRope(d, y, w),
+  { key: 'prep_scoring', title: 'Pond Preparation Scoring', slide: 12, an: (d, y, w) => A.prepScoring(d, y, w, weekRange(y, w).sun.toISOString()),
+    body: a => [table(['Pond', 'Flipped', 'Preparation (%)', 'Water quality (%)', 'Post-stocking (%)', 'Overall (%)', 'Rating (0-5)'], a.slice(0, 12).map(r => [r.pond, fmtDate(r.flipping_date), ...[r.prep_score, r.wq_score, r.post_score, r.overall_score].map(v => v == null ? '–' : pc0(v)), r.rating ?? '–']), { empty: 'No ponds scored this month' })] },
+  { key: 'bottom_rope', title: 'Bottom Rope Non-Conformance (Nursery & Broodstock)', slide: 13, an: (d, y, w) => A.bottomRope(d, y, w),
     body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? barChart({ labels: a[k].labels, series: [{ name: '% hapas failed the audit', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: pc0, valueLabels: true, maxLabels: 30, h: 190, title: 'Bottom rope non-conformance: ' + k }) : null) },
-  { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 13, an: (d, y, w) => A.hapaExchange(d, y, w),
+  { key: 'hapa_exchange', title: 'Hapa Exchange Compliance', slide: 14, an: (d, y, w) => A.hapaExchange(d, y, w),
     body: a => [has(a.nursery.trend) || has(a.broodstock.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Nursery (PNS)', values: a.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: a.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, joinGaps: true, fmt: pc0, h: 200 }) : null,
       h('div', { class: 'note' }, [['Nursery (PNS)', a.nursery], ['Broodstock (BS)', a.broodstock]].map(([nm, u]) => u.current != null ? `${nm}: ${pc0(u.current)}` : u.last ? `${nm}: none this week (last: wk ${u.last.w}, ${pc0(u.last.v)})` : `${nm}: no data`).join('   ·   '))] },
+  { key: 'brood_density', title: 'Broodstock Stocking Density and Sex Ratio', slide: 15, an: (d, y, w) => A.broodDensity(d, y, w),
+    body: a => { const sr = a.ratio.map(v => v == null ? null : v / A.SEX_TARGET), de = a.density.map(v => v == null ? null : v / a.target_density), one = a.labels.map(() => 1);
+      return [has(sr) ? lineChart({ labels: a.labels, series: [{ name: 'Sex ratio (% of 3:1)', values: sr, color: '#0E812E' }, { name: 'Standard', values: one, color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Sex ratio (% of standard)', min: 0, joinGaps: true, fmt: pc0, h: 190 }) : null,
+        has(de) ? lineChart({ labels: a.labels, series: [{ name: 'Density (% of target)', values: de, color: '#CB8306' }, { name: 'Target', values: one, color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (% of target)', min: 0, joinGaps: true, fmt: pc0, h: 190 }) : null]; } },
 ];
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };

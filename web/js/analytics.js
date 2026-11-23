@@ -124,7 +124,7 @@ export function broodDensity(data, y, w, n = 12) {
   const density = weeks.map(x => { const g = (by.get(x) || []).filter(r => r.female_biomass != null || r.male_biomass != null); return g.length ? mean(g.map(dens)) : null; });
   const tgt = all.find(r => r.target_stocking_density_range)?.target_stocking_density_range;
   const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return { w: weeks[i], v: a[i] }; return null; };
-  return { labels: weeks.map(wl), ratio, density, target_density: tgt != null ? +tgt : 1.5, hapas: (by.get(w) || []).length, lastRatio: last(ratio), lastDensity: last(density), thisWeek: by.has(w) };
+  return { week: w, labels: weeks.map(wl), ratio, density, target_density: tgt != null ? +tgt : 1.5, hapas: (by.get(w) || []).length, lastRatio: last(ratio), lastDensity: last(density), thisWeek: by.has(w) };
 }
 export const hapaUnits = [['nursery', 'Nursery (PNS)'], ['broodstock', 'Broodstock (BS)']];
 
@@ -181,8 +181,18 @@ export function draftComment(key, a) {
       return t ? `${k}: total of ${t} hapas were audited; ${f} failed the audit metrics, a non-conformance of ${p(f / t)} (${f ? 'still fail' : 'meets the standard'}).` : `${k}: no bottom rope audits were recorded this week.`;
     }).join('\n');
     case 'flipping': return ['Nursery', 'Broodstock'].map(k => { const l = a.progress.filter(r => r.kind === k); return `${k}: ` + (l.length ? `${l.length} pond(s) in progress: ${l.map(r => `${r.pond} (${r.done} of ${r.total} stages${r.next ? ', next: ' + r.next : ''})`).join(', ')}.` : 'no pond in progress.'); }).concat(a.progress.some(r => r.over.length) ? ['Stages above expected days: ' + a.progress.flatMap(r => r.over.map(o => `${r.pond} ${o.stage} ${o.days}d (exp. ${o.exp}d)`)).slice(0, 6).join('; ') + '.'] : []).join('\n');
+    case 'brood_density': { const bd = a, f = (l, fn, nm) => l ? `${nm} ${fn(l.v)}${bd.thisWeek && l.w === bd.week ? '' : ` (no recounts this week; last recorded week ${l.w})`}` : `${nm}: no recounts recorded`;
+      return `Broodstock ${f(bd.lastRatio, v => `${v.toFixed(2)}:1, ${(v / SEX_TARGET * 100).toFixed(0)}% of the 3:1 standard`, 'sex ratio was')}; ${f(bd.lastDensity, v => `${v.toFixed(2)} kg/m2, ${(v / bd.target_density * 100).toFixed(0)}% of the ${bd.target_density} kg/m2 target`, 'mean stocking density was')}.${bd.thisWeek ? ` ${bd.hapas} hapas were recounted this week.` : ''}`; }
+    case 'prep_scoring': return a.length ? `${a.length} pond(s) flipped this month were scored; lowest overall: ${a[0].pond} at ${a[0].overall_score == null ? '-' : (a[0].overall_score * 100).toFixed(0) + '%'}.` : 'No ponds were scored this month.';
     default: return '';
   }
+}
+
+/** Pond preparation scoring: latest scored record per pond for ponds flipped in the month of the selected week, lowest overall first. */
+export function prepScoring(data, y, w, sunIso) {
+  const mon = String(sunIso).slice(0, 7), latest = new Map();
+  for (const r of data.pond_prep_scoring || []) if (String(r.flipping_date).slice(0, 7) === mon) { const c = latest.get(r.pond); if (!c || String(r.flipping_date) > String(c.flipping_date)) latest.set(r.pond, r); }
+  return [...latest.values()].sort((a, b) => (a.overall_score ?? 9) - (b.overall_score ?? 9));
 }
 
 // ---- picture grids (the report fills them automatically) ----

@@ -75,7 +75,7 @@ def add_table_logos(prs):
                 sh.width = Emu(x - int(prs.slide_width * 0.01) - sh.left); sh.text_frame.word_wrap = True
         pic = s.shapes.add_picture(str(ICON), Emu(x), Emu(y), Emu(side), Emu(side)); pic.name = 'VF Logo (table)'
 
-def add_prep_slide(out, rows, month, anchor='flip'):
+def add_prep_slide(out, rows, month, anchor='flip', note=None):
     """Native "Pond Preparation Scoring" table slide, placed after the pond-flipping slides. rows: dicts from bpm_pond_prep_scoring."""
     from . import deck
     if not rows: return
@@ -104,7 +104,42 @@ def add_prep_slide(out, rows, month, anchor='flip'):
                [8, 10, 10, 10, 10, 10, 9, 8, 25], deck.BLUE_DARK, font=9, fill_fn=fill)
     note = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * 0.88)), Emu(int(W * 0.92)), Emu(int(H * 0.06)))
     note.text_frame.word_wrap = True; r = note.text_frame.paragraphs[0].add_run()
-    r.text = f'Ponds flipped in {month}, lowest overall score first. Overall = average of preparation (stage KPIs met / 5) and post-stocking results.'; r.font.size = Pt(10); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+    r.text = note or f'Ponds flipped in {month}, lowest overall score first. Overall = average of preparation (stage KPIs met / 5) and post-stocking results.'; r.font.size = Pt(10); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+    move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
+
+def add_brood_slide(out, bd, lines, anchor='hapa exchange'):
+    """Native slide: broodstock sex ratio (% of the 3:1 standard) and stocking density (% of target) by week, with the comment underneath."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+    prs = Presentation(out)
+    last = max((i for i, s in enumerate(prs.slides) if anchor in _texts(s).lower()), default=len(prs.slides) - 1)
+    s = prs.slides.add_slide(prs.slides[last].slide_layout)
+    title = 'Broodstock Stocking Density and Sex Ratio'
+    if s.shapes.title is not None: s.shapes.title.text = title
+    else:
+        tb = s.shapes.add_textbox(Emu(int(prs.slide_width * 0.04)), Emu(int(prs.slide_height * 0.03)), Emu(int(prs.slide_width * 0.8)), Emu(int(prs.slide_height * 0.09)))
+        r = tb.text_frame.paragraphs[0].add_run(); r.text = title; r.font.size = Pt(28); r.font.bold = True; r.font.color.rgb = RGBColor(0x0E, 0x81, 0x2E)
+    for ph in list(s.placeholders):
+        if ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
+            ph._element.getparent().remove(ph._element)
+    W, H = prs.slide_width, prs.slide_height; cats = [f' Wk {w} ' for w in bd['weeks']]
+    def chart(x, name, vals, color, tname, ytitle):
+        cd = CategoryChartData(); cd.categories = cats; cd.add_series(name, vals); cd.add_series(tname, [1.0] * len(cats))
+        gf = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(x), Emu(int(H * 0.15)), Emu(int(W * 0.45)), Emu(int(H * 0.50)), cd); ch = gf.chart
+        ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False
+        va = ch.value_axis; va.minimum_scale = 0; va.tick_labels.number_format = '0%'; va.tick_labels.number_format_is_linked = False; va.has_major_gridlines = True
+        va.has_title = True; va.axis_title.text_frame.text = ytitle; ch.category_axis.has_title = True; ch.category_axis.axis_title.text_frame.text = 'ISO week'
+        for se, col in zip(ch.plots[0].series, (color, RGBColor(0xC0, 0x39, 0x2B))):
+            se.format.line.color.rgb = col; se.format.line.width = Pt(2.25); se.smooth = False
+            se.marker.format.fill.solid(); se.marker.format.fill.fore_color.rgb = col
+        ch.plots[0].series[1].marker.style = None
+        ch.has_title = False
+    sr = [None if v is None else v / 3.0 for v in bd['ratio']]; de = [None if v is None else v / bd['target_density'] for v in bd['density']]
+    chart(int(W * 0.03), 'Sex ratio (% of 3:1)', sr, RGBColor(0x0E, 0x81, 0x2E), 'Standard (3:1 = 100%)', 'Sex ratio (% of standard)')
+    chart(int(W * 0.52), 'Stocking density (% of target)', de, RGBColor(0xCB, 0x83, 0x06), f"Target ({bd['target_density']:g} kg/m2 = 100%)", 'Stocking density (% of target)')
+    box = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * 0.69)), Emu(int(W * 0.92)), Emu(int(H * 0.2))); tf = box.text_frame; tf.word_wrap = True
+    for i, l in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph(); r = p.add_run(); r.text = l; r.font.size = Pt(12); r.font.name = 'Calibri'; r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
     move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
 
 def no_red_bars(prs):

@@ -18,6 +18,7 @@ export async function render({ view, ctx }) {
     if (S.failed.size) body.append(h('div', { class: 'note stale' }, 'Some data could not be loaded (' + [...S.failed.keys()].join(', ') + '). Reload the page to try again.'));
     if (!KEYS.some(k => (data[k] || []).length)) { body.append(card('No data yet', h('p', {}, 'Open ', h('b', {}, 'Data Entry'), ' to type records or import your Excel audit files. The dashboard fills in automatically.'))); return; }
     const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), wat = A.water(data, y, w), d3 = A.day3(data, y, w), st = A.stocking(data, y, w), tf = A.transfers(data, y, w), eg = A.eggs(data, y, w), br = A.bottomRope(data, y, w), hx = A.hapaExchange(data, y, w), fl = A.flips(data, y, w);
+    const kpiSR = kpi('Broodstock sex ratio', '…', { cls: 'cyan', note: 'loading' }), kpiSD = kpi('Broodstock stocking density', '…', { cls: 'gold', note: 'loading' });
     body.append(h('div', { class: 'kpis' },
       kpi('Workstation compliance', pct(ws.current, 1), { note: ws.nc.length + ' non-compliant audit(s)', good: ws.nc.length === 0 }),
       kpi('Biosecurity score', pct(bio.current, 1), { cls: 'gold' }),
@@ -25,7 +26,8 @@ export async function render({ view, ctx }) {
       kpi('Parasite prevalence', pct(par.prevalence, 1), { note: par.intensity != null ? 'intensity ' + num(par.intensity, 1) : '', cls: 'red' }),
       kpi('Egg separation (ABP)', eg.current == null ? '–' : eg.current.toFixed(2), { note: eg.low.length + ' jar(s) at 0–2 stars' }),
       kpi('Hapa exchange: Nursery', pct(hx.nursery.current, 1), { note: hx.nursery.current == null && hx.nursery.last ? `last: wk ${hx.nursery.last.w}, ${pct(hx.nursery.last.v, 1)}` : '', cls: 'gold' }),
-      kpi('Hapa exchange: Broodstock', pct(hx.broodstock.current, 1), { note: hx.broodstock.current == null && hx.broodstock.last ? `last: wk ${hx.broodstock.last.w}, ${pct(hx.broodstock.last.v, 1)}` : '', cls: 'gold' })));
+      kpi('Hapa exchange: Broodstock', pct(hx.broodstock.current, 1), { note: hx.broodstock.current == null && hx.broodstock.last ? `last: wk ${hx.broodstock.last.w}, ${pct(hx.broodstock.last.v, 1)}` : '', cls: 'gold' }),
+      kpiSR, kpiSD));
     const g = (...k) => h('div', { class: 'grid g2 mt' }, ...k);
     // 1 workstation
     body.append(g(card('Incubation workstation compliance trend', has(ws.trend) ? lineChart({ labels: ws.labels, series: [{ name: 'Compliance', values: ws.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', target: 1, targetLabel: '100%', valueLabels: true }) : noData(),
@@ -83,7 +85,10 @@ export async function render({ view, ctx }) {
         : noData())); };
     const holder = h('div', {}, g(card('Broodstock sex ratio and stocking density', h('div', { class: 'note' }, 'Loading broodstock recounts…'))));   // loaded after the page appears so the dashboard opens fast
     body.append(holder); const tok = body._tok = (body._tok || 0) + 1;
-    ensure(['broodstock_density'], S.week.y).then(() => { if (body._tok === tok) holder.replaceChildren(bdCards(A.broodDensity(data, y, w))); });
+    ensure(['broodstock_density'], S.week.y).then(() => { if (body._tok !== tok) return; const bd = A.broodDensity(data, y, w); holder.replaceChildren(bdCards(bd));
+      const old = (l, f, hit) => l && !(bd.thisWeek && l.w === w) ? `last recount: wk ${l.w}` : l ? `${bd.hapas} hapas recounted` : 'no recounts';
+      kpiSR.replaceWith(kpi('Broodstock sex ratio', bd.lastRatio ? bd.lastRatio.v.toFixed(2) + ':1' : '–', { cls: 'cyan', note: bd.lastRatio ? `${pct(bd.lastRatio.v / A.SEX_TARGET, 0)} of 3:1 · ${old(bd.lastRatio)}` : 'no recounts', good: bd.lastRatio ? Math.abs(bd.lastRatio.v / A.SEX_TARGET - 1) <= 0.1 : null }));
+      kpiSD.replaceWith(kpi('Broodstock stocking density', bd.lastDensity ? bd.lastDensity.v.toFixed(2) + ' kg/m²' : '–', { cls: 'gold', note: bd.lastDensity ? `${pct(bd.lastDensity.v / bd.target_density, 0)} of target · ${old(bd.lastDensity)}` : 'no recounts', good: bd.lastDensity ? Math.abs(bd.lastDensity.v / bd.target_density - 1) <= 0.1 : null })); });
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
   };

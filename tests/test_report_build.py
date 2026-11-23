@@ -40,3 +40,19 @@ def test_fonts_are_calibri_12_dark():
             if getattr(sh, 'has_chart', False) and sh.has_chart:
                 x = sh.chart._chartSpace.xml
                 assert 'Calibri' in x and '262626' in x and not re.search(r'sz="(?!1200)\d+"', x)
+
+
+def _titles(out):
+    return [sh.text_frame.text for sl in Presentation(out).slides for sh in sl.shapes if sh.has_text_frame]
+
+def test_broodstock_slide_present_and_excludable():
+    out, w = build(T0, 47); assert not w
+    assert any('Broodstock Stocking Density and Sex Ratio' in t for t in _titles(out))
+    out2 = os.path.join(tempfile.mkdtemp(), 'r.pptx')
+    pipeline.build_week(copy.deepcopy(T0), 2026, 47, out2, server.TEMPLATE, server.STAGE_DEFS, {}, [], ['brood_density', 'prep_scoring'], 'RAS2')
+    assert not any('Broodstock Stocking Density and Sex Ratio' in t for t in _titles(out2))
+
+def test_broodstock_comment_override():
+    out = os.path.join(tempfile.mkdtemp(), 'r.pptx')
+    pipeline.build_week(copy.deepcopy(T0), 2026, 47, out, server.TEMPLATE, server.STAGE_DEFS, {'brood_density': 'My custom broodstock note'}, [], [], 'RAS2')
+    assert any('My custom broodstock note' in t for t in _titles(out))

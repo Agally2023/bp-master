@@ -6,7 +6,7 @@ from . import analytics as A, comments as C, deck, dbframes as F, media
 
 COMMENT_MAP = {'workstation': ['workstation'], 'biosecurity': ['biosecurity'], 'parasitology': ['parasitology'], 'ras_water': ['ras_water'], 'day3': ['day3'],
                'stocking': ['stocking'], 'transfers': ['transfers'], 'eggs': ['egg'], 'flipping': ['flipping'], 'bottom_rope': ['bottom_rope_nursery', 'bottom_rope_broodstock'],
-               'hapa_exchange': ['hapa_exchange']}
+               'hapa_exchange': ['hapa_exchange'], 'brood_density': ['brood_density']}
 
 WARNINGS = []
 
@@ -102,6 +102,11 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
             lp = A.hapa_last_recorded(hn, year, week) if not hn.empty else None; lb = A.hapa_last_recorded(hb, year, week) if not hb.empty else None
             extra['hapa'] = dict(pns=pns, bs=bs, last_pns=lp, last_bs=lb); cm['hapa_exchange'] = C.hapa_exchange(pns, bs, week, lp, lb)
     except Exception as e: warn('Hapa exchange', e)
+    brood = None
+    try:
+        if T.get('broodstock_density'):
+            brood = A.brood_density(F.broodstock(T['broodstock_density']), year, week); cm['brood_density'] = C.brood(brood, week)
+    except Exception as e: warn('Broodstock density and sex ratio', e)
     for sec, text in (overrides or {}).items():                  # comments edited by people replace the drafts
         lines = [l.strip() for l in (text or '').split('\n') if l.strip()]
         for k in COMMENT_MAP.get(sec, []):
@@ -116,8 +121,12 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
         latest = {}
         for r in T['pond_prep_scoring']:
             if str(r.get('flipping_date', ''))[:7] == sun.strftime('%Y-%m') and (r['pond'] not in latest or str(r['flipping_date']) > str(latest[r['pond']]['flipping_date'])): latest[r['pond']] = r
-        try: media.add_prep_slide(out, list(latest.values()), sun.strftime('%B %Y'))
+        try:
+            if 'prep_scoring' not in exclude: media.add_prep_slide(out, list(latest.values()), sun.strftime('%B %Y'), note=(overrides or {}).get('prep_scoring') or None)
         except Exception as e: warn('Pond preparation scoring', e)
+    try:
+        if brood is not None and 'brood_density' not in exclude: media.add_brood_slide(out, brood, cm['brood_density'])
+    except Exception as e: warn('Broodstock slide', e)
     images = list(images or [])
     if photo_src:
         try: images += _auto_photos(photo_src, images, flip_prog, flip_tot)
