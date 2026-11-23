@@ -12,6 +12,44 @@ def shape(slide, name, nth=0):
     hits = [s for s in slide.shapes if s.name == name]
     return hits[nth]
 
+COMMENT_PT = 12                      # report body text (comments, chart text): Calibri 12, dark grey
+DARK = '262626'
+
+def _style_rpr(rpr, pt):
+    """Calibri, <pt> pt, dark grey on an a:rPr / a:defRPr element (child order: ln, fill, ..., latin)."""
+    from lxml import etree
+    A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+    rpr.set('sz', str(int(pt * 100)))
+    for tag in ('solidFill', 'gradFill', 'noFill', 'latin', 'ea', 'cs'):
+        for e in rpr.findall(A + tag): rpr.remove(e)
+    fill = etree.Element(A + 'solidFill'); etree.SubElement(fill, A + 'srgbClr').set('val', DARK)
+    lat = etree.Element(A + 'latin'); lat.set('typeface', 'Calibri')
+    ln = rpr.find(A + 'ln'); at = (list(rpr).index(ln) + 1) if ln is not None else 0
+    rpr.insert(at, fill); rpr.insert(at + 1, lat)
+
+def style_chart_text(chart, pt=COMMENT_PT):
+    """Every piece of chart text (title, axes, tick labels, data labels, legend) -> Calibri 12 dark."""
+    from lxml import etree
+    A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'; C = '{http://schemas.openxmlformats.org/drawingml/2006/chart}'
+    cs = chart._chartSpace
+    for e in cs.iter(A + 'rPr', A + 'defRPr'): _style_rpr(e, pt)
+    for e in cs.iter(A + 'endParaRPr'): e.set('sz', str(int(pt * 100)))
+    for tx in cs.iter(C + 'txPr'):                       # txPr blocks that carry no run properties yet
+        for p in tx.findall(A + 'p'):
+            ppr = p.find(A + 'pPr')
+            if ppr is None: ppr = etree.Element(A + 'pPr'); p.insert(0, ppr)
+            d = ppr.find(A + 'defRPr')
+            if d is None: d = etree.SubElement(ppr, A + 'defRPr')
+            _style_rpr(d, pt)
+    chart.font.size = Pt(pt); chart.font.name = 'Calibri'; chart.font.color.rgb = RGBColor.from_string(DARK)
+
+def apply_typography(prs):
+    for sl in prs.slides:
+        for sh in sl.shapes:
+            if getattr(sh, 'has_chart', False) and sh.has_chart:
+                try: style_chart_text(sh.chart)
+                except Exception as e: print('typography:', e)
+
 def set_lines(sh, lines, size=None):
     """Replace text keeping the first paragraph's formatting (bullets, font, size)."""
     tf = sh.text_frame
@@ -26,13 +64,12 @@ def set_lines(sh, lines, size=None):
         runs = p.findall('{http://schemas.openxmlformats.org/drawingml/2006/main}r')
         if runs:
             runs[0].find('{http://schemas.openxmlformats.org/drawingml/2006/main}t').text = line
-            if size:
-                A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
-                rpr = runs[0].find(A + 'rPr')
-                if rpr is None:
-                    from lxml import etree
-                    rpr = etree.SubElement(runs[0], A + 'rPr'); runs[0].remove(rpr); runs[0].insert(0, rpr)
-                rpr.set('sz', str(int(size * 100)))
+            A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+            rpr = runs[0].find(A + 'rPr')
+            if rpr is None:
+                from lxml import etree
+                rpr = etree.SubElement(runs[0], A + 'rPr'); runs[0].remove(rpr); runs[0].insert(0, rpr)
+            _style_rpr(rpr, COMMENT_PT)
         body.append(p)
 
 def _detach_external(chart):
@@ -214,6 +251,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
         lst = prs.slides._sldIdLst; items = list(lst)
         lst.remove(items[-1]); lst.insert(len(items) - 2, items[-1])
     prs.core_properties.title = f'VF BP Week {week} Report'
+    apply_typography(prs)
     prs.save(out)
 
 
