@@ -112,6 +112,20 @@ export function hapaExchange(data, y, w, n = 12) {
   const one = k => { const trend = weeks.map(x => rate(units[k].filter(r => r.iso_week === x))); return { trend, current: trend.at(-1), last: last[k] }; };
   return { labels: weeks.map(wl), nursery: one('nursery'), broodstock: one('broodstock') };
 }
+// Broodstock stocking density & sex ratio, weekly: pooled F:M ratio (all hapas recounted that week) and mean density (kg/m2 = total biomass / hapa area,
+// area = target biomass / target density = 80 m2). Weeks without recounts are joined by the line. Standard sex ratio = 3 females : 1 male.
+export const SEX_TARGET = 3;
+export function broodDensity(data, y, w, n = 12) {
+  const all = inYear(data.broodstock_density, y).filter(r => r.iso_week <= w);
+  const dens = r => { const a = r.target_biomass && r.target_stocking_density_range ? r.target_biomass / r.target_stocking_density_range : 80; return ((+r.female_biomass || 0) + (+r.male_biomass || 0)) / a; };
+  const first = all.length ? Math.min(...all.map(r => r.iso_week)) : w; n = Math.min(52, Math.max(n, w - first + 1));
+  const weeks = weeksTo(w, n), by = group(all, r => r.iso_week);
+  const ratio = weeks.map(x => { const g = by.get(x) || []; const m = sum(g.map(r => +r.male_count || 0)); return g.length && m ? sum(g.map(r => +r.female_count || 0)) / m : null; });
+  const density = weeks.map(x => { const g = (by.get(x) || []).filter(r => r.female_biomass != null || r.male_biomass != null); return g.length ? mean(g.map(dens)) : null; });
+  const tgt = all.find(r => r.target_stocking_density_range)?.target_stocking_density_range;
+  const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return { w: weeks[i], v: a[i] }; return null; };
+  return { labels: weeks.map(wl), ratio, density, target_density: tgt != null ? +tgt : 1.5, hapas: (by.get(w) || []).length, lastRatio: last(ratio), lastDensity: last(density), thisWeek: by.has(w) };
+}
 export const hapaUnits = [['nursery', 'Nursery (PNS)'], ['broodstock', 'Broodstock (BS)']];
 
 // Pond flipping is progressive. A pond stays "in progress" until its preparation is complete, and that is worked out automatically:

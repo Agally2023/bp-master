@@ -6,7 +6,7 @@ const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate(
 import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
-const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
+const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density'];
 const has = a => a.some(v => v != null);
 
 export async function render({ view, ctx }) {
@@ -16,7 +16,7 @@ export async function render({ view, ctx }) {
     await ensure(KEYS, S.week.y - 1);
     clear(body); const { y, w } = S.week;
     if (!KEYS.some(k => (data[k] || []).length)) { body.append(card('No data yet', h('p', {}, 'Open ', h('b', {}, 'Data Entry'), ' to type records or import your Excel audit files. The dashboard fills in automatically.'))); return; }
-    const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), wat = A.water(data, y, w), d3 = A.day3(data, y, w), st = A.stocking(data, y, w), tf = A.transfers(data, y, w), eg = A.eggs(data, y, w), br = A.bottomRope(data, y, w), hx = A.hapaExchange(data, y, w), fl = A.flips(data, y, w);
+    const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), wat = A.water(data, y, w), d3 = A.day3(data, y, w), st = A.stocking(data, y, w), tf = A.transfers(data, y, w), eg = A.eggs(data, y, w), br = A.bottomRope(data, y, w), hx = A.hapaExchange(data, y, w), bd = A.broodDensity(data, y, w), fl = A.flips(data, y, w);
     body.append(h('div', { class: 'kpis' },
       kpi('Workstation compliance', pct(ws.current, 1), { note: ws.nc.length + ' non-compliant audit(s)', good: ws.nc.length === 0 }),
       kpi('Biosecurity score', pct(bio.current, 1), { cls: 'gold' }),
@@ -70,6 +70,13 @@ export async function render({ view, ctx }) {
       card('Hapa exchange compliance (exchanged / scheduled, %)', has(hx.nursery.trend) || has(hx.broodstock.trend)
         ? h('div', {}, lineChart({ labels: hx.labels, series: [{ name: 'Nursery (PNS)', values: hx.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: hx.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: hx.labels.length <= 14 }),
           ...[['Nursery (PNS)', hx.nursery], ['Broodstock (BS)', hx.broodstock]].map(([nm, u]) => h('div', { class: 'note' }, u.current != null ? `${nm}: ${pct(u.current, 1)} this week` : u.last ? `${nm}: no exchanges scheduled this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)}` : `${nm}: no exchanges recorded`)))
+        : noData())));
+    const bdNote = (nm, l, f) => h('div', { class: 'note' }, bd.thisWeek && l && l.w === w ? `${nm}: ${f(l.v)} this week (${bd.hapas} hapas recounted)` : l ? `${nm}: no recounts this week; last recorded week ${l.w} at ${f(l.v)}` : `${nm}: no data`);
+    body.append(g(card('Broodstock sex ratio (females : males, standard 3:1)', has(bd.ratio)
+        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'F:M ratio', values: bd.ratio, color: '#0E812E' }, { name: 'Standard (3:1)', values: bd.labels.map(() => A.SEX_TARGET), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Females per male', min: 0, max: Math.max(4, Math.ceil(Math.max(...bd.ratio.filter(v => v != null)) + 0.5)), joinGaps: true, fmt: v => v.toFixed(1) + ':1', valueLabels: bd.labels.length <= 14 }), bdNote('Sex ratio', bd.lastRatio, v => v.toFixed(2) + ':1'))
+        : noData()),
+      card('Broodstock stocking density (kg/m²)', has(bd.density)
+        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'Mean density', values: bd.density, color: '#CB8306' }, { name: `Target (${bd.target_density} kg/m²)`, values: bd.labels.map(() => bd.target_density), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (kg/m²)', min: 0, max: Math.max(2, Math.ceil(Math.max(...bd.density.filter(v => v != null)) * 10) / 10 + 0.2), joinGaps: true, fmt: v => v.toFixed(2), valueLabels: bd.labels.length <= 14 }), bdNote('Mean density', bd.lastDensity, v => v.toFixed(2) + ' kg/m²'))
         : noData())));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
