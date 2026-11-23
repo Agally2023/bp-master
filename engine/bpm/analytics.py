@@ -247,14 +247,14 @@ def pick_pond_photos(photos, progress, totals):
 SEX_TARGET = 3.0
 
 def brood_density(bs, year, week, n=12):
-    """Weekly pooled F:M ratio and mean density (kg/m2 = total biomass / hapa area; area = target biomass / target density, default 80 m2)."""
+    """Weekly pooled F:M ratio and mean density (kg/m2 = total biomass / hapa area; hapa area 80 m2; standard density 1.5 kg/m2)."""
     cols = ['iso_year', 'iso_week', 'female_count', 'male_count', 'female_biomass', 'male_biomass', 'target_biomass', 'target_stocking_density_range']
     d = bs[(bs.iso_year == year) & (bs.iso_week <= week)].copy() if len(bs) else pd.DataFrame(columns=cols)
     for c in cols[2:]: d[c] = pd.to_numeric(d[c], errors='coerce')
     first = int(d.iso_week.min()) if len(d) else week; n = min(52, max(n, week - first + 1))
     weeks = list(range(max(1, week - n + 1), week + 1))
     def dens(r):
-        area = r.target_biomass / r.target_stocking_density_range if r.target_biomass and r.target_stocking_density_range else 80
+        area = 80.0   # standard hapa area (120 kg target / 1.5 kg/m2)
         return ((r.female_biomass if r.female_biomass == r.female_biomass else 0) + (r.male_biomass if r.male_biomass == r.male_biomass else 0)) / area
     ratio, density = [], []
     for w in weeks:
@@ -262,7 +262,6 @@ def brood_density(bs, year, week, n=12):
         ratio.append(float(g.female_count.fillna(0).sum() / m) if len(g) and m else None)
         gb = g[g.female_biomass.notna() | g.male_biomass.notna()]
         density.append(float(gb.apply(dens, axis=1).mean()) if len(gb) else None)
-    tg = d.target_stocking_density_range.dropna()
     last = lambda s: next(((weeks[i], s[i]) for i in range(len(s) - 1, -1, -1) if s[i] is not None), None)
-    return dict(weeks=weeks, ratio=ratio, density=density, target_density=float(tg.iloc[0]) if len(tg) else 1.5, hapas=int((d.iso_week == week).sum()),
+    return dict(weeks=weeks, ratio=ratio, density=density, target_density=1.5, hapas=int((d.iso_week == week).sum()),
                 last_ratio=last(ratio), last_density=last(density), this_week=bool((d.iso_week == week).any()))
