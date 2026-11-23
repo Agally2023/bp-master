@@ -73,12 +73,14 @@ export async function render({ view, ctx }) {
           ...[['Nursery (PNS)', hx.nursery], ['Broodstock (BS)', hx.broodstock]].map(([nm, u]) => h('div', { class: 'note' }, u.current != null ? `${nm}: ${pct(u.current, 1)} this week` : u.last ? `${nm}: no exchanges scheduled this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)}` : `${nm}: no exchanges recorded`)))
         : noData())));
     const bdNote = (bd, nm, l, f) => h('div', { class: 'note' }, bd.thisWeek && l && l.w === w ? `${nm}: ${f(l.v)} this week (${bd.hapas} hapas recounted)` : l ? `${nm}: no recounts this week; last recorded week ${l.w} at ${f(l.v)}` : `${nm}: no data`);
-    const bdCards = bd => g(card('Broodstock sex ratio (females : males, standard 3:1)', has(bd.ratio)
-        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'F:M ratio', values: bd.ratio, color: '#0E812E' }, { name: 'Standard (3:1)', values: bd.labels.map(() => A.SEX_TARGET), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Females per male', min: 0, max: Math.max(4, Math.ceil(Math.max(...bd.ratio.filter(v => v != null)) + 0.5)), joinGaps: true, fmt: v => v.toFixed(1) + ':1', valueLabels: bd.labels.length <= 14 }), bdNote(bd, 'Sex ratio', bd.lastRatio, v => v.toFixed(2) + ':1'))
+    const bdCards = bd => { const P = a => a.map(v => v == null ? null : v / 1), top = a => Math.max(1.2, Math.ceil(Math.max(...a.filter(v => v != null)) * 10) / 10 + 0.1);
+      const sr = bd.ratio.map(v => v == null ? null : v / A.SEX_TARGET), de = bd.density.map(v => v == null ? null : v / bd.target_density);
+      return g(card('Broodstock sex ratio (% of the 3:1 standard)', has(sr)
+        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'Sex ratio (% of 3:1)', values: sr, color: '#0E812E' }, { name: 'Standard (3:1 = 100%)', values: bd.labels.map(() => 1), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Sex ratio (% of standard)', min: 0.5, max: top(sr), joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: bd.labels.length <= 14 }), bdNote(bd, 'Sex ratio', bd.lastRatio, v => pct(v / A.SEX_TARGET, 1) + ' of standard (' + v.toFixed(2) + ':1)'))
         : noData()),
-      card('Broodstock stocking density (kg/m²)', has(bd.density)
-        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'Mean density', values: bd.density, color: '#CB8306' }, { name: `Target (${bd.target_density} kg/m²)`, values: bd.labels.map(() => bd.target_density), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (kg/m²)', min: 0, max: Math.max(2, Math.ceil(Math.max(...bd.density.filter(v => v != null)) * 10) / 10 + 0.2), joinGaps: true, fmt: v => v.toFixed(2), valueLabels: bd.labels.length <= 14 }), bdNote(bd, 'Mean density', bd.lastDensity, v => v.toFixed(2) + ' kg/m²'))
-        : noData()));
+      card('Broodstock stocking density (% of target)', has(de)
+        ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'Stocking density (% of target)', values: de, color: '#CB8306' }, { name: `Target (${bd.target_density} kg/m² = 100%)`, values: bd.labels.map(() => 1), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (% of target)', min: 0, max: top(de), joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: bd.labels.length <= 14 }), bdNote(bd, 'Stocking density', bd.lastDensity, v => pct(v / bd.target_density, 1) + ' of target (' + v.toFixed(2) + ' kg/m²)'))
+        : noData())); };
     const holder = h('div', {}, g(card('Broodstock sex ratio and stocking density', h('div', { class: 'note' }, 'Loading broodstock recounts…'))));   // loaded after the page appears so the dashboard opens fast
     body.append(holder); const tok = body._tok = (body._tok || 0) + 1;
     ensure(['broodstock_density'], S.week.y).then(() => { if (body._tok === tok) holder.replaceChildren(bdCards(A.broodDensity(data, y, w))); });
