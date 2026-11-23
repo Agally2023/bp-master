@@ -92,6 +92,7 @@ export async function render({ view, ctx }) {
     body.append(card('Sinkers per hapa (% of standard: broodstock 20, nursery 4)', has(sk.nursery.trend) || has(sk.broodstock.trend)
       ? h('div', {}, lineChart({ labels: sk.labels, series: [{ name: 'Nursery (PNS), 4 sinkers', values: sk.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS), 20 sinkers', values: sk.broodstock.trend, color: '#0E812E' }, { name: 'Standard (100%)', values: sk.labels.map(() => 1), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Sinkers vs standard (%)', min: 0, max: 1.1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: sk.labels.length <= 14 }), skNote('Nursery', sk.nursery), skNote('Broodstock', sk.broodstock))
       : noData()));
+    body.append(h('div', { class: 'note', style: 'text-align:right;opacity:.6' }, 'App version: 23 Nov 2026, sinkers'));
     const holder = h('div', {}, g(card('Broodstock sex ratio and stocking density', h('div', { class: 'note' }, 'Loading broodstock recounts…'))));   // loaded after the page appears so the dashboard opens fast
     body.append(holder); const tok = body._tok = (body._tok || 0) + 1;
     ensure(['broodstock_density'], S.week.y, true).then(() => { if (body._tok !== tok) return; const bd = A.broodDensity(data, y, w); holder.replaceChildren(bdCards(bd));
