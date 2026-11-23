@@ -19,6 +19,8 @@ export async function render({ view, ctx }) {
     if (S.failed.size) body.append(h('div', { class: 'note stale' }, 'Some data could not be loaded (' + [...S.failed.keys()].join(', ') + '). Reload the page to try again.'));
     if (!KEYS.some(k => (data[k] || []).length)) { body.append(card('No data yet', h('p', {}, 'Open ', h('b', {}, 'Data Entry'), ' to type records or import your Excel audit files. The dashboard fills in automatically.'))); return; }
     const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), wat = A.water(data, y, w), d3 = A.day3(data, y, w), st = A.stocking(data, y, w), tf = A.transfers(data, y, w), eg = A.eggs(data, y, w), br = A.bottomRope(data, y, w), hx = A.hapaExchange(data, y, w), fl = A.flips(data, y, w);
+    const sk = A.sinkers(data, y, w);
+    const skKpi = (nm, u) => kpi('Sinkers: ' + nm, u.last ? pct(u.last.v, 1) : '–', { cls: 'cyan', note: u.last ? (u.last.w === w ? `avg ${u.last.avg.toFixed(1)} of ${u.std} sinkers/hapa` : `last: wk ${u.last.w}, avg ${u.last.avg.toFixed(1)} of ${u.std}`) : 'no counts recorded' });
     const kpiSR = kpi('Broodstock sex ratio', '…', { cls: 'cyan', note: 'loading' }), kpiSD = kpi('Broodstock stocking density', '…', { cls: 'gold', note: 'loading' });
     body.append(h('div', { class: 'kpis' },
       kpi('Workstation compliance', pct(ws.current, 1), { note: ws.nc.length + ' non-compliant audit(s)', good: ws.nc.length === 0 }),
@@ -28,6 +30,8 @@ export async function render({ view, ctx }) {
       kpi('Egg separation (ABP)', eg.current == null ? '–' : eg.current.toFixed(2), { note: eg.low.length + ' jar(s) at 0–2 stars' }),
       kpi('Hapa exchange: Nursery', pct(hx.nursery.current, 1), { note: hx.nursery.current == null && hx.nursery.last ? `last: wk ${hx.nursery.last.w}, ${pct(hx.nursery.last.v, 1)}` : '', cls: 'gold' }),
       kpi('Hapa exchange: Broodstock', pct(hx.broodstock.current, 1), { note: hx.broodstock.current == null && hx.broodstock.last ? `last: wk ${hx.broodstock.last.w}, ${pct(hx.broodstock.last.v, 1)}` : '', cls: 'gold' }),
+      skKpi('Nursery (4)', sk.nursery),
+      skKpi('Broodstock (20)', sk.broodstock),
       kpiSR, kpiSD));
     const g = (...k) => h('div', { class: 'grid g2 mt' }, ...k);
     // 1 workstation
@@ -84,7 +88,7 @@ export async function render({ view, ctx }) {
       card('Broodstock stocking density (% of target)', has(de)
         ? h('div', {}, lineChart({ labels: bd.labels, series: [{ name: 'Stocking density (% of target)', values: de, color: '#CB8306' }, { name: `Target (${bd.target_density} kg/m² = 100%)`, values: bd.labels.map(() => 1), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (% of target)', min: 0, max: top(de), joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: bd.labels.length <= 14 }), bdNote(bd, 'Stocking density', bd.lastDensity, v => pct(v / bd.target_density, 1) + ' of target (' + v.toFixed(2) + ' kg/m²)'))
         : noData())); };
-    const sk = A.sinkers(data, y, w), skNote = (nm, u) => h('div', { class: 'note' }, u.last ? (u.last.w === w ? `${nm}: ${pct(u.last.v, 1)} of the ${u.std}-sinker standard this week (average ${u.last.avg.toFixed(1)} sinkers per hapa; ${u.short} of ${u.hapas} hapas below ${u.std})` : `${nm}: no sinker counts this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)} (average ${u.last.avg.toFixed(1)} per hapa)`) : `${nm}: no sinker counts recorded`);
+    const skNote = (nm, u) => h('div', { class: 'note' }, u.last ? (u.last.w === w ? `${nm}: ${pct(u.last.v, 1)} of the ${u.std}-sinker standard this week (average ${u.last.avg.toFixed(1)} sinkers per hapa; ${u.short} of ${u.hapas} hapas below ${u.std})` : `${nm}: no sinker counts this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)} (average ${u.last.avg.toFixed(1)} per hapa)`) : `${nm}: no sinker counts recorded`);
     body.append(card('Sinkers per hapa (% of standard: broodstock 20, nursery 4)', has(sk.nursery.trend) || has(sk.broodstock.trend)
       ? h('div', {}, lineChart({ labels: sk.labels, series: [{ name: 'Nursery (PNS), 4 sinkers', values: sk.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS), 20 sinkers', values: sk.broodstock.trend, color: '#0E812E' }, { name: 'Standard (100%)', values: sk.labels.map(() => 1), color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Sinkers vs standard (%)', min: 0, max: 1.1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: sk.labels.length <= 14 }), skNote('Nursery', sk.nursery), skNote('Broodstock', sk.broodstock))
       : noData()));
