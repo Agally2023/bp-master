@@ -23,7 +23,7 @@ class DemoDB {
   }
   async removeUser(id) { if (id === this.user?.id) throw new Error('You cannot change your own access'); this.users = this.users.filter(x => x.id !== id); }
   async signOut() { this.user = null; }
-  async load(table, filter = '') { const m = /iso_year=gte\.(\d+)/.exec(filter); const rows = (this.t[table] || []).slice(); return m ? rows.filter(r => r.iso_year == null || r.iso_year >= +m[1]) : rows; }
+  async load(table, filter = '', cols = '*') { const m = /iso_year=gte\.(\d+)/.exec(filter); const rows = (this.t[table] || []).slice(); return m ? rows.filter(r => r.iso_year == null || r.iso_year >= +m[1]) : rows; }
   async recent(table, df, n = 100) { const all = (this.t[table] || []).slice().sort((a, b) => String(b[df] || '').localeCompare(String(a[df] || ''))); return { rows: all.slice(0, n), total: all.length }; }
   async insert(table, rows, o = {}) {
     const cur = (this.t[table] ||= []); const idx = new Map(cur.map((r, i) => [r.row_hash, i])); let n = 0, u = 0;
@@ -125,9 +125,9 @@ class SupabaseDB {
   async updateUser(id, patch) { const r = await this._f(`/rest/v1/${P}profiles?id=eq.${id}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch) }); const j = await r.json(); if (!j.length) throw new Error('Not allowed'); return j[0]; }
   async removeUser(id) { const r = await this._f(`/rest/v1/${P}profiles?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: 'return=representation' } }); if (!(await r.json()).length) throw new Error('Not allowed'); }
   async signOut() { try { if (this.tok) await this._f('/auth/v1/logout', { method: 'POST', noRefresh: true }); } catch { } this.tok = this.refresh_token = this.user = null; }
-  async load(table, filter = '') {
+  async load(table, filter = '', cols = '*') {
     // First page also returns the total (Content-Range); the remaining pages are then fetched in parallel instead of one after another.
-    const PG = 1000, url = `/rest/v1/${P}${table}?select=*${filter}`;
+    const PG = 1000, url = `/rest/v1/${P}${table}?select=${cols}${filter}`;
     const page = (from, extra) => this._f(url, { headers: { Range: `${from}-${from + PG - 1}`, 'Range-Unit': 'items', ...extra } });
     const r0 = await page(0, { Prefer: 'count=exact' }); const first = await r0.json();
     if (first.length < PG) return first;

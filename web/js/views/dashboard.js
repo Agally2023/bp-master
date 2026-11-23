@@ -1,5 +1,6 @@
 import { h, clear, pct, num, fmtDate, weekRange } from '../util.js';
 import { S, ensure } from '../state.js';
+const sinceYear = () => S.week.y - (S.week.w <= 12 ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
@@ -10,10 +11,10 @@ const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', '
 const has = a => a.some(v => v != null);
 
 export async function render({ view, ctx }) {
-  const data = await ensure(KEYS, S.week.y - 1);
+  const data = await ensure(KEYS, sinceYear(), true);
   const body = h('div', {}); let ras = 'RAS2', by = 'stage';
   const draw = async () => {
-    await ensure(KEYS, S.week.y - 1);
+    await ensure(KEYS, sinceYear(), true);
     clear(body); const { y, w } = S.week;
     if (S.failed.size) body.append(h('div', { class: 'note stale' }, 'Some data could not be loaded (' + [...S.failed.keys()].join(', ') + '). Reload the page to try again.'));
     if (!KEYS.some(k => (data[k] || []).length)) { body.append(card('No data yet', h('p', {}, 'Open ', h('b', {}, 'Data Entry'), ' to type records or import your Excel audit files. The dashboard fills in automatically.'))); return; }
@@ -85,7 +86,7 @@ export async function render({ view, ctx }) {
         : noData())); };
     const holder = h('div', {}, g(card('Broodstock sex ratio and stocking density', h('div', { class: 'note' }, 'Loading broodstock recounts…'))));   // loaded after the page appears so the dashboard opens fast
     body.append(holder); const tok = body._tok = (body._tok || 0) + 1;
-    ensure(['broodstock_density'], S.week.y).then(() => { if (body._tok !== tok) return; const bd = A.broodDensity(data, y, w); holder.replaceChildren(bdCards(bd));
+    ensure(['broodstock_density'], S.week.y, true).then(() => { if (body._tok !== tok) return; const bd = A.broodDensity(data, y, w); holder.replaceChildren(bdCards(bd));
       const old = (l, f, hit) => l && !(bd.thisWeek && l.w === w) ? `last recount: wk ${l.w}` : l ? `${bd.hapas} hapas recounted` : 'no recounts';
       kpiSR.replaceWith(kpi('Broodstock sex ratio', bd.lastRatio ? bd.lastRatio.v.toFixed(2) + ':1' : '–', { cls: 'cyan', note: bd.lastRatio ? `${pct(bd.lastRatio.v / A.SEX_TARGET, 0)} of 3:1 · ${old(bd.lastRatio)}` : 'no recounts', good: bd.lastRatio ? Math.abs(bd.lastRatio.v / A.SEX_TARGET - 1) <= 0.1 : null }));
       kpiSD.replaceWith(kpi('Broodstock stocking density', bd.lastDensity ? bd.lastDensity.v.toFixed(2) + ' kg/m²' : '–', { cls: 'gold', note: bd.lastDensity ? `${pct(bd.lastDensity.v / bd.target_density, 0)} of target · ${old(bd.lastDensity)}` : 'no recounts', good: bd.lastDensity ? Math.abs(bd.lastDensity.v / bd.target_density - 1) <= 0.1 : null })); });

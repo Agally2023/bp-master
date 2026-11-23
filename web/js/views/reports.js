@@ -1,5 +1,6 @@
 import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js';
 import { S, ensure } from '../state.js';
+const sinceYear = () => S.week.y - (S.week.w <= 12 ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
 import { db } from '../db.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
@@ -48,9 +49,9 @@ const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class
 const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };
 
 export async function render({ view, ctx }) {
-  const data = await ensure(KEYS, S.week.y - 1); const body = h('div', {});
+  const data = await ensure(KEYS, sinceYear(), true); const body = h('div', {});
   const draw = async () => {
-    await ensure(KEYS, S.week.y - 1);
+    await ensure(KEYS, sinceYear(), true);
     clear(body); const { y, w } = S.week; const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
     let R = await db.report(y, w, false); const calc = Object.fromEntries(SECTIONS.map(s => [s.key, s.an(data, y, w)]));
     if (!R) { body.append(h('div', { class: 'card' }, h('h2', {}, `No report for Week ${w}, ${y} yet`), h('p', { class: 'muted' }, 'Creating a report drafts comments from the data. You can edit every comment, add photos and attach analysed graphs.'), canEdit ? h('button', { class: 'btn', onclick: async () => { await db.report(y, w, true); await db.audit('create', 'report', `${y}-${w}`); draw(); } }, `Create Week ${w} report`) : null)); return; }
