@@ -2505,6 +2505,26 @@
       "stocking_density_compliant": "stocking density compliant"
      },
      "exact": true
+    },
+    {
+     "sheet": "Pcs,Biomass & Densities",
+     "header": "Stocking",
+     "headerFrom": 3,
+     "exact": true,
+     "label": "Broodstock Masterfile (current recount)",
+     "map": {
+      "date": "latest rec/stk",
+      "pond": "pond",
+      "hapa_no": "hapa",
+      "female_count": "current females",
+      "male_count": "current males",
+      "female_biomass": "female biomass",
+      "male_biomass": "male biomass"
+     },
+     "const": {
+      "target_biomass": 120,
+      "target_stocking_density_range": 1.5
+     }
     }
    ]
   },

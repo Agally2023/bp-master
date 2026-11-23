@@ -8,9 +8,9 @@ const isEmpty = v => v == null || (typeof v === 'string' && (v.trim() === '' || 
 export const storedFields = m => m.fields.filter(f => !f.virtual && !f.excel_formula);
 export const entryFields = m => m.fields.filter(f => !f.derived && !f.virtual || f.virtual);
 
-export function findHeaderRow(rows, header) {
+export function findHeaderRow(rows, header, from = 0) {
   const want = norm(header);
-  for (let i = 0; i < Math.min(rows.length, 80); i++) {
+  for (let i = from; i < Math.min(rows.length, 80); i++) {
     const first = (rows[i] || []).find(v => v != null && String(v).trim() !== '');
     if (first != null && norm(first) === want) return i;
   }
@@ -121,7 +121,7 @@ export async function rowHash(m, row, occ) {
 
 // ---- parse one sheet according to an import spec
 export function parseSheet(m, spec, rows) {
-  const hi = findHeaderRow(rows, spec.header); if (hi < 0) return null;
+  const hi = findHeaderRow(rows, spec.header, spec.headerFrom || 0); if (hi < 0) return null;
   if (m.special === 'flip') return parseFlip(m, spec, rows, hi);
   const { idx, missing } = mapColumns(rows[hi], spec);
   const reqMissing = missing.filter(k => m.fields.find(f => f.name === k && f.req));
@@ -248,7 +248,7 @@ export async function detectModules(wb, registry) {
     for (const name of names) {
     const sp = { ...spec, sheet: name };
     const rows = await wb.rows(name, { maxRows: 100 }); if (!rows) continue;
-    const hi = findHeaderRow(rows, spec.header); if (hi < 0) continue;
+    const hi = findHeaderRow(rows, spec.header, spec.headerFrom || 0); if (hi < 0) continue;
     if (m.special !== 'flip') {
       const { missing } = mapColumns(rows[hi], sp); const need = Object.keys(spec.map).length;
       if (missing.length > Math.max(1, need * 0.4) || missing.some(k => m.fields.find(f => f.name === k && f.req))) continue;
