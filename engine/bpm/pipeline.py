@@ -45,7 +45,7 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:
         if T.get('biosecurity_audits'):
             bio = F.biosecurity(T['biosecurity_audits']); ov, cat = A.bio_weekly_overall(bio, year, week), A.bio_category_week(bio, year, week)
-            if ov:      # no scored biosecurity rows this year: leave the slide's chart out rather than crash
+            if ov and ov[-1][1] is not None:      # no scored biosecurity rows this year: leave the slide's chart out rather than crash
                 cm['biosecurity'] = C.biosecurity(ov, cat); extra['bio'] = dict(overall=ov, cat=cat, band=A.rating_band)
     except Exception as e: warn('Biosecurity', e)
     try:
@@ -122,7 +122,8 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     if photo_src:
         try: images += _auto_photos(photo_src, images, flip_prog, flip_tot)
         except Exception as e: warn('Photos', e)
-    media.finish(out, week, images, set(exclude))
+    try: media.finish(out, week, images, set(exclude))
+    except Exception as e: warn('Final pass (logos, photos, fonts)', e)   # the deck is already saved: never lose the whole report to a cosmetic step
     return cm
 
 

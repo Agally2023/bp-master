@@ -46,6 +46,7 @@ def bottom_rope(g: pd.DataFrame, week: int):
 
 def biosecurity(overall, cat):
     cur = overall[-1][1]; prev = overall[-2][1] if len(overall) > 1 else None
+    if cur is None: return ['No scored biosecurity audits this week yet.', '[Add comment]']
     trend = '' if prev is None else (f", {'up' if cur > prev else 'down'} from {prev:.0%} last week" if abs(cur - prev) >= 0.01 else ', unchanged from last week')
     lines = [f"Overall performance is {cur:.0%}{trend}."]
     if len(cat):

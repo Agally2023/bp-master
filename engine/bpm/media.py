@@ -201,5 +201,6 @@ def finish(out, week, images, exclude):
     for name, fn in (('Table styling', restyle_tables), ('Logos', add_table_logos), ('Chart colours', no_red_bars)):
         try: fn(prs)
         except Exception as e: warn(name, e)
-    deck.apply_typography(prs)
+    try: from . import deck as _deck; _deck.apply_typography(prs)
+    except Exception as e: warn('Typography', e)
     prs.save(out)

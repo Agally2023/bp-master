@@ -193,7 +193,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
     cats = [f' Wk {w} ' for w, _ in ws_trend]
     replace_chart(shape(s, 'Chart 6'), cats, [v for _, v in ws_trend], '0%', xt='ISO week', yt='Compliance (%)')
     cur = ws_trend[-1][1]
-    shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.1%}'
+    shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.1%}' if cur is not None else '-'
     pic = shape(s, 'Picture 5'); anchor = pic
     _nc0 = ws_nc
     ws_nc = ws_nc.sort_values(['score', 'audit_date'])           # worst audits first
@@ -390,7 +390,7 @@ def batch3(prs, year, week, comments, x):
         if 'egg' in x:
             e = x['egg']
             replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
-            shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}"
+            shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}" if e['trend'][-1][1] is not None else '-'
             pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low
             nz = lambda v, f: '-' if v is None or v != v else format(v, f)
             rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, nz(r.total_h, '.1f'), nz(r.mixed_h, '.1f'), nz(r.overall, '.1%'), int(r.star)] for r in low.itertuples()]
