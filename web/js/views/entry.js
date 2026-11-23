@@ -125,6 +125,30 @@ function pondPhotos() {
   draw(); return box;
 }
 
+const QC_BASE = 'https://victoryfarmsltd.sharepoint.com/sites/AquaData/Shared%20Documents/Aqua%20Quality%20Control/BP%20Pond%20Files/';
+const IT_REQUEST = `Hello IT,
+
+Please register a read-only Microsoft Entra app for the BP Master data sync:
+1. Entra admin centre > App registrations > New registration, name "BP Master Sync" (single tenant).
+2. API permissions > Microsoft Graph > Application permissions > Sites.Selected, then grant admin consent and give it READ access to the AquaData SharePoint site (https://victoryfarmsltd.sharepoint.com/sites/AquaData). Files.Read.All is an acceptable alternative.
+3. Certificates & secrets > New client secret (24 months).
+4. Send me the Tenant ID, Application (client) ID and the secret value.
+The app only reads the Aqua Quality Control workbooks (3-Day Pond Survival, Egg Collection Monitoring). It cannot change or delete anything.
+
+Thank you.`;
+async function setupDialog() {
+  let srcs = []; try { srcs = await db.load('sync_sources') || []; } catch { }
+  const d = h('dialog', { style: 'max-width:560px;border:1px solid #D6E3FF;border-radius:10px;padding:20px' },
+    h('h2', { style: 'margin:0 0 8px' }, 'One-time setup needed for automatic sync'),
+    h('p', {}, 'The Sync button is ready, but SharePoint will only open its files to the app once your IT admin registers a read-only Microsoft app (about 10 minutes). Until then, load new data like this:'),
+    h('ol', {}, h('li', {}, 'Open the file below in SharePoint and download it.'), h('li', {}, 'Come back here and drop it on the import box (re-importing is safe: existing rows are skipped).')),
+    ...[...new Map(srcs.map(x => [x.file_name, x])).values()].map(x => h('div', { class: 'row', style: 'margin:4px 0' }, h('span', { style: 'flex:1' }, x.file_name), h('a', { class: 'btn sec', href: QC_BASE + encodeURIComponent(x.file_name), target: '_blank', rel: 'noopener' }, 'Open in SharePoint'))),
+    h('div', { class: 'row', style: 'margin-top:14px;gap:8px' },
+      h('button', { class: 'btn', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(IT_REQUEST); toast('Request for IT copied: paste it into an email'); } catch { toast('Copy failed: the steps are in supabase/SYNC_SETUP.md', true); } } }, 'Copy the request for IT'),
+      h('button', { class: 'btn sec', type: 'button', onclick: () => d.close() }, 'Close')));
+  d.addEventListener('close', () => d.remove()); document.body.append(d); d.showModal();
+}
+
 // Pull changed Quality Control workbooks from SharePoint (3-day recounts, egg jars and ratings) without uploading files.
 function syncBtn() {
   const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Quality Control files on SharePoint', onclick: async () => {
@@ -133,7 +157,7 @@ function syncBtn() {
       if (typeof db.syncFiles !== 'function') { toast('This page is running an older copy of the app. Reload it (Ctrl+Shift+R) and press Sync again.', true); return; }
       const r = await db.syncFiles();
       if (r.demo) { toast('Sync needs the live app (demo mode has no SharePoint link)', true); return; }
-      if (r.notConfigured) { toast('Sync is not switched on yet: the Microsoft app details are still to be added (see supabase/SYNC_SETUP.md). Import the files with Import for now.', true); return; }
+      if (r.notConfigured) { await setupDialog(); return; }
       const res = r.results || []; const bad = res.filter(x => x.status === 'error');
       toast(bad.length ? 'Sync problem: ' + bad[0].message : res.every(x => x.status === 'unchanged') ? 'Already up to date: the files have not changed' : 'Synced: ' + res.filter(x => x.status === 'ok').map(x => x.key.replace(/_/g, ' ')).join(', '), !!bad.length);
       for (const k of ['day3_recounts', 'egg_volumetric_jars', 'egg_separation_ratings']) { invalidate(k); S.data[k] = undefined; } await db.audit('sync', 'sharepoint', 'qc');
