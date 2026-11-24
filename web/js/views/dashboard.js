@@ -1,12 +1,12 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240426';
-import { S, ensure } from '../state.js?v=202611240426';
-import { periodize, relabel } from '../period.js?v=202611240426';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240426';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240432';
+import { S, ensure } from '../state.js?v=202611240432';
+import { periodize, relabel } from '../period.js?v=202611240432';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240432';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import * as A from '../analytics.js?v=202611240426';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240426';
+import * as A from '../analytics.js?v=202611240432';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240432';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240426';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240432';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
@@ -52,7 +52,7 @@ export async function render({ view, ctx }) {
     body.append(g(card('RAS water volume vs parasite prevalence', wat.days.length ? h('div', {}, barChart({ labels: wat.days.map(d => shortD(d)), series: [{ name: 'Water added (L)', values: wat.vol, color: PAL[3] }], xTitle: 'Date', yTitle: 'Water added (L)', fmt: v => v.toFixed(0) }),
       lineChart({ labels: wat.days.map(d => shortD(d)), series: [{ name: 'Prevalence', values: wat.prev }], xTitle: 'Date', yTitle: 'Parasite prevalence (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%' }),
       h('div', { class: 'note' }, wat.r == null ? 'Not enough paired days to correlate.' : `Correlation r = ${wat.r.toFixed(2)} across ${wat.n} days (${Math.abs(wat.r) < 0.4 ? 'weak' : Math.abs(wat.r) < 0.7 ? 'moderate' : 'strong'} ${wat.r < 0 ? 'negative' : 'positive'} relationship).`)) : noData()),
-      card('3-day recount survival by hapa', d3.total ? barChart({ labels: d3.units, series: [{ name: 'Survival', values: d3.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: v => (v * 100).toFixed(0) + '%', target: 0.97, targetLabel: '97%' }) : noData())));
+      card(S.period === 'month' ? '3-day recount survival (monthly average)' : '3-day recount survival by hapa', S.period === 'month' ? (d3.trend.some(v => v != null) ? lineChart({ labels: d3.trendLabels, series: [{ name: 'Average survival', values: d3.trend }], xTitle: 'ISO week', yTitle: 'Average 3-day survival (%)', min: 0.5, max: 1.1, fmt: v => (v * 100).toFixed(0) + '%', target: 0.97, targetLabel: '97%', joinGaps: true, valueLabels: true }) : noData()) : d3.total ? barChart({ labels: d3.units, series: [{ name: 'Survival', values: d3.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: v => (v * 100).toFixed(0) + '%', target: 0.97, targetLabel: '97%' }) : noData())));
     // 5 stocking + transfers
     body.append(g(card('Stocking numbers audit (weights in g, counts in pcs)', sn(st.asOf), table(['Date', 'ABW (g)', 'Required (g)', 'Target fry (pcs)', 'Actual (g)', 'Variance (%)', 'Est. stocked (pcs)', 'Diff. (pcs)'], st.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), { v: pct(r.variance, 1), cls: Math.abs(r.variance) <= 0.05 ? 'good' : 'poor' }, num(r.est, 0), num(r.diff, 0)]), { num: [1, 2, 3, 4, 5, 6, 7] })),
       card('Incubation to pond transfer audit (morning stocking, temperatures in °C)', sn(tf.asOf), table(['Date', 'Time', 'Tray (°C)', 'Bucket, no fish (°C)', 'Bucket, with fish (°C)', 'Pond (°C)', 'Variance (°C, <2)'], tf.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])} – ${num(r.tray[1])}`, `${num(r.bwo[0])} – ${num(r.bwo[1])}`, `${num(r.bw[0])} – ${num(r.bw[1])}`, num(r.pond), { v: `${num(r.variance[0])} – ${num(r.variance[1])}`, cls: r.variance[1] < 2 && r.variance[0] > -2 ? 'good' : 'poor' }])))));

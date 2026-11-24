@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611240426';
+import { S } from './state.js?v=202611240432';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611240426';
-import { MONTHS, dayShort } from './period.js?v=202611240426';
+import { mean, sum, weekRange } from './util.js?v=202611240432';
+import { MONTHS, dayShort } from './period.js?v=202611240432';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -85,7 +85,10 @@ export function water(data, y, w) {
 export function day3(data, y, w) {
   const d = inWeek(data.day3_recounts, y, w).filter(r => r.survival != null).sort((a, b) => String(a.unit).localeCompare(String(b.unit)));
   const failed = d.filter(r => r.survival < 0.97);
-  return { rows: d, units: d.map(r => r.unit), values: d.map(r => r.survival), failed: failed.length, total: d.length, avg: mean(d.map(r => r.survival)) };
+  // Monthly view: one average per month (all recounts dated in that month), instead of one bar per pond-hapa.
+  const yr = group(inYear(data.day3_recounts, y).filter(r => r.survival != null && r.iso_week <= w), r => r.iso_week), weeks = weeksTo(w, 12);
+  const trend = weeks.map(x => yr.has(x) ? mean(yr.get(x).map(r => r.survival)) : null), counts = weeks.map(x => (yr.get(x) || []).length);
+  return { rows: d, units: d.map(r => r.unit), values: d.map(r => r.survival), failed: failed.length, total: d.length, avg: mean(d.map(r => r.survival)), trend, trendLabels: weeks.map(wl), counts };
 }
 
 export function stocking(data, y, w) {

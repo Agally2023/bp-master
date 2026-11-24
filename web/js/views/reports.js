@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240426';
-import { S, ensure } from '../state.js?v=202611240426';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611240426';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240426';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240432';
+import { S, ensure } from '../state.js?v=202611240432';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611240432';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240432';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611240426';
-import * as A from '../analytics.js?v=202611240426';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240426';
+import { db } from '../db.js?v=202611240432';
+import * as A from '../analytics.js?v=202611240432';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240432';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611240426';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611240432';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
 const CFG = window.BPM_CONFIG || {};
@@ -25,7 +25,7 @@ const SECTIONS = [
   { key: 'ras_water', title: 'RAS Water Volume vs Parasite Prevalence', slide: 6, an: (d, y, w) => A.water(d, y, w),
     body: a => [a.days.length ? barChart({ labels: a.days.map(x => shortD(x)), series: [{ name: 'Water (L)', values: a.vol, color: PAL[3] }], xTitle: 'Date', yTitle: 'Water added (L)', h: 190 }) : null, a.days.length ? lineChart({ labels: a.days.map(x => shortD(x)), series: [{ name: 'Prevalence', values: a.prev }], xTitle: 'Date', yTitle: 'Parasite prevalence (%)', min: 0, fmt: pc0, h: 190 }) : null] },
   { key: 'day3', title: '3-Day Recount Survival', slide: 7, an: (d, y, w) => A.day3(d, y, w),
-    body: a => [a.total ? barChart({ labels: a.units, series: [{ name: 'Survival', values: a.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: pc0, target: 0.97, targetLabel: '97%', h: 200 }) : null] },
+    body: a => [S.period === 'month' ? (a.trend.some(v => v != null) ? lineChart({ labels: a.trendLabels, series: [{ name: 'Average survival', values: a.trend }], xTitle: 'ISO week', yTitle: 'Average 3-day survival (%)', min: 0.5, max: 1.1, fmt: pc0, target: 0.97, targetLabel: '97%', joinGaps: true, valueLabels: true, h: 200 }) : null) : a.total ? barChart({ labels: a.units, series: [{ name: 'Survival', values: a.values }], xTitle: 'Pond-Hapa unit', yTitle: '3-day survival (%)', valueLabels: true, maxLabels: 30, min: 0, fmt: pc0, target: 0.97, targetLabel: '97%', h: 200 }) : null] },
   { key: 'stocking', title: 'Stocking Numbers Audit', slide: 8, an: (d, y, w) => A.stocking(d, y, w),
     body: a => [sn(a.asOf), table(['Date', 'ABW (g)', 'Required (g)', 'Target (pcs)', 'Actual (g)', 'Var. (%)', 'Est. (pcs)', 'Diff. (pcs)'], a.map(r => [fmtDate(r.date), num(r.abw, 4), num(r.req, 0), num(r.target, 0), num(r.actual, 1), pct(r.variance, 1), num(r.est, 0), num(r.diff, 0)]))] },
   { key: 'transfers', title: 'Incubation to Pond Transfer Audit (Morning stocking)', slide: 8, an: (d, y, w) => A.transfers(d, y, w),

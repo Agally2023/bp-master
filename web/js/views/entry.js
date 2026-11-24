@@ -1,12 +1,12 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611240426';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611240426';
-import { db } from '../db.js?v=202611240426';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611240426';
-import { importPanel, batchesPanel } from './import.js?v=202611240426';
-import { table } from './common.js?v=202611240426';
-import { zipLib } from '../xlsx.js?v=202611240426';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611240426';
-import { download } from '../util.js?v=202611240426';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611240432';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611240432';
+import { db } from '../db.js?v=202611240432';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611240432';
+import { importPanel, batchesPanel } from './import.js?v=202611240432';
+import { table } from './common.js?v=202611240432';
+import { zipLib } from '../xlsx.js?v=202611240432';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611240432';
+import { download } from '../util.js?v=202611240432';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
