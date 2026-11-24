@@ -1,15 +1,16 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240935';
-import { S, ensure } from '../state.js?v=202611240935';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611240935';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240935';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240947';
+import { S, ensure } from '../state.js?v=202611240947';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611240947';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240947';
+import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, summaryKpis } from './blocks.js?v=202611240947';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611240935';
-import * as A from '../analytics.js?v=202611240935';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240935';
+import { db } from '../db.js?v=202611240947';
+import * as A from '../analytics.js?v=202611240947';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240947';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611240935';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611240947';
 
-const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
+const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
 const CFG = window.BPM_CONFIG || {};
 const has = a => a.some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
@@ -33,7 +34,7 @@ const SECTIONS = [
   { key: 'eggs', title: 'Egg Stage Separation Rating', slide: 9, an: (d, y, w) => A.eggs(d, y, w),
     body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', 'Stars'], a.low.filter(r => (r.mixed_h || 0) > 0).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), { v: num(r.mixed_h), cls: 'redtxt' }, r.star]))] },
   { key: 'flipping', title: 'Pond Flipping (delayed ponds: days late)', slide: 10, an: (d, y, w) => A.flips(d, y, w),
-    body: a => [table(A.flipHead, a.progress.filter(r => r.over.length).slice(0, 8).map(r => A.flipRow(r, fmtDate)), { empty: 'No delayed ponds' })] },
+    body: a => [table(A.flipHead, a.progress.filter(r => r.over.length).slice(0, 8).map(r => A.flipRow(r, fmtDate)), { empty: 'No delayed ponds' }), ...flipMatrixBlocks(a, fmtDate)] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
   { key: 'prep_scoring', title: 'Pond Preparation Scoring', slide: 12, an: (d, y, w) => A.prepScoring(d, y, w, weekRange(y, w).sun.toISOString()),
     body: a => [table(['Pond', 'Flipped', 'Preparation (%)', 'Water quality (%)', 'Post-stocking (%)', 'Overall (%)', 'Rating (0-5)'], a.slice(0, 12).map(r => [r.pond, fmtDate(r.flipping_date), ...[r.prep_score, r.wq_score, r.post_score, r.overall_score].map(v => v == null ? '–' : pc0(v)), r.rating ?? '–']), { empty: 'No ponds scored this month' })] },
@@ -49,6 +50,10 @@ const SECTIONS = [
     body: a => { const sr = a.ratio.map(v => v == null ? null : v / A.SEX_TARGET), de = a.density.map(v => v == null ? null : v / a.target_density), one = a.labels.map(() => 1);
       return [has(sr) ? lineChart({ labels: a.labels, series: [{ name: 'Sex ratio (% of 3:1)', values: sr, color: '#0E812E' }, { name: 'Standard', values: one, color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Sex ratio (% of standard)', min: 0, joinGaps: true, fmt: pc0, h: 190 }) : null,
         has(de) ? lineChart({ labels: a.labels, series: [{ name: 'Density (% of target)', values: de, color: '#CB8306' }, { name: 'Target', values: one, color: '#C0392B' }], xTitle: 'ISO week', yTitle: 'Stocking density (% of target)', min: 0, joinGaps: true, fmt: pc0, h: 190 }) : null]; } },
+  { key: 'sinkers', title: 'Bottom Rope Sinkers (% of standard)', slide: 13, an: (d, y, w) => A.sinkers(d, y, w), body: a => [sinkersBlock(a, { h: 200 })] },
+  { key: 'sr_efficiency', title: 'Sex Reversal (Male Conversion) Efficiency', slide: 16, an: (d, y, w) => A.srEfficiency(d, y, w), body: a => srEffBlock(a, { h: 190 }) },
+  { key: 'sr_feed', title: 'Sex Reversal Feed Audit', slide: 17, an: (d, y, w) => A.srFeed(d, y, w), body: a => srFeedBlock(a, { h: 105 }) },
+  { key: 'hapa_wash', title: 'Hapas Received, Washed and Dispatched', slide: 18, an: (d, y, w) => A.hapaWash(d, y, w), body: a => washBlock(a, { h: 190 }) },
 ];
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };
@@ -58,6 +63,7 @@ export async function render({ view, ctx }) {
   const draw = async () => {
     await ensure(KEYS, sinceYear(), true);
     clear(body); const { y, w } = S.week; const data = periodize(raw, S.period); const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
+    try { body.append(summaryKpis(data, y, w)); } catch (e) { console.error(e); }
     if (S.period !== 'week') {      // monthly / daily view: a read-only preview of the same slides for that month or day (nothing is saved; PowerPoint export and approval stay weekly)
       const lbl = periodLabel(S.period, y, w), kind = S.period === 'month' ? 'Monthly' : 'Daily';
       body.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, `${kind} report: ${lbl}`), h('span', { class: 'sp' }), h('button', { class: 'btn sec', onclick: () => window.print() }, 'Print / save as PDF')),

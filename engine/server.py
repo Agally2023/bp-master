@@ -11,7 +11,7 @@ from bpm import pipeline
 HERE = os.path.dirname(os.path.abspath(__file__))
 REG = json.load(open(os.path.join(HERE, '..', 'web', 'modules.json')))
 STAGE_DEFS = next(m for m in REG['modules'] if m['key'] == 'pond_flips')['stages']
-NEED = ['workstation_audits', 'bottom_rope_audits', 'day3_recounts', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'stocking_audits',
+NEED = ['sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch', 'workstation_audits', 'bottom_rope_audits', 'day3_recounts', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'stocking_audits',
         'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'hapa_exchanges', 'pond_prep_scoring', 'broodstock_density']
 SB, KEY = os.environ.get('SUPABASE_URL', '').rstrip('/'), os.environ.get('SUPABASE_ANON_KEY', '')
 ORIGIN = os.environ.get('ALLOWED_ORIGIN', '')

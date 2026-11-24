@@ -112,6 +112,56 @@ def add_prep_slide(out, rows, month, anchor='flip', note=None):
     r.text = note or f'Ponds flipped in {month}, lowest overall score first. Overall = average of preparation (stage KPIs met / 5) and post-stocking results.'; r.font.size = Pt(10); r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
     move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
 
+def add_spec_slide(out, spec, anchor=None):
+    """Generic native slide from a spec (bpm.extras): up to two charts across the top, tables under them, comment lines at the bottom."""
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+    from . import deck
+    prs = Presentation(out); anchor = (anchor or spec.get('anchor') or '').lower()
+    last = max((i for i, s in enumerate(prs.slides) if anchor and anchor in _texts(s).lower()), default=len(prs.slides) - 1)
+    s = prs.slides.add_slide(prs.slides[last].slide_layout); title = spec['title']
+    if s.shapes.title is not None: s.shapes.title.text = title
+    else:
+        tb = s.shapes.add_textbox(Emu(int(prs.slide_width * 0.04)), Emu(int(prs.slide_height * 0.03)), Emu(int(prs.slide_width * 0.8)), Emu(int(prs.slide_height * 0.09)))
+        r = tb.text_frame.paragraphs[0].add_run(); r.text = title; r.font.size = Pt(26); r.font.bold = True; r.font.color.rgb = RGBColor(0x0E, 0x81, 0x2E)
+    for ph in list(s.placeholders):
+        if ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
+            ph._element.getparent().remove(ph._element)
+    W, H = prs.slide_width, prs.slide_height; y = 0.13; charts = spec.get('charts') or []
+    rgb = lambda h: RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+    for k, c in enumerate(charts):
+        cd = CategoryChartData(); cd.categories = c['cats']
+        for nm, vals, col in c['series']: cd.add_series(nm, [None if v is None else float(v) for v in vals])
+        n = len(charts); w = 0.94 / n; x = 0.03 + k * (0.94 / n) + (0.01 if n > 1 else 0)
+        ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED if c['kind'] == 'bar' else XL_CHART_TYPE.LINE_MARKERS, Emu(int(W * x)), Emu(int(H * y)), Emu(int(W * (w - (0.02 if n > 1 else 0)))), Emu(int(H * c.get('h', 0.34))), cd).chart
+        ch.has_title = False; ch.has_legend = len(c['series']) > 1; ch.font.size = Pt(10)
+        if ch.has_legend: ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False
+        va = ch.value_axis; va.tick_labels.number_format = c['fmt']; va.tick_labels.number_format_is_linked = False; va.has_major_gridlines = True
+        va.minimum_scale = c.get('min', 0)
+        if c.get('max') is not None: va.maximum_scale = c['max']
+        va.has_title = True; va.axis_title.text_frame.text = c['y']; ch.category_axis.has_title = True; ch.category_axis.axis_title.text_frame.text = c['x']
+        for se, (nm, vals, col) in zip(ch.plots[0].series, c['series']):
+            if c['kind'] == 'bar': se.format.fill.solid(); se.format.fill.fore_color.rgb = rgb(col)
+            else:
+                se.format.line.color.rgb = rgb(col); se.format.line.width = Pt(2.25); se.smooth = False; se.marker.format.fill.solid(); se.marker.format.fill.fore_color.rgb = rgb(col)
+        if c['kind'] == 'line' and len(ch.plots[0].series) > 1 and c['series'][-1][0].lower().startswith(('standard', 'target')): ch.plots[0].series[-1].marker.style = None
+        if c['kind'] == 'line':
+            from lxml import etree
+            pa = ch._chartSpace.chart; d = pa.find(qn('c:dispBlanksAs'))
+            if d is None: d = etree.SubElement(pa, qn('c:dispBlanksAs'))
+            d.set('val', 'span')
+    if charts: y += max(c.get('h', 0.34) for c in charts) + 0.02
+    for t in spec.get('tables') or []:
+        if not t['rows']: continue
+        font = 9 if len(t['rows']) <= 8 else 8; box = type('A', (), dict(left=Emu(int(W * 0.04)), top=Emu(int(H * y)), width=Emu(int(W * 0.92))))()
+        deck.table(s, box, t['head'], t['rows'], t['widths'], deck.BLUE_DARK, font=font); y += 0.047 * (len(t['rows']) + 1) + 0.02
+    lines = [l for l in spec.get('lines') or [] if l]
+    if lines:
+        box = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * min(y, 0.86))), Emu(int(W * 0.92)), Emu(int(H * 0.1))); tf = box.text_frame; tf.word_wrap = True
+        for i, l in enumerate(lines):
+            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph(); r = p.add_run(); r.text = l; r.font.size = Pt(12); r.font.name = 'Calibri'; r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+    move_slide(prs, len(prs.slides) - 1, last + 1); prs.save(out)
+
 def add_brood_slide(out, bd, lines, anchor='hapa exchange'):
     """Native slide: broodstock sex ratio (% of the 3:1 standard) and stocking density (% of target) by week, with the comment underneath."""
     from pptx.chart.data import CategoryChartData

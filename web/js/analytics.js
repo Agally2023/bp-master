@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611240935';
+import { S } from './state.js?v=202611240947';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611240935';
-import { MONTHS, dayShort } from './period.js?v=202611240935';
+import { mean, sum, weekRange } from './util.js?v=202611240947';
+import { MONTHS, dayShort } from './period.js?v=202611240947';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -186,6 +186,29 @@ export function sinkers(data, y, w, n = 12) {
   };
   return { labels: weeks.map(wl), nursery: one('nursery'), broodstock: one('broodstock') };
 }
+
+// ---- Sex reversal (male conversion) efficiency, SR feed audit, hapas received / washed / dispatched (modules imported from their Excel files)
+const yearRows = (rows, y, w) => inYear(rows, y).filter(r => r.iso_week <= w);
+const spanWeeks = (rows, w) => { const first = rows.length ? Math.min(...rows.map(r => r.iso_week)) : w; return weeksTo(w, Math.min(52, w - first + 1)); };
+export const SR_TARGET = 0.95;
+export function srEfficiency(data, y, w) {
+  const rows = yearRows(data.sr_efficiency, y, w).filter(r => r.pct_males != null), weeks = spanWeeks(rows, w), by = group(rows, r => r.iso_week);
+  const trend = weeks.map(x => { const g = by.get(x); return g ? sum(g.map(r => +r.males || 0)) / Math.max(1, sum(g.map(r => +r.samples || 0))) : null; });
+  let li = -1; for (let i = trend.length - 1; i >= 0; i--) if (trend[i] != null) { li = i; break; }
+  const cur = (by.get(w) || []).slice().sort((a, b) => a.pct_males - b.pct_males);
+  return { labels: weeks.map(wl), trend, last: li >= 0 ? { w: weeks[li], v: trend[li], cages: by.get(weeks[li]).length } : null, current: cur, below: rows.filter(r => r.pct_males < SR_TARGET).length, total: rows.length };
+}
+export function srFeed(data, y, w) {
+  const rows = yearRows(data.sex_reversal_feed, y, w), weeks = spanWeeks(rows, w), by = group(rows, r => r.iso_week);
+  const tot = k => weeks.map(x => by.has(x) ? sum(by.get(x).map(r => +r[k] || 0)) : null);
+  return { labels: weeks.map(wl), prepared: tot('feed_prepared_kg'), hormone: tot('hormone_qty'), rows: rows.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 8), total: rows.length, sopNo: rows.filter(r => /^n/i.test(String(r.sop_followed || '').trim())).length };
+}
+export function hapaWash(data, y, w) {
+  const rows = yearRows(data.hapa_wash_dispatch, y, w), weeks = spanWeeks(rows, w), by = group(rows, r => r.iso_week);
+  const tot = k => weeks.map(x => by.has(x) ? sum(by.get(x).map(r => +r[k] || 0)) : null);
+  const sizes = [...group(rows, r => r.hapa_size || '?')].map(([size, g]) => ({ size, received: sum(g.map(r => +r.received || 0)), washed: sum(g.map(r => +r.washed || 0)), dispatched: sum(g.map(r => +r.dispatched || 0)), exchanged: sum(g.map(r => +r.exchanged || 0)), cost: sum(g.map(r => +r.cost || 0)) })).sort((a, b) => b.washed - a.washed);
+  return { labels: weeks.map(wl), washed: tot('washed'), dispatched: tot('dispatched'), exchanged: tot('exchanged'), sizes, total: { washed: sum(sizes.map(r => r.washed)), dispatched: sum(sizes.map(r => r.dispatched)), cost: sum(sizes.map(r => r.cost)) } };
+}
 export const hapaUnits = [['nursery', 'Nursery (PNS)'], ['broodstock', 'Broodstock (BS)']];
 
 // Pond flipping is progressive. A pond stays "in progress" until its preparation is complete, and that is worked out automatically:
@@ -249,6 +272,10 @@ export function draftComment(key, a) {
     case 'brood_density': { const bd = a, f = (l, fn, nm) => l ? `${nm} ${fn(l.v)}${bd.thisWeek && l.w === bd.week ? '' : ` (no recounts this week; last recorded week ${l.w})`}` : `${nm}: no recounts recorded`;
       return `Broodstock ${f(bd.lastRatio, v => `${v.toFixed(2)}:1, ${(v / SEX_TARGET * 100).toFixed(0)}% of the 3:1 standard`, 'sex ratio was')}; ${f(bd.lastDensity, v => `${v.toFixed(2)} kg/m2, ${(v / bd.target_density * 100).toFixed(0)}% of the ${bd.target_density} kg/m2 target`, 'mean stocking density was')}.${bd.thisWeek ? ` ${bd.hapas} hapas were recounted this week.` : ''}`; }
     case 'prep_scoring': return a.length ? `${a.length} pond(s) flipped this month were scored; lowest overall: ${a[0].pond} at ${a[0].overall_score == null ? '-' : (a[0].overall_score * 100).toFixed(0) + '%'}.` : 'No ponds were scored this month.';
+    case 'sinkers': return a.nursery.last || a.broodstock.last ? ['nursery', 'broodstock'].map(k => a[k].last ? `${k[0].toUpperCase() + k.slice(1)}: ${p(a[k].last.v)} of the ${a[k].std}-sinker standard (week ${a[k].last.w}).` : '').filter(Boolean).join(' ') : 'No sinker counts recorded this year.';
+    case 'sr_efficiency': return a.last ? `Week ${a.last.w}: ${p(a.last.v)} males across ${a.last.cages} cage(s) sampled (target ${p(SR_TARGET)}). ${a.below} of ${a.total} samples this year were below the target.` : 'No sex reversal efficiency samples recorded.';
+    case 'sr_feed': return a.total ? `${a.total} feed preparation(s) audited this year; SOP not followed in ${a.sopNo}.` : 'No sex reversal feed audits recorded.';
+    case 'hapa_wash': return a.sizes.length ? `Year to date ${a.total.washed.toLocaleString()} hapas washed and ${a.total.dispatched.toLocaleString()} dispatched; wash cost ${Math.round(a.total.cost).toLocaleString()}.` : 'No hapa wash / dispatch records.';
     default: return '';
   }
 }

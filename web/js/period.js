@@ -2,7 +2,7 @@
 // month number (1-12) or the day of the year (1-366) of each row's own date. Every chart, table and KPI then works unchanged on that period.
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const MODES = [['week', 'Weekly'], ['month', 'Monthly'], ['day', 'Daily']];
-const DATE_FIELD = { workstation_audits: 'audit_date', biosecurity_audits: 'audit_date', parasitology_samples: 'sample_date', ras_water_volume: 'used_date', ras_parasite_prevalence: 'sample_date',
+const DATE_FIELD = { sr_efficiency: 'sampling_date', sex_reversal_feed: 'date', hapa_wash_dispatch: 'date', workstation_audits: 'audit_date', biosecurity_audits: 'audit_date', parasitology_samples: 'sample_date', ras_water_volume: 'used_date', ras_parasite_prevalence: 'sample_date',
   day3_recounts: 'recount_date', stocking_audits: 'audit_date', fry_transfers: 'date', egg_separation_ratings: 'date', egg_volumetric_jars: 'date', bottom_rope_audits: 'audit_date',
   broodstock_density: 'date', hapa_exchanges: 'scheduled', pond_prep_scoring: 'flipping_date', fry_culling: 'date', hapa_cov_aerated: 'date', hapa_cov_unaerated: 'date', do_temp_drone: 'date' };
 const doy = (y, m, d) => Math.round((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 864e5) + 1;

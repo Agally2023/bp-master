@@ -2,7 +2,7 @@
 from __future__ import annotations
 import datetime as dt
 import pandas as pd
-from . import analytics as A, comments as C, deck, dbframes as F, media
+from . import analytics as A, comments as C, deck, dbframes as F, media, extras as X
 
 COMMENT_MAP = {'workstation': ['workstation'], 'biosecurity': ['biosecurity'], 'parasitology': ['parasitology'], 'ras_water': ['ras_water'], 'day3': ['day3'],
                'stocking': ['stocking'], 'transfers': ['transfers'], 'eggs': ['egg'], 'flipping': ['flipping'], 'bottom_rope': ['bottom_rope_nursery', 'bottom_rope_broodstock'],
@@ -134,6 +134,15 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:
         if brood is not None and 'brood_density' not in exclude: media.add_brood_slide(out, brood, cm['brood_density'])
     except Exception as e: warn('Broodstock slide', e)
+    for key, fn_, tbl in (('sinkers', X.sinkers, 'bottom_rope_audits'), ('ws_frequency', X.ws_frequency, 'workstation_audits'), ('sr_efficiency', X.sr_efficiency, 'sr_efficiency'),
+                          ('sr_feed', X.sr_feed, 'sex_reversal_feed'), ('hapa_wash', X.hapa_wash, 'hapa_wash_dispatch')):
+        try:
+            if key in exclude or not T.get(tbl): continue
+            spec = fn_(T[tbl], year, week)
+            if spec:
+                if (overrides or {}).get(key): spec['lines'] = [l.strip() for l in overrides[key].split('\n') if l.strip()]
+                media.add_spec_slide(out, spec)
+        except Exception as e: warn('Slide ' + key, e)
     images = list(images or [])
     if photo_src:
         try: images += _auto_photos(photo_src, images, flip_prog, flip_tot)
