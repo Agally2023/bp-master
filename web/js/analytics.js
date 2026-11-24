@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611240432';
+import { S } from './state.js?v=202611240438';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611240432';
-import { MONTHS, dayShort } from './period.js?v=202611240432';
+import { mean, sum, weekRange } from './util.js?v=202611240438';
+import { MONTHS, dayShort } from './period.js?v=202611240438';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -9,7 +9,7 @@ export const asOfNote = (a, w) => a && a.stale ? `No week ${w} data yet - showin
 const inYear = (rows, y) => (rows || []).filter(r => r.iso_year === y);
 const group = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
 const weeksTo = (week, n) => Array.from({ length: Math.min(n, week) }, (_, i) => week - Math.min(n, week) + 1 + i);
-const wl = w => S.period === 'month' ? MONTHS[w - 1].slice(0, 3) : S.period === 'day' ? dayShort(S.week.y, w) : 'Wk ' + w;
+const wl = w => S.period === 'month' ? (MONTHS[w - 1] || 'M' + w).slice(0, 3) : S.period === 'day' ? dayShort(S.week.y, w) : 'Wk ' + w;
 export const STAGES = ['Stage 2', 'Stage 3', 'Early Stage 4', 'Late Stage 4', 'Stage 1', 'Fry'];
 export const REASONS = [['Lunch break', /lunch/], ['Breakfast / tea break', /breakfast|tea/], ['Stocking / transfer duties', /stock|transfer/], ['Recount / sampling', /recount|sampl/], ['Meeting', /meeting|briefing/], ['Sump / maintenance', /sump|repair|maint/], ['Leave / sickness', /sick|leave|off duty|absent/], ['Washroom', /wash ?room|toilet|restroom/], ['Harvest / feeding', /harvest|feed/]];
 

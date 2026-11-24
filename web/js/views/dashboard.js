@@ -1,12 +1,12 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240432';
-import { S, ensure } from '../state.js?v=202611240432';
-import { periodize, relabel } from '../period.js?v=202611240432';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240432';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240438';
+import { S, ensure } from '../state.js?v=202611240438';
+import { periodize, relabel } from '../period.js?v=202611240438';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240438';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import * as A from '../analytics.js?v=202611240432';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240432';
+import * as A from '../analytics.js?v=202611240438';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240438';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240432';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240438';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
@@ -15,7 +15,7 @@ const has = a => a.some(v => v != null);
 export async function render({ view, ctx }) {
   const raw = await ensure(KEYS, sinceYear(), true);
   const body = h('div', {}); let ras = 'RAS2', by = 'stage';
-  const draw = async () => {
+  const drawInner = async () => {
     await ensure(KEYS, sinceYear(), true);
     clear(body); const { y, w } = S.week; const data = periodize(raw, S.period);
     if (S.failed.size) body.append(h('div', { class: 'note stale' }, 'Some data could not be loaded (' + [...S.failed.keys()].join(', ') + '). Reload the page to try again.'));
@@ -106,6 +106,7 @@ export async function render({ view, ctx }) {
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
     relabel(body, S.period);
   };
+  const draw = async () => { try { await drawInner(); } catch (e) { console.error(e); body.append(h('div', { class: 'note stale' }, 'Part of the dashboard could not be drawn (' + (e && e.message || e) + '). Please send this message to the developer.')); } };
   weekPicker(ctx, raw, draw);
   view.append(body); draw();
 }
