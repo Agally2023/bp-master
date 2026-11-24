@@ -174,6 +174,18 @@ def drop_slides(prs, keep):
         if i not in keep:
             prs.part.drop_rel(sid.rId); lst.remove(sid)
 
+def whiten_comment_boxes(prs):
+    """Comment boxes are tinted green in the template (theme accent). Reports use a white background with a thin grey border instead."""
+    from pptx.enum.dml import MSO_THEME_COLOR
+    for sl in prs.slides:
+        for sh in sl.shapes:
+            try:
+                if sh.has_text_frame and sh.fill.type == 1 and sh.fill.fore_color.type != 1 and sh.fill.fore_color.theme_color == MSO_THEME_COLOR.ACCENT_1:
+                    sh.fill.solid(); sh.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                    sh.line.color.rgb = RGBColor(0xBF, 0xBF, 0xBF); sh.line.width = Pt(0.75)
+            except Exception:
+                pass
+
 def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_sub, d3_title, br, extra=None):
     prs = Presentation(template)
     S = lambda n: prs.slides[n - 1]
@@ -251,6 +263,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
         lst = prs.slides._sldIdLst; items = list(lst)
         lst.remove(items[-1]); lst.insert(len(items) - 2, items[-1])
     prs.core_properties.title = f'VF BP Week {week} Report'
+    whiten_comment_boxes(prs)
     apply_typography(prs)
     prs.save(out)
 
