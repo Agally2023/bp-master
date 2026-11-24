@@ -1,7 +1,7 @@
 /* Victory Farms theme: brand colours taken from the weekly report template */
 :root{
   --vf-green:#0E812E; --vf-green-dk:#0A5F22; --vf-green-xdk:#073F17; --vf-gold:#CB8306; --vf-cyan:#00BDF0; --vf-red:#F3091A; --vf-purple:#7030A0;
-  --note:#BBF6CB; --navy:#002060; --ink:#262626; --ink-2:#5b625d; --line:#dfe7df; --bg:#f4f8f4; --card:#ffffff; --grey:#929292;
+  --note:#ffffff; --navy:#002060; --ink:#262626; --ink-2:#5b625d; --line:#dfe7df; --bg:#f4f8f4; --card:#ffffff; --grey:#929292;
   --good:#C6EFCE; --avg:#FFEB9C; --poor:#FFC7CE; --radius:10px; --side-w:252px; --side-w-c:68px;
   font-family:Calibri,"Segoe UI",system-ui,-apple-system,Arial,sans-serif; color:var(--ink);
 }
@@ -57,7 +57,7 @@ label.f .hint{font-weight:400;font-size:12px;color:var(--grey)}
 .grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}.g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.sp{flex:1}
 .muted{color:var(--ink-2);font-size:13px}
-.note{background:var(--note);border-radius:8px;padding:10px 14px;margin-top:10px}
+.note{background:var(--note);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-top:10px}
 .note ul{margin:0;padding-left:20px}
 .pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;background:#e8efe8;color:var(--vf-green-dk)}
 .pill.err{background:var(--poor);color:#9c0006}.pill.warn{background:var(--avg);color:#7a5200}.pill.info{background:#dbeefa;color:#0b5a82}.pill.ok{background:var(--good);color:#0b5d1e}
@@ -105,7 +105,7 @@ td.num{text-align:right}
 .derived{background:#f1f6f1;border:1px dashed #b8c9b8;border-radius:8px;padding:8px 10px;font-size:13px}
 .derived b{color:var(--vf-green-dk)}
 .drop{border:2px dashed var(--vf-green);border-radius:12px;padding:30px;text-align:center;background:#fafffa;cursor:pointer}
-.drop.over{background:var(--note)}
+.drop.over{background:#e6f1e6}
 .imp{border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:14px;background:#fff}
 .imp h3{font-size:16px;color:var(--vf-green-dk)}
 .issues{list-style:none;padding:0;margin:8px 0;display:flex;flex-direction:column;gap:5px;font-size:13px}
@@ -115,7 +115,7 @@ td.num{text-align:right}
 .slide{background:#fff;border:1px solid #c9d4c9;border-radius:6px;aspect-ratio:16/9;position:relative;padding:3.2% 3.5% 7%;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;flex-direction:column;gap:6px}
 .slide h3{color:var(--vf-green);font-size:clamp(15px,1.9vw,24px);font-weight:700}
 .slide .sbody{flex:1;min-height:0;display:flex;gap:10px}.slide .sbody>div{min-width:0;flex:1;display:flex;flex-direction:column;gap:6px}
-.slide .sbox{background:var(--note);padding:6px 10px;font-size:clamp(10px,1.15vw,14px);border-radius:3px}
+.slide .sbox{background:var(--note);border:1px solid var(--line);padding:6px 10px;font-size:clamp(10px,1.15vw,14px);border-radius:3px}
 .slide .sbox ul{margin:0;padding-left:16px}
 .slide .slogo{position:absolute;left:2.4%;bottom:2.5%;height:6.5%}
 .slide .sfoot{position:absolute;bottom:2.5%;left:0;right:0;text-align:center;font-size:9px;color:#777}
@@ -190,7 +190,7 @@ td.redtxt{color:#e00000;font-weight:700}
 :root[data-theme=amoled]{
   color-scheme:dark; --txt:hsl(0 0% var(--txt-l,88%));
   --bg:#000; --card:#0a0b0a; --ink:var(--txt); --ink-2:hsl(130 6% calc(var(--txt-l,88%) - 30%)); --line:#1c211d; --navy:#0e2a5e;
-  --note:#0b2614; --good:#0f3a1a; --avg:#473705; --poor:#4a1218; --grey:#6d6d6d;
+  --note:#0a0b0a; --good:#0f3a1a; --avg:#473705; --poor:#4a1218; --grey:#6d6d6d;
   --vf-green:#2fb457; --vf-green-dk:#1c8a3f; --vf-green-xdk:#06210f;
 }
 :root[data-theme=amoled] body{background:#000;color:var(--ink);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -269,4 +269,4 @@ td.redtxt{color:#e00000;font-weight:700}
 /* table label bar: light-navy band with a bold label, as the template's "Item 1 - In USD" rows */
 .card:has(table.t)>h2{background:#D6E3FF;color:#000;padding:6px 10px;border-radius:3px;font-size:14px;font-weight:700}
 :root[data-theme=amoled] .card:has(table.t)>h2{background:#0d1a33;color:#cfe0ff}
-.note.stale{background:transparent;color:#C00000;font-weight:700;font-style:italic;padding:2px 0;margin:0 0 6px}
+.note.stale{border:0;background:transparent;color:#C00000;font-weight:700;font-style:italic;padding:2px 0;margin:0 0 6px}

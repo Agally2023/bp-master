@@ -1,18 +1,30 @@
 import { h, clear, pct, fmtDate } from '../util.js';
-import { S, setWeek, currentWeek } from '../state.js';
+import { S, setWeek, setPeriod, currentWeek } from '../state.js';
+import { MODES, periodize, periodLabel, periodRangeText, currentPeriod } from '../period.js';
 import { weeksAvailable } from '../analytics.js';
 import { weekRange } from '../util.js';
 
-export function weekPicker(ctx, data, onChange) {
-  const avail = weeksAvailable(data), cur = currentWeek();
-  if (!avail.some(a => a.y === cur.y && a.w === cur.w)) avail.unshift(cur);
-  if (!avail.some(a => a.y === S.week.y && a.w === S.week.w)) avail.push({ ...S.week });
-  avail.sort((a, b) => b.y * 100 + b.w - (a.y * 100 + a.w));
-  const sel = h('select', { 'aria-label': 'Report week' }, avail.map(a => h('option', { value: `${a.y}-${a.w}`, selected: a.y === S.week.y && a.w === S.week.w }, `Week ${a.w}, ${a.y}`)));
-  const rng = h('span', { class: 'muted' });
-  const upd = () => { const r = weekRange(S.week.y, S.week.w); rng.textContent = `${fmtDate(r.monIso)} – ${fmtDate(r.sunIso)}`; };
-  sel.onchange = () => { const [y, w] = sel.value.split('-').map(Number); setWeek(y, w); upd(); onChange(); };
-  upd(); ctx.append(rng, sel);
+// Weekly / Monthly / Daily switch and the period list. `raw` is the loaded data; the list is built from the data re-keyed for the chosen view.
+export function weekPicker(ctx, raw, onChange) {
+  const sel = h('select', { 'aria-label': 'Report period' }), rng = h('span', { class: 'muted' });
+  const modeBox = h('div', { class: 'seg', role: 'group', 'aria-label': 'View' });
+  const fill = () => {
+    const d = periodize(raw, S.period), avail = weeksAvailable(d), cur = S.period === 'week' ? currentWeek() : currentPeriod(S.period);
+    if (!avail.some(a => a.y === cur.y && a.w === cur.w)) avail.unshift(cur);
+    if (!avail.some(a => a.y === S.week.y && a.w === S.week.w)) avail.push({ ...S.week });
+    avail.sort((a, b) => b.y * 1000 + b.w - (a.y * 1000 + a.w));
+    clear(sel); for (const a of avail) sel.append(h('option', { value: `${a.y}-${a.w}`, selected: a.y === S.week.y && a.w === S.week.w }, periodLabel(S.period, a.y, a.w)));
+    const t = periodRangeText(S.period, S.week.y, S.week.w), r = S.period === 'week' ? weekRange(S.week.y, S.week.w) : null;
+    rng.textContent = t || `${fmtDate(r.monIso)} – ${fmtDate(r.sunIso)}`;
+  };
+  const buttons = MODES.map(([m, label]) => h('button', { type: 'button', 'aria-pressed': S.period === m, onclick: () => {
+    if (S.period === m) return; setPeriod(m);
+    const avail = weeksAvailable(periodize(raw, m)), cur = m === 'week' ? currentWeek() : currentPeriod(m), pick = m === 'week' ? (avail.find(a => a.y === cur.y && a.w === cur.w) || avail[0] || cur) : (avail.find(a => a.y * 1000 + a.w <= cur.y * 1000 + cur.w) || avail[0] || cur);   // month/day: the latest period that has data and is not in the future
+    S.week = { y: pick.y, w: pick.w }; buttons.forEach((b, i) => b.setAttribute('aria-pressed', MODES[i][0] === m)); fill(); S.listeners.forEach(f => f()); onChange();
+  } }, label));
+  modeBox.append(...buttons);
+  sel.onchange = () => { const [y, w] = sel.value.split('-').map(Number); setWeek(y, w); fill(); onChange(); };
+  fill(); ctx.append(modeBox, rng, sel);
 }
 export const kpi = (label, value, o = {}) => h('div', { class: 'kpi ' + (o.cls || '') }, h('div', { class: 'v' }, value), h('div', { class: 'l' }, label), o.note ? h('div', { class: 'd ' + (o.good == null ? '' : o.good ? 'good' : 'bad') }, o.note) : null);
 // template: negative numbers in ( ) rather than with a minus sign, e.g. -5.0% -> (5.0)%

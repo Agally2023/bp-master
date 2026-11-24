@@ -1,6 +1,8 @@
 import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js';
 import { S, ensure } from '../state.js';
-const sinceYear = () => S.week.y - (S.week.w <= 12 ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
+import { periodize, periodLabel, relabel } from '../period.js';
+import { wsFrequencyBlock } from './wsfreq.js';
+const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
 import { db } from '../db.js';
 import * as A from '../analytics.js';
 import { lineChart, barChart, PAL } from '../charts.js';
@@ -13,8 +15,8 @@ const has = a => a.some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
 // Section list = slide order of the weekly deck.
 const SECTIONS = [
-  { key: 'workstation', title: 'Incubation Workstation Compliance', slide: 2, an: (d, y, w) => A.workstation(d, y, w),
-    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, sn(a.ncAsOf), table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason]))] },
+  { key: 'workstation', title: 'Incubation Workstation Compliance', slide: 2, an: (d, y, w) => ({ ...A.workstation(d, y, w), freq: A.wsFrequency(d, y, w) }),
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'Compliance', values: a.trend }], xTitle: 'ISO week', yTitle: 'Compliance (%)', min: 0, max: 1, fmt: pc0, target: 1, targetLabel: '100%', h: 190 }) : null, sn(a.ncAsOf), table(['Date', 'RAS', 'Score', 'Island', 'Reason'], a.nc.slice(0, 6).map(r => [fmtDate(r.audit_date), r.ras, pct(r.score), r.noncompliant_island, r.reason])), h('h3', {}, 'Non-conformances by incubation (all weeks)'), wsFrequencyBlock(a.freq)] },
   { key: 'biosecurity', title: 'Biosecurity and Hygiene', slide: 3, an: (d, y, w) => A.biosecurity(d, y, w),
     body: a => [bioTable(a, pct), has(a.overall) ? lineChart({ labels: a.labels, series: [{ name: 'Overall rating', values: a.overall }], xTitle: 'ISO week', yTitle: 'Biosecurity score (%)', min: 0, max: 1, fmt: v => (v * 100).toFixed(0) + '%', area: true, joinGaps: true, valueLabels: true, maxLabels: 30, w: 760, h: 210 }) : null] },
   { key: 'bio_photos', title: 'Biosecurity: audit photos', slide: 4, photos: 4, an: () => ({}), body: () => [] },
@@ -29,7 +31,7 @@ const SECTIONS = [
   { key: 'transfers', title: 'Incubation to Pond Transfer Audit (Morning stocking)', slide: 8, an: (d, y, w) => A.transfers(d, y, w),
     body: a => [sn(a.asOf), table(['Date', 'Time', 'Tray (°C)', 'Bucket no fish (°C)', 'Bucket with fish (°C)', 'Pond (°C)', 'Variance (°C)'], a.map(r => [fmtDate(r.date), r.time, `${num(r.tray[0])}–${num(r.tray[1])}`, `${num(r.bwo[0])}–${num(r.bwo[1])}`, `${num(r.bw[0])}–${num(r.bw[1])}`, num(r.pond), `${num(r.variance[0])}–${num(r.variance[1])}`]))] },
   { key: 'eggs', title: 'Egg Stage Separation Rating', slide: 9, an: (d, y, w) => A.eggs(d, y, w),
-    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Stars'], a.low.map(r => [fmtDate(r.date), r.pond, r.incubator, r.star]))] },
+    body: a => [has(a.trend) ? lineChart({ labels: a.labels, series: [{ name: 'ABP rating', values: a.trend }], xTitle: 'ISO week', yTitle: 'ABP rating (1–5)', min: 0, max: 5, h: 190 }) : null, sn(a.jarsAsOf), table(['Date', 'Pond', 'Incubator', 'Total egg ht (cm)', 'Mixed (cm)', 'Stars'], a.low.filter(r => (r.mixed_h || 0) > 0).map(r => [fmtDate(r.date), r.pond, r.incubator, num(r.total_h), { v: num(r.mixed_h), cls: 'redtxt' }, r.star]))] },
   { key: 'flipping', title: 'Pond Flipping (ponds in progress)', slide: 10, an: (d, y, w) => A.flips(d, y, w),
     body: a => [table(A.flipHead, a.progress.slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })] },
   { key: 'flip_photos', title: 'Pond Flipping: photos', slide: 11, photos: 4, an: () => ({}), body: () => [] },
@@ -49,10 +51,17 @@ const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class
 const STATUS = { draft: 'Draft', in_review: 'In review', approved: 'Approved', exported: 'Exported' };
 
 export async function render({ view, ctx }) {
-  const data = await ensure(KEYS, sinceYear(), true); const body = h('div', {});
+  const raw = await ensure(KEYS, sinceYear(), true); const body = h('div', {});
   const draw = async () => {
     await ensure(KEYS, sinceYear(), true);
-    clear(body); const { y, w } = S.week; const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
+    clear(body); const { y, w } = S.week; const data = periodize(raw, S.period); const isAdmin = db.user.role === 'admin', canEdit = ['admin', 'reviewer', 'auditor'].includes(db.user.role);
+    if (S.period !== 'week') {      // monthly / daily view: a read-only preview of the same slides for that month or day (nothing is saved; PowerPoint export and approval stay weekly)
+      const lbl = periodLabel(S.period, y, w), kind = S.period === 'month' ? 'Monthly' : 'Daily';
+      body.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, `${kind} report: ${lbl}`), h('span', { class: 'sp' }), h('button', { class: 'btn sec', onclick: () => window.print() }, 'Print / save as PDF')),
+        h('p', { class: 'muted' }, `Every slide below is calculated from the records dated in ${lbl}; trend charts run across the ${S.period === 'month' ? 'months' : 'days'} of the year. Comments are drafted from the data. PowerPoint export and approval stay on the Weekly view.`)));
+      for (const s of SECTIONS.filter(x => !x.photos)) { const a = s.an(data, y, w); body.append(h('div', { class: 'slide' }, h('h3', {}, s.title), h('div', { class: 'sbody' }, h('div', {}, ...s.body(a)), h('div', {}, h('div', { class: 'sbox' }, h('p', {}, A.draftComment(s.key, a))))))); }
+      relabel(body, S.period); return;
+    }
     let R = await db.report(y, w, false); const calc = Object.fromEntries(SECTIONS.map(s => [s.key, s.an(data, y, w)]));
     if (!R) { body.append(h('div', { class: 'card' }, h('h2', {}, `No report for Week ${w}, ${y} yet`), h('p', { class: 'muted' }, 'Creating a report drafts comments from the data. You can edit every comment, add photos and attach analysed graphs.'), canEdit ? h('button', { class: 'btn', onclick: async () => { await db.report(y, w, true); await db.audit('create', 'report', `${y}-${w}`); draw(); } }, `Create Week ${w} report`) : null)); return; }
     R.auto = await autoPhotos(data, y, w);
@@ -81,7 +90,7 @@ export async function render({ view, ctx }) {
           h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
     }
   };
-  weekPicker(ctx, data, draw); view.append(body); await draw();
+  weekPicker(ctx, raw, draw); view.append(body); await draw();
 }
 
 function uploadBtn(R, key, slot, kind, existing, disabled, redraw) {

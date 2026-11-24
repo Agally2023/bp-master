@@ -21,7 +21,7 @@ export const SLIM = {
 };
 S.slim = new Set();
 const inflight = new Map();   // a table requested twice at once (fast navigation) is downloaded once
-S.since = {}; S.failed = new Map();   // tables that could not be loaded (shown as a notice, retried on the next visit)                 // oldest ISO year loaded per table (-Infinity = everything)
+S.since = {}; S.period = 'week'; S.failed = new Map();   // tables that could not be loaded (shown as a notice, retried on the next visit)                 // oldest ISO year loaded per table (-Infinity = everything)
 // ensure(keys, sinceYear): sinceYear limits the download to iso_year >= sinceYear (the dashboard only needs the recent trend window).
 const ALL_YEARS = new Set(['pond_flips']);   // progressive exercises: a pond can start in one year and finish in the next
 export async function ensure(keys, since0 = -Infinity, slim = false) {
@@ -41,3 +41,4 @@ export const invalidate = k => { S.slim.delete(k); S.loaded.delete(k); delete S.
 export function currentWeek() { const d = new Date(Date.now() - 864e5); const r = isoWeek(d); return { y: r.year, w: r.week }; }
 export const onWeek = f => S.listeners.push(f);
 export function setWeek(y, w) { S.week = { y, w }; S.listeners.forEach(f => f()); }
+export function setPeriod(mode) { S.period = mode; }

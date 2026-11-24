@@ -1,3 +1,5 @@
+import { S } from './state.js';
+import { periodWord } from './period.js';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -26,7 +28,7 @@ function frame(o) {
   }
   const step = Math.ceil(o.labels.length / (o.maxLabels || 14));
   // axis titles (every chart carries both)
-  if (o.xTitle) svg.append(el('text', { x: m.l + iw / 2, y: H - 6, 'text-anchor': 'middle', fill: '#222', 'font-weight': 700 }, o.xTitle));
+  if (o.xTitle) svg.append(el('text', { x: m.l + iw / 2, y: H - 6, 'text-anchor': 'middle', fill: '#222', 'font-weight': 700 }, o.xTitle === 'ISO week' ? periodWord[S.period] || o.xTitle : o.xTitle));
   if (o.yTitle) svg.append(el('text', { transform: `translate(13,${m.t + ih / 2}) rotate(-90)`, 'text-anchor': 'middle', fill: '#222', 'font-weight': 700 }, o.yTitle));
   return { svg, W, H, m, iw, ih, y, f, lo, hi, step };
 }

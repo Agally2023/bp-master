@@ -1,22 +1,23 @@
 import { S } from './state.js';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
 import { mean, sum, weekRange } from './util.js';
+import { MONTHS, dayShort } from './period.js';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
-const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 100 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 100 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 100), w: m % 100, stale: true } : { y, w, stale: false }; };
+const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
 export const asOfNote = (a, w) => a && a.stale ? `No week ${w} data yet - showing latest available: week ${a.w}` : '';
 const inYear = (rows, y) => (rows || []).filter(r => r.iso_year === y);
 const group = (rows, f) => { const m = new Map(); for (const r of rows) { const k = f(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
 const weeksTo = (week, n) => Array.from({ length: Math.min(n, week) }, (_, i) => week - Math.min(n, week) + 1 + i);
-const wl = w => 'Wk ' + w;
+const wl = w => S.period === 'month' ? MONTHS[w - 1].slice(0, 3) : S.period === 'day' ? dayShort(S.week.y, w) : 'Wk ' + w;
 export const STAGES = ['Stage 2', 'Stage 3', 'Early Stage 4', 'Late Stage 4', 'Stage 1', 'Fry'];
 export const REASONS = [['Lunch break', /lunch/], ['Breakfast / tea break', /breakfast|tea/], ['Stocking / transfer duties', /stock|transfer/], ['Recount / sampling', /recount|sampl/], ['Meeting', /meeting|briefing/], ['Sump / maintenance', /sump|repair|maint/], ['Leave / sickness', /sick|leave|off duty|absent/], ['Washroom', /wash ?room|toilet|restroom/], ['Harvest / feeding', /harvest|feed/]];
 
 export function weeksAvailable(data) {          // [{y,w}] with any data, newest first
   const s = new Set();
   for (const k of ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'stocking_audits', 'bottom_rope_audits', 'day3_recounts', 'fry_transfers', 'egg_volumetric_jars'])
-    for (const r of data[k] || []) if (r.iso_year && r.iso_week) s.add(r.iso_year * 100 + r.iso_week);
-  return [...s].sort((a, b) => b - a).map(v => ({ y: Math.floor(v / 100), w: v % 100 }));
+    for (const r of data[k] || []) if (r.iso_year && r.iso_week) s.add(r.iso_year * 1000 + r.iso_week);
+  return [...s].sort((a, b) => b - a).map(v => ({ y: Math.floor(v / 1000), w: v % 1000 }));
 }
 
 export function workstation(data, y, w, n = 13) {
@@ -26,6 +27,27 @@ export function workstation(data, y, w, n = 13) {
   const wkNC = lastWk((data.workstation_audits || []).filter(r => r.score < 1), y, w), nc = inWeek(data.workstation_audits, wkNC.y, wkNC.w).filter(r => r.score < 1).sort((a, b) => (a.audit_date + (a.audit_time || '')).localeCompare(b.audit_date + (b.audit_time || '')));
   const reasons = {}; for (const r of nc) { const t = String(r.reason || '').trim().toLowerCase(); if (!t || ['n/a', 'none'].includes(t)) continue; const hit = REASONS.filter(([, rx]) => rx.test(t)).map(x => x[0]); for (const k of hit.length ? hit : ['Other']) reasons[k] = (reasons[k] || 0) + 1; }
   return { labels: weeks.map(wl), trend, current: trend.at(-1), nc, ncAsOf: wkNC, reasons: Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 3), audits: inWeek(data.workstation_audits, y, w).length };
+}
+
+// How often each incubation (RAS) led to a non-conformance, over every week of the year up to the selected week.
+export function wsFrequency(data, y, w) {
+  const all = inYear(data.workstation_audits, y).filter(r => r.iso_week <= w).map(r => ({ ...r, unit: String(r.ras || '?').replace(/\s+/g, '').toUpperCase() }));
+  const first = all.length ? Math.min(...all.map(r => r.iso_week)) : w, weeks = weeksTo(w, Math.min(52, w - first + 1));
+  const units = [...new Set(all.map(r => r.unit))].sort();
+  const rows = units.map(u => {
+    const d = all.filter(r => r.unit === u), bad = d.filter(r => r.score < 1), byW = group(d, r => r.iso_week), badW = group(bad, r => r.iso_week);
+    return { unit: u, audits: d.length, nc: bad.length, rate: d.length ? bad.length / d.length : null, weeksAudited: byW.size, weeksNC: badW.size, islands: sum(bad.map(r => +r.noncompliant_islands || 0)), series: weeks.map(x => byW.has(x) ? (badW.get(x) || []).length : null) };
+  }).sort((a, b) => b.nc - a.nc);
+  // personnel: who was responsible for the non-conforming audits and for which reasons (every reason, all weeks to date)
+  const bad = all.filter(r => r.score < 1), cls = r => { const t = String(r.reason || '').trim().toLowerCase(); if (!t) return 'Not stated'; const hit = REASONS.find(([, rx]) => rx.test(t)); return hit ? hit[0] : 'Other'; };
+  const nm = r => { const t = String(r.employee_responsible || '').trim().replace(/\s+/g, ' '); return !t || /^(n\/?a|not specified|none)$/i.test(t) ? 'Not specified' : t.charAt(0).toUpperCase() + t.slice(1); };
+  const people = new Map(), reasons = new Map();
+  for (const r of bad) { const p = nm(r), c = cls(r);
+    if (!people.has(p)) people.set(p, { name: p, n: 0, by: {} }); const P = people.get(p); P.n++; P.by[c] = (P.by[c] || 0) + 1;
+    if (!reasons.has(c)) reasons.set(c, { reason: c, n: 0, by: {} }); const R = reasons.get(c); R.n++; R.by[p] = (R.by[p] || 0) + 1; }
+  const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]);
+  return { labels: weeks.map(wl), rows, total: all.length, totalNC: sum(rows.map(r => r.nc)),
+    people: [...people.values()].sort((a, b) => b.n - a.n).map(p => ({ ...p, list: top(p.by) })), reasons: [...reasons.values()].sort((a, b) => b.n - a.n).map(r => ({ ...r, list: top(r.by) })) };
 }
 
 export function biosecurity(data, y, w) {          // same shape as the PPT slide: every week from the first audit, gaps joined, category table with a rating band
@@ -125,9 +147,9 @@ export function broodDensity(data, y, w, n = 12) {
   const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return { w: weeks[i], v: a[i] }; return null; };
   return { week: w, labels: weeks.map(wl), ratio, density, target_density: DENS_TARGET, hapas: (by.get(w) || []).length, lastRatio: last(ratio), lastDensity: last(density), thisWeek: by.has(w) };
 }
-// Sinkers per hapa at the bottom rope check. Standard: broodstock 20, nursery 4 (maximum counted). Each hapa scores min(1, sinkers / standard);
+// Sinkers per hapa at the bottom rope check. Standard: broodstock 10, nursery 4 (maximum counted). Each hapa scores min(1, sinkers / standard);
 // the weekly curve is the average of those scores, so both units sit on one % axis. Only hapas with a recorded sinker count are included.
-export const SINKER_STD = { nursery: 4, broodstock: 20 };
+export const SINKER_STD = { nursery: 4, broodstock: 10 };
 export function sinkers(data, y, w, n = 12) {
   const all = inYear(data.bottom_rope_audits, y).filter(r => r.iso_week <= w && r.sinkers != null);
   const first = all.length ? Math.min(...all.map(r => r.iso_week)) : w; n = Math.min(52, Math.max(n, w - first + 1));

@@ -393,7 +393,7 @@ def batch3(prs, year, week, comments, x):
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}" if e['trend'][-1][1] is not None else '-'
             pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low
             nz = lambda v, f: '-' if v is None or v != v else format(v, f)
-            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, nz(r.total_h, '.1f'), nz(r.mixed_h, '.1f'), nz(r.overall, '.1%'), int(r.star)] for r in low.itertuples()]
+            rows = [[r.date.strftime('%d/%m/%Y'), r.pond, r.incubator, nz(r.total_h, '.1f'), nz(r.mixed_h, '.1f'), nz(r.overall, '.1%'), int(r.star)] for r in low.itertuples() if (r.mixed_h or 0) > 0 and r.mixed_h == r.mixed_h]   # only jars with a mixed-stage height
             _egg_low_tables(s, pic, shape(s, 'TextBox 20'), rows)       # every jar rated 0-2 is listed, never truncated
             for stray in [sh for sh in s.shapes if sh.name == 'Picture 19']: _drop_shape(stray)   # empty red template marker beside the table
             asof_note(s, pic, _low0, week); _drop_shape(pic); set_lines(shape(s, 'TextBox 20'), comments['egg'][1:], size=14)
