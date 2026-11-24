@@ -148,9 +148,11 @@ def _auto_photos(src, images, prog, tot):
     out, have = [], {i['section_key'] for i in images if i.get('kind') == 'photo'}
     fetch = src['fetch']
     if 'bio_photos' not in have:
-        for n, p in enumerate(A.pick_bio_photos(src.get('bio') or []), 1):
-            f = fetch('biosecurity-photos', p['row']['file_path'])
-            if f: out.append(dict(section_key='bio_photos', slot=n, kind='photo', path=f, caption=p['caption']))
+        picks = [(p['bucket'], p['path'], p['caption']) for p in A.pick_hygiene_photos(src.get('hygiene') or [])]
+        picks += [('biosecurity-photos', p['row']['file_path'], p['caption']) for p in A.pick_bio_photos(src.get('bio') or [], 40)]
+        for n, (bucket, path, cap) in enumerate(picks, 1):
+            f = fetch(bucket, path)
+            if f: out.append(dict(section_key='bio_photos', slot=n, kind='photo', path=f, caption=cap))
     if 'flip_photos' not in have and prog:
         for n, p in enumerate(A.pick_pond_photos(src.get('pond') or [], prog, tot or {}), 1):
             f = fetch('bpm-report-images', p['row']['storage_path'])

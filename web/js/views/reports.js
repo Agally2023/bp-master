@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240920';
-import { S, ensure } from '../state.js?v=202611240920';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611240920';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240920';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240926';
+import { S, ensure } from '../state.js?v=202611240926';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611240926';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240926';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611240920';
-import * as A from '../analytics.js?v=202611240920';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240920';
+import { db } from '../db.js?v=202611240926';
+import * as A from '../analytics.js?v=202611240926';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240926';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611240920';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611240926';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
 const CFG = window.BPM_CONFIG || {};
@@ -116,7 +116,9 @@ function captionBar(im, disabled) {
 // Picture grids fill themselves: biosecurity = photos taken in the Biosecurity dashboard that week; flipping = latest photo of each pond in progress.
 async function autoPhotos(data, y, w) {
   const out = { bio_photos: [], flip_photos: [] };
-  try { const r = weekRange(y, w); out.bio_photos = A.pickBioPhotos(await db.bioPhotos(r.monIso, r.sunIso)).map(p => ({ ...p, get: () => db.bioPhotoUrl(p.path) })); } catch { }
+  const r = weekRange(y, w);
+  try { out.bio_photos = (await db.hygienePhotos()).filter(p => String(p.photo_date).slice(0, 10) >= r.monIso && String(p.photo_date).slice(0, 10) <= r.sunIso).reverse().map(p => ({ caption: A.hygieneCaption(p), get: () => db.hygienePhotoUrl(p) })); } catch { }
+  try { out.bio_photos.push(...A.pickBioPhotos(await db.bioPhotos(r.monIso, r.sunIso), 40).map(p => ({ ...p, get: () => db.bioPhotoUrl(p.path) }))); } catch { }
   try { out.flip_photos = A.pickPondPhotos(data, y, w, await db.pondPhotos()).map(p => ({ caption: p.caption, get: () => db.pondPhotoUrl(p.row) })); } catch { }
   return out;
 }
@@ -128,10 +130,10 @@ function photoGrid(R, s, disabled, redraw) {
     const f = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
     const box = h('div', { class: 'slot', tabindex: 0, role: 'button', 'aria-label': `Photo ${slot}`, onclick: e => { if (!disabled && e.target.tagName !== 'BUTTON') f.click(); } }, f, h('span', {}, im ? '' : `+ Photo ${slot}`));
     f.onchange = async () => { const file = f.files[0]; if (!file) return; try { await db.putImage(R.report.id, s.key, slot, 'photo', file); await db.audit('upload', 'report_image', `${s.key}:${slot}`); redraw(); } catch (e) { toast(e.message, true); } };
-    if (im) { const img = h('img', { alt: im.caption || `Photo ${slot}` }); db.imageUrl(im).then(u => { img.src = u; }); box.append(img); if (!disabled) box.append(h('button', { class: 'btn danger sm', style: 'position:absolute;right:4px;top:4px;z-index:2', onclick: async e => { e.stopPropagation(); await db.removeImage(im); redraw(); } }, '✕')); }
-    if (au) { box.classList.add('auto'); box.querySelector('span').textContent = ''; const img = h('img', { alt: au.caption }); au.get().then(u => { img.src = u; }).catch(() => { box.querySelector('span').textContent = 'Photo unavailable'; }); box.append(img, h('span', { class: 'autotag' }, 'Auto')); }
+    if (im) { const img = h('img', { alt: im.caption || `Photo ${slot}` }); db.imageUrl(im).then(u => { img.src = u; }); box.append(img); if (im.caption && !/\.(jpe?g|png|webp)$/i.test(im.caption)) box.append(h('span', { class: 'pcap' }, im.caption)); if (!disabled) box.append(h('button', { class: 'btn danger sm', style: 'position:absolute;right:4px;top:4px;z-index:2', onclick: async e => { e.stopPropagation(); await db.removeImage(im); redraw(); } }, '✕')); }
+    if (au) { box.classList.add('auto'); box.querySelector('span').textContent = ''; const img = h('img', { alt: au.caption }); au.get().then(u => { img.src = u; }).catch(() => { box.querySelector('span').textContent = 'Photo unavailable'; }); box.append(img, h('span', { class: 'autotag' }, 'Auto'), h('span', { class: 'pcap' }, au.caption)); }
     const wrap = h('div', { class: 'slotwrap' }, box);
-    if (im) wrap.append(captionBar(im, disabled)); else if (au) wrap.append(h('div', { class: 'cap', style: 'text-align:center' }, au.caption));
+    if (im) wrap.append(captionBar(im, disabled)); 
     grid.append(wrap);
   }
   const more = (R.auto?.[s.key] || []).length - 4;

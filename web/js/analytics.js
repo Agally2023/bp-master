@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611240920';
+import { S } from './state.js?v=202611240926';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611240920';
-import { MONTHS, dayShort } from './period.js?v=202611240920';
+import { mean, sum, weekRange } from './util.js?v=202611240926';
+import { MONTHS, dayShort } from './period.js?v=202611240926';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -262,6 +262,7 @@ export function prepScoring(data, y, w, sunIso) {
 
 // ---- picture grids (the report fills them automatically) ----
 const dmy = d => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; };
+export const hygieneCaption = p => [p.area, p.item, p.status, dmy(p.photo_date)].filter(Boolean).join(', ');
 /** Biosecurity: up to 4 photos of the week, newest first, one per item/location before any repeat. rows come from bio_photos. */
 export function pickBioPhotos(rows, n = 4) {
   const seen = new Set(), first = [], rest = [];

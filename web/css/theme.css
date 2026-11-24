@@ -270,3 +270,5 @@ td.redtxt{color:#e00000;font-weight:700}
 .card:has(table.t)>h2{background:#D6E3FF;color:#000;padding:6px 10px;border-radius:3px;font-size:14px;font-weight:700}
 :root[data-theme=amoled] .card:has(table.t)>h2{background:#0d1a33;color:#cfe0ff}
 .note.stale{border:0;background:transparent;color:#C00000;font-weight:700;font-style:italic;padding:2px 0;margin:0 0 6px}
+
+.slot .pcap{position:absolute;right:4px;bottom:4px;z-index:1;max-width:96%;text-align:right;font-size:11px;font-weight:700;line-height:1.25;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px;pointer-events:none}

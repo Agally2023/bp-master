@@ -250,6 +250,10 @@ def pick_bio_photos(rows, n=4):
         k = (r.get('item'), r.get('location')); (rest if k in seen else first).append(r); seen.add(k)
     return [dict(row=r, caption=', '.join(x for x in (r.get('item'), r.get('location'), _dmy(r.get('log_date'))) if x)) for r in (first + rest)[:n]]
 
+def pick_hygiene_photos(rows):
+    """Hygiene & biosecurity photos uploaded in Data entry: every photo of the week, oldest first. rows: bpm_hygiene_photos (already limited to the week)."""
+    return [dict(row=r, bucket='bpm-report-images', path=r['storage_path'], caption=', '.join(str(x) for x in (r.get('area'), r.get('item'), r.get('status'), _dmy(r.get('photo_date'))) if x)) for r in sorted(rows, key=lambda r: str(r.get('photo_date')))]
+
 def pick_pond_photos(photos, progress, totals):
     """Pond flipping: the latest photo of every pond still in progress, whatever week it was taken.
     photos: bpm_pond_photos newest first; progress: {kind: [(pond, scheduled, stages_done)]}; totals: {kind: stage count}."""

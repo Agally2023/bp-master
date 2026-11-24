@@ -54,6 +54,10 @@ class DemoDB {
   async addPondPhoto(file, pond, stage, date) { const r = { id: uuid(), pond, stage, photo_date: date, storage_path: URL.createObjectURL(file) }; (this.pp ||= []).push(r); return r; }
   async removePondPhoto(r) { this.pp = (this.pp || []).filter(x => x.id !== r.id); }
   async pondPhotoUrl(r) { return r.storage_path; }
+  async hygienePhotos() { return (this.hp ||= []).slice().sort((a, b) => String(b.photo_date).localeCompare(String(a.photo_date))); }
+  async addHygienePhoto(file, area, item, status, date) { const r = { id: uuid(), area, item, status, photo_date: date, storage_path: URL.createObjectURL(file) }; (this.hp ||= []).push(r); return r; }
+  async removeHygienePhoto(r) { this.hp = (this.hp || []).filter(x => x.id !== r.id); }
+  async hygienePhotoUrl(r) { return r.storage_path; }
 }
 
 class SupabaseDB {
@@ -200,5 +204,14 @@ class SupabaseDB {
   }
   async removePondPhoto(r) { await this._f(`/rest/v1/${P}pond_photos?id=eq.${r.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${r.storage_path}`, { method: 'DELETE' }); } catch { } }
   async pondPhotoUrl(r) { return this._sign(BUCKET, r.storage_path); }
+  async hygienePhotos() { return (await this._f(`/rest/v1/${P}hygiene_photos?select=*&order=photo_date.desc,created_at.desc&limit=500`)).json(); }
+  async addHygienePhoto(file, area, item, status, date) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, ''), path = `hygiene/${uuid()}.${ext}`;
+    await this._f(`/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream', 'x-upsert': 'false' }, body: file });
+    const r = await this._f(`/rest/v1/${P}hygiene_photos`, { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ area, item: item || null, status: status || null, photo_date: date, storage_path: path }) });
+    return (await r.json())[0];
+  }
+  async removeHygienePhoto(r) { await this._f(`/rest/v1/${P}hygiene_photos?id=eq.${r.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${r.storage_path}`, { method: 'DELETE' }); } catch { } }
+  async hygienePhotoUrl(r) { return this._sign(BUCKET, r.storage_path); }
 }
 export const db = isDemo() ? new DemoDB() : new SupabaseDB();

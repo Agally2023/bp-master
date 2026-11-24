@@ -4,7 +4,8 @@ import copy
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Emu, Pt
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.oxml.ns import qn
 from pptx.dml.color import RGBColor
 from PIL import Image
 
@@ -54,10 +55,14 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
         x = (x0 + cw - w) if col == 0 else x0          # hug the centre line
         y = top + pitch * row                           # all photos in a row share the top edge
         s.shapes.add_picture(path, Emu(x), Emu(y), Emu(w), Emu(h))
-        if cap:
-            tb = s.shapes.add_textbox(Emu(x), Emu(y + h + int(H * 0.005)), Emu(w), Emu(int(H * 0.05))); tf = tb.text_frame; tf.word_wrap = True
-            p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-            r = p.add_run(); r.text = cap; r.font.size = Pt(12); r.font.bold = True; r.font.color.rgb = RGBColor(0x26, 0x26, 0x26)
+        if cap:                                         # details (area/pond, status, date) in the bottom-right corner of the picture
+            pt = 11; bw = min(w, int(len(cap) * pt * 6400 + 160000)); bh = int(H * 0.042)
+            tb = s.shapes.add_textbox(Emu(x + w - bw), Emu(y + h - bh), Emu(bw), Emu(bh)); tf = tb.text_frame; tf.word_wrap = True
+            tf.margin_left = tf.margin_right = Emu(54000); tf.margin_top = tf.margin_bottom = Emu(18000); tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            tb.fill.solid(); tb.fill.fore_color.rgb = RGBColor(0, 0, 0)
+            clr = tb.fill._xPr.find('.//' + qn('a:srgbClr')); al = clr.makeelement(qn('a:alpha'), {'val': '55000'}); clr.append(al)
+            p = tf.paragraphs[0]; p.alignment = PP_ALIGN.RIGHT
+            r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
 
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'

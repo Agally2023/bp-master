@@ -1,12 +1,12 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611240920';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611240920';
-import { db } from '../db.js?v=202611240920';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611240920';
-import { importPanel, batchesPanel } from './import.js?v=202611240920';
-import { table } from './common.js?v=202611240920';
-import { zipLib } from '../xlsx.js?v=202611240920';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611240920';
-import { download } from '../util.js?v=202611240920';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611240926';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611240926';
+import { db } from '../db.js?v=202611240926';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611240926';
+import { importPanel, batchesPanel } from './import.js?v=202611240926';
+import { table } from './common.js?v=202611240926';
+import { zipLib } from '../xlsx.js?v=202611240926';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611240926';
+import { download } from '../util.js?v=202611240926';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -29,7 +29,7 @@ export async function render({ view }) {
     const m = modByKey(current);
     const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
     const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), syncBtn(), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
-    if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
+    if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); if (m.key === 'biosecurity_audits') pane.append(hygienePhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
   }
   drawSide(); drawMain();
 }
@@ -178,4 +178,30 @@ function exportBtn(mods, name, label) {
     } catch (e) { toast('Export failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = old; }
   } }, label);
   return b;
+}
+
+// Hygiene & biosecurity photos: area/item, status and date are printed in the bottom-right corner of the picture in the report's 4-photo grid.
+function hygienePhotos() {
+  const box = h('div', { class: 'card mt' }), list = h('div', { class: 'ppgrid' });
+  const area = h('input', { placeholder: 'Area / location, e.g. Hatchery entrance', maxlength: 40, required: true, 'aria-label': 'Area' }), item = h('input', { placeholder: 'Item (optional), e.g. Footbath', maxlength: 40, 'aria-label': 'Item' }), status = h('input', { placeholder: 'Status, e.g. Compliant', maxlength: 40, 'aria-label': 'Status' });
+  const date = h('input', { type: 'date', value: todayIso(), max: todayIso(), 'aria-label': 'Photo date' });
+  const file = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', multiple: true, 'aria-label': 'Photos' });
+  const msg = h('div', { class: 'muted' });
+  const draw = async () => {
+    clear(list); let rows = []; try { rows = await db.hygienePhotos(); } catch (e) { list.append(h('div', { class: 'muted' }, 'Could not load photos: ' + e.message)); return; }
+    if (!rows.length) { list.append(h('div', { class: 'muted' }, 'No hygiene photos yet.')); return; }
+    for (const r of rows.slice(0, 24)) {
+      const img = h('img', { alt: r.area }); db.hygienePhotoUrl(r).then(u => { img.src = u; });
+      const del = db.user.role === 'admin' ? h('button', { class: 'btn danger sm', onclick: async () => { if (confirm('Delete this photo?')) { await db.removeHygienePhoto(r); draw(); } } }, 'Delete') : null;
+      list.append(h('div', { class: 'ppitem' }, img, h('div', { class: 'cap' }, [r.area, r.item, r.status, fmtDate(r.photo_date)].filter(Boolean).join(', ')), del));
+    }
+  };
+  const form = h('form', { class: 'row', onsubmit: async e => {
+    e.preventDefault(); if (!area.value.trim() || !file.files.length) { msg.textContent = 'Enter the area and choose at least one photo.'; return; }
+    msg.textContent = 'Uploading…';
+    try { for (const f of file.files) { if (f.size > 8e6) { toast(f.name + ' is over 8 MB', true); continue; } await db.addHygienePhoto(f, area.value.trim(), item.value.trim(), status.value.trim(), date.value); } await db.audit('upload', 'hygiene_photo', area.value.trim()); file.value = ''; msg.textContent = 'Saved. The report picks it up automatically.'; draw(); }
+    catch (x) { msg.textContent = 'Could not upload: ' + x.message; }
+  } }, area, item, status, date, file, h('button', { class: 'btn', type: 'submit' }, 'Add photos'));
+  box.append(h('h2', {}, 'Hygiene & biosecurity photos'), h('p', { class: 'muted' }, 'Add photos with the area, status and date. The weekly report shows the week\'s photos in a grid of four (extra photos go on further slides), with these details in the bottom-right corner of each picture.'), form, msg, list);
+  draw(); return box;
 }

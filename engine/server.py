@@ -83,6 +83,7 @@ class H(BaseHTTPRequestHandler):
                         open(p, 'wb').write(sb(f'/storage/v1/object/authenticated/{bucket}/' + urllib.parse.quote(path), tok, raw=True)); return p
                     except Exception as e: print('photo download failed', repr(e), file=sys.stderr); return None
                 src = dict(bio=get(f'/rest/v1/bio_photos?select=id,log_date,location,item,file_path&log_date=gte.{mon}&log_date=lte.{sun}&order=log_date.desc,id.desc'),
+                           hygiene=get(f'/rest/v1/bpm_hygiene_photos?select=area,item,status,photo_date,storage_path&photo_date=gte.{mon}&photo_date=lte.{sun}&order=photo_date.asc,created_at.asc'),
                            pond=get('/rest/v1/bpm_pond_photos?select=pond,stage,photo_date,storage_path&order=photo_date.desc,created_at.desc&limit=500'), fetch=fetch)
             pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude, photo_src=src)
             data = open(out, 'rb').read(); self.send_response(200); self._cors()
