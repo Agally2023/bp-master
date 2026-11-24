@@ -182,7 +182,7 @@ def whiten_comment_boxes(prs):
             try:
                 if sh.has_text_frame and sh.fill.type == 1 and sh.fill.fore_color.type != 1 and sh.fill.fore_color.theme_color == MSO_THEME_COLOR.ACCENT_1:
                     sh.fill.solid(); sh.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-                    sh.line.color.rgb = RGBColor(0xBF, 0xBF, 0xBF); sh.line.width = Pt(0.75)
+                    sh.line.fill.background()   # no border
             except Exception:
                 pass
 
