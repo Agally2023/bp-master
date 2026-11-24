@@ -1,5 +1,5 @@
-import { h, clear, toast, fmtDate } from '../util.js?v=202611240926';
-import { db } from '../db.js?v=202611240926';
+import { h, clear, toast, fmtDate } from '../util.js?v=202611240935';
+import { db } from '../db.js?v=202611240935';
 
 const ROLES = [['auditor', 'Auditor (enter/import data)'], ['reviewer', 'Reviewer (read only)'], ['admin', 'Administrator']];
 export async function render({ view }) {

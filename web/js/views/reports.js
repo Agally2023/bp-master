@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240926';
-import { S, ensure } from '../state.js?v=202611240926';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611240926';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240926';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240935';
+import { S, ensure } from '../state.js?v=202611240935';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611240935';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240935';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611240926';
-import * as A from '../analytics.js?v=202611240926';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240926';
+import { db } from '../db.js?v=202611240935';
+import * as A from '../analytics.js?v=202611240935';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240935';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611240926';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611240935';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
 const CFG = window.BPM_CONFIG || {};
