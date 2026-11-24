@@ -421,13 +421,16 @@ def batch3(prs, year, week, comments, x):
             piv, exp = F[kind]; pic = shape(s, pic_name)
             if piv.shape[1] == 0:
                 _drop_shape(pic); continue
-            ponds = list(piv.columns)[:14]
-            rows = [[st, exp[st]] + [('-' if v != v or v is None else int(v)) for v in piv.loc[st, ponds]] for st in piv.index]
-            header = [f'{label} - days per stage', 'Expected (days)'] + ponds
+            from . import analytics as _AN
+            ponds, n_late = _AN.late_ponds(piv, exp)                 # Days Late blueprint: only delayed ponds, most delayed first
+            if not ponds:
+                _drop_shape(pic); continue
+            rows = [[st, exp[st]] + [('-' if v != v or v is None else max(0, int(v) - int(exp[st]))) for v in piv.loc[st, ponds]] for st in piv.index]
+            header = [f'{label} - days late' + (f' ({len(ponds)} of {n_late} late ponds)' if n_late > len(ponds) else ''), 'Expected (days)'] + ponds
             def fill(r, c, v, rows=rows, exp=exp, piv=piv):
-                if c >= 2 and v != '-' and v > rows[r - 1][1]:
+                if c >= 2 and v != '-' and v > 0:
                     return RGBColor(0xFF, 0x00, 0x00)
-            table(s, pic, header, rows, [22, 7] + [6 if len(ponds) <= 10 else 5] * len(ponds), BLUE_DARK, font=8 if len(ponds) <= 10 else 7, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * (len(ponds) + 1), fill_fn=fill)
+            table(s, pic, header, rows, [22, 7] + [8 if len(ponds) <= 8 else 6] * len(ponds), BLUE_DARK, font=8, align=[PP_ALIGN.LEFT] + [PP_ALIGN.CENTER] * (len(ponds) + 1), fill_fn=fill, color_fn=lambda r, c, v: RGBColor(0xFF, 0xFF, 0xFF) if c >= 2 and v != '-' and v > 0 else None)
             _drop_shape(pic)
         set_lines(shape(s, 'TextBox 19'), comments['flipping'], size=14)
         done.add(10)

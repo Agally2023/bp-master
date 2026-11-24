@@ -1,5 +1,5 @@
 // Registry-driven import/derive/validate engine. Same rules as the Python report engine.
-import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611240438';
+import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611240912';
 
 export const ERR = /^#(REF!|VALUE!|DIV\/0!|N\/A|NAME\?|NUM!|NULL!)$/;
 const norm = s => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -72,6 +72,7 @@ export function derive(m, row) {
       case 'ratio': { const a = g(d.num), b = g(d.den); row[d.out] = a != null && b ? r4(a / b, d.round) : null; break; }
       case 'ratio_m1': { const a = g(d.num), b = g(d.den); row[d.out] = a != null && b ? r4(a / b - 1, d.round) : null; break; }
       case 'minus': { const a = g(d.a), b = g(d.b); row[d.out] = a != null && b != null ? r4(a - b, d.round) : null; break; }
+      case 'product': { const a = g(d.a), b = g(d.b); row[d.out] = a != null && b != null ? r4(a * b, d.round) : null; break; }
       case 'sum': row[d.out] = d.of.reduce((s, k) => s + (g(k) || 0), 0); break;
       case 'gt0': row[d.out] = (g(d.of) || 0) > 0; break;
       case 'concat': row[d.out] = d.parts.every(k => row[k] != null && row[k] !== '') ? d.parts.map(k => row[k]).join(d.sep) : null; break;

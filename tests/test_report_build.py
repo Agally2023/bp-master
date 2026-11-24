@@ -56,3 +56,9 @@ def test_broodstock_comment_override():
     out = os.path.join(tempfile.mkdtemp(), 'r.pptx')
     pipeline.build_week(copy.deepcopy(T0), 2026, 47, out, server.TEMPLATE, server.STAGE_DEFS, {'brood_density': 'My custom broodstock note'}, [], [], 'RAS2')
     assert any('My custom broodstock note' in t for t in _titles(out))
+
+def test_bottom_rope_analysis_slide():
+    out, warns = build(T0, 47)
+    text = ' '.join(sh.text_frame.text for s in Presentation(out).slides for sh in s.shapes if sh.has_text_frame)
+    assert 'Bottom Rope Conformance and Failure Analysis' in text, warns
+    assert not [w for w in warns if 'Bottom rope conformance' in w], warns

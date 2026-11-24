@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611240438';
+import { S } from './state.js?v=202611240912';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611240438';
-import { MONTHS, dayShort } from './period.js?v=202611240438';
+import { mean, sum, weekRange } from './util.js?v=202611240912';
+import { MONTHS, dayShort } from './period.js?v=202611240912';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -120,6 +120,26 @@ export function bottomRope(data, y, w, n = 12) {
   return out;
 }
 
+/** Bottom rope conformance (% of hapas that passed) as TWO lines on one axis, plus which pond / hapa failed which audit metric
+ *  in the latest week with audits (up to the selected one). Metrics are the four non-conformance columns of the rope check. */
+export const ROPE_METRICS = [['not_tied', 'Not tied'], ['missing_hook', 'Missing hook'], ['missing_posts', 'Missing posts'], ['wrong_position_ropes', 'Wrong position']];
+export function ropeAnalysis(data, y, w, n = 12) {
+  const d = inYear(data.bottom_rope_audits, y), all = d.filter(r => r.iso_week <= w);
+  const first = all.length ? Math.min(...all.map(r => r.iso_week)) : w; n = Math.min(52, Math.max(n, w - first + 1));
+  const weeks = weeksTo(w, n), out = { labels: weeks.map(wl), lines: {}, kinds: {} };
+  for (const kind of ['Nursery', 'Broodstock']) {
+    const rows = d.filter(r => String(r.unit_type).toLowerCase() === kind.toLowerCase());
+    out.lines[kind] = weeks.map(x => { const g = rows.filter(r => r.iso_week === x); return g.length ? 1 - g.filter(r => r.hapa_failed).length / g.length : null; });
+    const aw = lastWk(rows, y, w), cur = rows.filter(r => r.iso_week === aw.w && r.iso_year === aw.y), bad = cur.filter(r => r.hapa_failed);
+    const ponds = [...group(cur, r => r.pond_id)].sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true })).map(([pond, g]) => ({ pond, audited: g.length, failed: g.filter(r => r.hapa_failed).length,
+      ...Object.fromEntries(ROPE_METRICS.map(([k]) => [k, g.filter(r => (+r[k] || 0) > 0).length])) })).filter(p => p.failed);
+    const hapas = bad.map(r => ({ pond: r.pond_id, hapa: r.hapa_no, metrics: ROPE_METRICS.filter(([k]) => (+r[k] || 0) > 0).map(([k, nm]) => [nm, +r[k]]), nc: +r.non_conformances || 0 }))
+      .sort((a, b) => b.nc - a.nc || String(a.pond).localeCompare(String(b.pond), undefined, { numeric: true }) || a.hapa - b.hapa);
+    out.kinds[kind] = { asOf: aw, audited: cur.length, failed: bad.length, ponds, hapas, byMetric: ROPE_METRICS.map(([k, nm]) => [nm, bad.filter(r => (+r[k] || 0) > 0).length]) };
+  }
+  return out;
+}
+
 // Hapa exchange compliance is reported as TWO separate curves, each with its own percentage: Nursery (PNS) and Broodstock (BS).
 // There is deliberately no combined curve. "last" = the most recent week (up to the selected one) that had exchanges scheduled, so a unit
 // with no data this week still shows where it stood.
@@ -197,8 +217,10 @@ export function flips(data, y, w) {
     const st = defs[kind] || [];
     const sel = rows.filter(r => String(r.kind).toLowerCase() === kind && (inProg.has(kind + '|' + r.pond + '|' + r.scheduled) || String(r.scheduled).slice(0, 7) === sun.toISOString().slice(0, 7)));
     const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled)) latest.set(r.pond, r); }
-    const ponds = [...latest.values()].sort((a, b) => String(a.scheduled).localeCompare(String(b.scheduled)) || String(a.pond).localeCompare(String(b.pond)));
-    return [kind, { st, ponds }];
+    // "Days Late" blueprint: only ponds with a stage beyond its expected days, most delayed first (max 8 columns).
+    const late = r => sum(st.map(x => { const v = r.stage_days?.[x.name]; return v != null && v > x.expected ? v - x.expected : 0; }));
+    const lateAll = [...latest.values()].filter(r => late(r) > 0).sort((a, b) => late(b) - late(a) || String(a.pond).localeCompare(String(b.pond)));
+    return [kind, { st, ponds: lateAll.slice(0, 8), lateCount: lateAll.length, inScope: latest.size }];
   }));
   return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog, matrix };
 }
@@ -216,11 +238,14 @@ export function draftComment(key, a) {
     case 'transfers': return a.length ? `Temperature variance (bucket with fish vs pond) ranged ${Math.min(...a.map(r => r.variance[0])).toFixed(1)} to ${Math.max(...a.map(r => r.variance[1])).toFixed(1)}°C across ${sum(a.map(r => r.n))} audited hapa stockings.` : 'No fry transfers audited this week.';
     case 'eggs': return a.current == null ? 'No egg separation ratings this week.' : `Weekly average egg stage separation was ${a.current.toFixed(2)}; ${a.low.length} of ${a.total} jars scored 0–2 stars (${a.mixed} with mixed stages).`;
     case 'hapa_exchange': { const t = (k, name) => a[k].current != null ? `${name} ${p(a[k].current)}` : a[k].last ? `${name} no exchanges scheduled this week (last recorded week ${a[k].last.w}: ${p(a[k].last.v)})` : `${name} no exchanges recorded`; return `Hapa exchange compliance: ${t('nursery', 'nursery (PNS)')}; ${t('broodstock', 'broodstock (BS)')}.`; }
+    case 'rope_analysis': return ['Nursery', 'Broodstock'].map(k => { const z = a.kinds[k]; if (!z.audited) return `${k}: no bottom rope audits recorded.`;
+      const top = z.byMetric.filter(m => m[1]).sort((x, y2) => y2[1] - x[1]).map(m => `${m[0]} (${m[1]} hapas)`).join(', ');
+      return `${k}: ${z.failed} of ${z.audited} hapas failed${z.failed ? `; ponds affected: ${z.ponds.map(x => x.pond).join(', ')}; failed metrics: ${top}.` : ' (all conform).'}`; }).join('\n');
     case 'bottom_rope': return ['Nursery', 'Broodstock'].map(k => {
       const t = a[k].ponds.reduce((n, x) => n + x.audited, 0), f = a[k].ponds.reduce((n, x) => n + x.failed, 0);
       return t ? `${k}: total of ${t} hapas were audited; ${f} failed the audit metrics, a non-conformance of ${p(f / t)} (${f ? 'still fail' : 'meets the standard'}).` : `${k}: no bottom rope audits were recorded this week.`;
     }).join('\n');
-    case 'flipping': return ['Nursery', 'Broodstock'].map(k => { const l = a.progress.filter(r => r.kind === k); return `${k}: ` + (l.length ? `${l.length} pond(s) in progress: ${l.map(r => `${r.pond} (${r.done} of ${r.total} stages${r.next ? ', next: ' + r.next : ''})`).join(', ')}.` : 'no pond in progress.'); }).concat(a.progress.some(r => r.over.length) ? ['Stages above expected days: ' + a.progress.flatMap(r => r.over.map(o => `${r.pond} ${o.stage} ${o.days}d (exp. ${o.exp}d)`)).slice(0, 6).join('; ') + '.'] : []).join('\n');
+    case 'flipping': return ['Nursery', 'Broodstock'].map(k => { const l = a.progress.filter(r => r.kind === k); return `${k}: ` + (l.length ? `${l.length} pond(s) in progress, ${l.filter(r => r.over.length).length} delayed${l.some(r => r.over.length) ? ': ' + l.filter(r => r.over.length).map(r => r.pond).join(', ') : ''}.` : 'no pond in progress.'); }).concat(a.progress.some(r => r.over.length) ? ['Stages above expected days: ' + a.progress.flatMap(r => r.over.map(o => `${r.pond} ${o.stage} ${o.days}d (exp. ${o.exp}d)`)).slice(0, 6).join('; ') + '.'] : []).join('\n');
     case 'brood_density': { const bd = a, f = (l, fn, nm) => l ? `${nm} ${fn(l.v)}${bd.thisWeek && l.w === bd.week ? '' : ` (no recounts this week; last recorded week ${l.w})`}` : `${nm}: no recounts recorded`;
       return `Broodstock ${f(bd.lastRatio, v => `${v.toFixed(2)}:1, ${(v / SEX_TARGET * 100).toFixed(0)}% of the 3:1 standard`, 'sex ratio was')}; ${f(bd.lastDensity, v => `${v.toFixed(2)} kg/m2, ${(v / bd.target_density * 100).toFixed(0)}% of the ${bd.target_density} kg/m2 target`, 'mean stocking density was')}.${bd.thisWeek ? ` ${bd.hapas} hapas were recounted this week.` : ''}`; }
     case 'prep_scoring': return a.length ? `${a.length} pond(s) flipped this month were scored; lowest overall: ${a[0].pond} at ${a[0].overall_score == null ? '-' : (a[0].overall_score * 100).toFixed(0) + '%'}.` : 'No ponds were scored this month.';

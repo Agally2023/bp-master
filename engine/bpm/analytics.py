@@ -66,6 +66,19 @@ def bottom_rope_by_pond(br: pd.DataFrame, year: int, week: int):
                                  pos=('f_pos', 'sum'), hook=('f_hook', 'sum'), tie=('f_tie', 'sum'), post=('f_post', 'sum')).astype(int)
     return _asof(g.sort_index(), y, w, year, week)
 
+ROPE_METRICS = [('not_tied', 'Not tied'), ('missing_hook', 'Missing hook'), ('missing_posts', 'Missing posts'), ('wrong_position_ropes', 'Wrong position')]
+
+def bottom_rope_failures(br: pd.DataFrame, year: int, week: int):
+    """Which hapa (pond-hapa) failed which audit metric, latest week with audits up to `week`. Returns (rows, audited, as-of week)."""
+    if br is None or br.empty: return [], 0, week
+    y, w = latest_week(br, year, week)
+    d = br[(br.iso_year == y) & (br.iso_week == w)]
+    bad = d[d.hapa_failed].copy(); bad['nc'] = bad[[k for k, _ in ROPE_METRICS]].sum(axis=1)
+    rows = []
+    for r in bad.sort_values(['nc', 'pond_id', 'hapa_no'], ascending=[False, True, True]).itertuples():
+        rows.append((str(r.pond_id), r.hapa_no, ', '.join(f"{nm} ({int(getattr(r, k))})" for k, nm in ROPE_METRICS if getattr(r, k) > 0)))
+    return rows, len(d), w
+
 def day3_week(d3: pd.DataFrame, year: int, week: int):
     d = d3[(d3.iso_year == year) & (d3.iso_week == week)].sort_values(['recount_date', 'unit'])
     return d[['unit', 'recount_date', 'survival']]
@@ -208,6 +221,14 @@ def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None
 def flipped_in_week(fl, kind, year, week):
     d = fl[(fl.kind == kind) & (fl.iso_year == year) & (fl.iso_week == week)]
     return sorted(d.pond.unique())
+
+def late_ponds(piv, expected, limit=8):
+    """The 'Days Late' blueprint: only ponds with at least one stage beyond its expected days, most delayed first (max `limit`)."""
+    tot = {}
+    for pond in piv.columns:
+        t = sum(max(0, v - expected.get(stg, 99)) for stg, v in piv[pond].items() if v == v and v is not None and expected.get(stg) is not None)
+        if t > 0: tot[pond] = t
+    return sorted(tot, key=lambda p: (-tot[p], str(p)))[:limit], len(tot)
 
 def flip_overdue(piv, expected):
     out = []

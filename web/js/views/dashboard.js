@@ -1,12 +1,12 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240438';
-import { S, ensure } from '../state.js?v=202611240438';
-import { periodize, relabel } from '../period.js?v=202611240438';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240438';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240912';
+import { S, ensure } from '../state.js?v=202611240912';
+import { periodize, relabel } from '../period.js?v=202611240912';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240912';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import * as A from '../analytics.js?v=202611240438';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240438';
+import * as A from '../analytics.js?v=202611240912';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240912';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240438';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240912';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges'];
@@ -71,13 +71,13 @@ export async function render({ view, ctx }) {
         h('div', { class: 'note' }, 'Preparation = average of 9 stage scores (KPIs met ÷ 5). Overall = average of preparation and post-stocking. Rating bands: <75% = 1, 75–80% = 2, 81–90% = 3, 91–95% = 4, 96–99% = 4.5, 100% = 5.'))));
     }
     body.append(g(...[['broodstock', 'Broodstock ponds'], ['nursery', 'Nursery ponds']].map(([k, label]) => {
-      const { st, ponds } = fl.matrix[k]; const P = ponds.slice(0, 14);
-      if (!P.length) return card(`Pond flipping: ${label}`, noData('No ponds in progress'));
-      const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v, cls: v > x.expected ? 'late' : '' }; })]);
-      return card(`Pond flipping: ${label}: days per stage`, table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
-        h('div', { class: 'note' }, 'Red = more days than expected. A pond leaves this list automatically once its last stage has run its expected days.'));
+      const { st, ponds, lateCount, inScope } = fl.matrix[k]; const P = ponds;
+      if (!P.length) return card(`Pond flipping: ${label}`, noData(inScope ? 'No delayed ponds' : 'No ponds in progress'));
+      const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v: Math.max(0, v - x.expected), cls: v > x.expected ? 'late' : '' }; })]);
+      return card(`Pond flipping: ${label}: days late per stage`, table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
+        h('div', { class: 'note' }, `Days late = days taken minus expected days (red = late). Only delayed ponds are listed${lateCount > P.length ? `: the ${P.length} most delayed of ${lateCount}` : ` (${lateCount} of ${inScope} ponds in progress or flipped this month)`}.`));
     })));
-    body.append(g(card('Pond flipping: ponds in progress (all weeks)', table(A.flipHead, fl.progress.map(r => A.flipRow(r, fmtDate)), { empty: 'No ponds in progress' })),
+    body.append(g(card('Pond flipping: delayed ponds in progress', table(A.flipHead, fl.progress.filter(r => r.over.length).slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No delayed ponds' }), h('div', { class: 'note' }, `${fl.progress.length} ponds are in progress; only the delayed ones are listed.`)),
       card('Hapa exchange compliance (exchanged / scheduled, %)', has(hx.nursery.trend) || has(hx.broodstock.trend)
         ? h('div', {}, lineChart({ labels: hx.labels, series: [{ name: 'Nursery (PNS)', values: hx.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: hx.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: hx.labels.length <= 14 }),
           ...[['Nursery (PNS)', hx.nursery], ['Broodstock (BS)', hx.broodstock]].map(([nm, u]) => h('div', { class: 'note' }, u.current != null ? `${nm}: ${pct(u.current, 1)} this week` : u.last ? `${nm}: no exchanges scheduled this week; last recorded week ${u.last.w} at ${pct(u.last.v, 1)}` : `${nm}: no exchanges recorded`)))
@@ -102,6 +102,12 @@ export async function render({ view, ctx }) {
       const old = (l, f, hit) => l && !(bd.thisWeek && l.w === w) ? `last recount: wk ${l.w}` : l ? `${bd.hapas} hapas recounted` : 'no recounts';
       kpiSR.replaceWith(kpi('Broodstock sex ratio', bd.lastRatio ? bd.lastRatio.v.toFixed(2) + ':1' : '–', { cls: 'cyan', note: bd.lastRatio ? `${pct(bd.lastRatio.v / A.SEX_TARGET, 0)} of 3:1 · ${old(bd.lastRatio)}` : 'no recounts', good: bd.lastRatio ? Math.abs(bd.lastRatio.v / A.SEX_TARGET - 1) <= 0.1 : null }));
       kpiSD.replaceWith(kpi('Broodstock stocking density', bd.lastDensity ? bd.lastDensity.v.toFixed(2) + ' kg/m²' : '–', { cls: 'gold', note: bd.lastDensity ? `${pct(bd.lastDensity.v / bd.target_density, 0)} of target · ${old(bd.lastDensity)}` : 'no recounts', good: bd.lastDensity ? Math.abs(bd.lastDensity.v / bd.target_density - 1) <= 0.1 : null })); relabel(body, S.period); });
+    const ra = A.ropeAnalysis(data, y, w), rp = Object.values(ra.lines).some(has);
+    body.append(card('Bottom rope conformance: Nursery vs Broodstock (% of hapas that passed all four checks)', rp ? lineChart({ labels: ra.labels, series: [{ name: 'Nursery', values: ra.lines.Nursery, color: '#CB8306' }, { name: 'Broodstock', values: ra.lines.Broodstock, color: '#0E812E' }], xTitle: A.periodTitle ? A.periodTitle() : 'ISO week', yTitle: 'Hapas conforming (%)', min: 0, max: 1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData()));
+    body.append(g(...['Nursery', 'Broodstock'].map(k => { const z = ra.kinds[k]; return card(`Bottom rope failures by pond and hapa: ${k}${z.audited ? ` (${z.failed} of ${z.audited} hapas failed)` : ''}`,
+      z.audited ? sn(z.asOf) : null,
+      z.ponds.length ? table(['Pond', 'Audited', 'Failed', ...A.ROPE_METRICS.map(m => m[1])], z.ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: 'poor' }, ...A.ROPE_METRICS.map(([k2]) => p[k2] || 0)]), { num: [1, 2, 3, 4, 5, 6] }) : (z.audited ? h('div', { class: 'note' }, 'All audited hapas conform.') : noData()),
+      z.hapas.length ? table(['Pond', 'Hapa', 'Failed audit metrics (ropes)'], z.hapas.slice(0, 40).map(x => [x.pond, x.hapa, x.metrics.map(m => `${m[0]} (${m[1]})`).join(', ')]), { num: [1] }) : null); })));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: true, maxLabels: 30 }) : noData(),
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
     relabel(body, S.period);

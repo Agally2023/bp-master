@@ -6,7 +6,7 @@ from . import analytics as A, comments as C, deck, dbframes as F, media
 
 COMMENT_MAP = {'workstation': ['workstation'], 'biosecurity': ['biosecurity'], 'parasitology': ['parasitology'], 'ras_water': ['ras_water'], 'day3': ['day3'],
                'stocking': ['stocking'], 'transfers': ['transfers'], 'eggs': ['egg'], 'flipping': ['flipping'], 'bottom_rope': ['bottom_rope_nursery', 'bottom_rope_broodstock'],
-               'hapa_exchange': ['hapa_exchange'], 'brood_density': ['brood_density']}
+               'hapa_exchange': ['hapa_exchange'], 'brood_density': ['brood_density'], 'rope_analysis': ['rope_analysis']}
 
 WARNINGS = []
 
@@ -124,6 +124,13 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
         try:
             if 'prep_scoring' not in exclude: media.add_prep_slide(out, list(latest.values()), sun.strftime('%B %Y'), note=(overrides or {}).get('prep_scoring') or None)
         except Exception as e: warn('Pond preparation scoring', e)
+    try:
+        if 'rope_analysis' not in exclude and (len(nur) or len(bro)):
+            fn, an_, wn_ = A.bottom_rope_failures(nur, year, week); fb, ab_, wb_ = A.bottom_rope_failures(bro, year, week)
+            lines = (overrides or {}).get('rope_analysis') or C.rope_analysis(fn, an_, fb, ab_)
+            lines = lines if isinstance(lines, list) else [l for l in str(lines).split('\n') if l.strip()]
+            media.add_rope_slide(out, gn, gb, [('Nursery', fn), ('Broodstock', fb)], lines)
+    except Exception as e: warn('Bottom rope conformance slide', e)
     try:
         if brood is not None and 'brood_density' not in exclude: media.add_brood_slide(out, brood, cm['brood_density'])
     except Exception as e: warn('Broodstock slide', e)

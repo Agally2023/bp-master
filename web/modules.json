@@ -3352,6 +3352,379 @@
      "skipRe": "(example|target|rule)"
     }
    ]
+  },
+  {
+   "key": "sr_efficiency",
+   "label": "Sex Reversal (Male Conversion) Efficiency",
+   "group": "Broodstock",
+   "dateField": "sampling_date",
+   "fields": [
+    {
+     "name": "stocking_date",
+     "label": "Stocking date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "sampling_date",
+     "label": "Sampling date",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "cage_no",
+     "label": "Cage no.",
+     "type": "text",
+     "req": true
+    },
+    {
+     "name": "batch_code",
+     "label": "Batch code",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "abw_g",
+     "label": "ABW (g)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "doc",
+     "label": "Days of culture (DOC)",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "source_hapa_size",
+     "label": "Source pond hapa size",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "samples",
+     "label": "No. of samples",
+     "type": "int",
+     "req": true
+    },
+    {
+     "name": "females",
+     "label": "Females",
+     "type": "int",
+     "req": true
+    },
+    {
+     "name": "origin_pond",
+     "label": "Origin pond",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "feeder_name",
+     "label": "Pond feeder's name",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "origin",
+     "label": "Origin",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "comment",
+     "label": "Comment",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "males",
+     "label": "Males",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "pct_males",
+     "label": "% males",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "minus",
+     "out": "males",
+     "a": "samples",
+     "b": "females"
+    },
+    {
+     "fn": "ratio",
+     "out": "pct_males",
+     "num": "males",
+     "den": "samples",
+     "round": 4
+    },
+    {
+     "fn": "isoweek",
+     "date": "sampling_date"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "SR Efficiency",
+     "header": "Week",
+     "exact": true,
+     "map": {
+      "stocking_date": "stocking date",
+      "sampling_date": "sampling date",
+      "cage_no": "cage no.",
+      "batch_code": "batch code",
+      "abw_g": "abw(g)",
+      "doc": "doc",
+      "source_hapa_size": "source pond hapa size",
+      "samples": "no. of samples",
+      "females": "females",
+      "origin_pond": "origin pond",
+      "feeder_name": "pond feeder's name",
+      "origin": "origin",
+      "comment": "comment"
+     }
+    }
+   ]
+  },
+  {
+   "key": "sex_reversal_feed",
+   "label": "Sex Reversal Feed Audit",
+   "group": "Broodstock",
+   "dateField": "date",
+   "fields": [
+    {
+     "name": "date",
+     "label": "Date",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "feed_type",
+     "label": "Feed type",
+     "type": "text",
+     "req": true
+    },
+    {
+     "name": "feed_prepared_kg",
+     "label": "Total feed prepared (kg)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "hormone_qty",
+     "label": "Quantity of hormone used",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "hygiene",
+     "label": "Hygiene",
+     "type": "select",
+     "req": true,
+     "options": [
+      "Good",
+      "Medium",
+      "Bad"
+     ]
+    },
+    {
+     "name": "feed_quality",
+     "label": "Feed quality after mixing",
+     "type": "select",
+     "req": false,
+     "options": [
+      "Good",
+      "Medium",
+      "Bad"
+     ]
+    },
+    {
+     "name": "sop_followed",
+     "label": "SOP followed",
+     "type": "select",
+     "req": true,
+     "options": [
+      "Yes",
+      "No"
+     ]
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "isoweek",
+     "date": "date"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "Raw Data",
+     "header": "Date",
+     "map": {
+      "date": "date",
+      "feed_type": "feed type",
+      "feed_prepared_kg": "total feed prepared",
+      "hormone_qty": "quantity of hormone",
+      "hygiene": "hygiene",
+      "feed_quality": "feed quality",
+      "sop_followed": "sop followed"
+     }
+    }
+   ]
+  },
+  {
+   "key": "hapa_wash_dispatch",
+   "label": "Hapas Received, Washed & Dispatched",
+   "group": "Nursery",
+   "dateField": "date",
+   "fields": [
+    {
+     "name": "date",
+     "label": "Date",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "hapa_size",
+     "label": "Hapa size",
+     "type": "text",
+     "req": true
+    },
+    {
+     "name": "received",
+     "label": "Number received",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "washed",
+     "label": "Number washed",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "rate_per_hapa",
+     "label": "Rate per hapa",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "orders",
+     "label": "Orders",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "dispatched",
+     "label": "Number dispatched",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "exchanged",
+     "label": "Number exchanged",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "new_stocking",
+     "label": "New stocking",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "cost",
+     "label": "Cost",
+     "type": "num",
+     "derived": true
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "product",
+     "out": "cost",
+     "a": "washed",
+     "b": "rate_per_hapa",
+     "round": 2
+    },
+    {
+     "fn": "isoweek",
+     "date": "date"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "Data",
+     "header": "Date",
+     "map": {
+      "date": "date",
+      "hapa_size": "hapa size",
+      "received": "number received",
+      "washed": "number washed",
+      "rate_per_hapa": "rate per hapa",
+      "orders": "orders",
+      "dispatched": "number dispatched",
+      "exchanged": "number exchanged",
+      "new_stocking": "new stocking"
+     }
+    },
+    {
+     "sheet": "Sheet1",
+     "header": "Date",
+     "map": {
+      "date": "date",
+      "hapa_size": "hapa size",
+      "received": "number received",
+      "washed": "number washed",
+      "rate_per_hapa": "rate per hapa",
+      "orders": "orders",
+      "dispatched": "number dispatched",
+      "exchanged": "number exchanged",
+      "new_stocking": "new stocking"
+     }
+    }
+   ]
   }
  ],
  "islands": [

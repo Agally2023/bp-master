@@ -102,7 +102,8 @@ def flipping(week, progress, overdue, total=None):
     for kind in ('Nursery', 'Broodstock'):
         p = progress.get(kind.lower(), [])
         n = (total or {}).get(kind.lower())
-        lines.append(f"{kind}: " + (f"{len(p)} pond(s) in progress: " + ', '.join(pn for pn, _, d in p) + "." if p else "no pond in progress."))
+        names = {pn for pn, _, d in p}; late = sorted({o[0] for o in overdue if o[0] in names})
+        lines.append(f"{kind}: " + (f"{len(p)} pond(s) in progress, {len(late)} delayed" + (": " + ', '.join(late) if late else "") + "." if p else "no pond in progress."))
     if overdue:
         lines.append("Stages above expected days: " + "; ".join(f"{p} {s} {d}d (exp. {e}d)" for p, s, d, e in overdue[:6]) + ('...' if len(overdue) > 6 else '.'))
     lines.append("[Add comment]")
@@ -126,3 +127,15 @@ def brood(bd, week):
     sr = one('sex ratio was', bd['last_ratio'], bd['this_week'], lambda v: f"{v:.2f}:1, {v / 3:.0%} of the 3:1 standard")
     de = one('mean stocking density was', bd['last_density'], bd['this_week'], lambda v: f"{v:.2f} kg/m2, {v / bd['target_density']:.0%} of the {bd['target_density']:g} kg/m2 target")
     return [f"Broodstock {sr}; {de}." + (f" {bd['hapas']} hapas were recounted this week." if bd['this_week'] else ''), "[Add comment]"]
+
+
+def rope_analysis(nur_rows, nur_n, bro_rows, bro_n):
+    out = []
+    for nm, rows, n in (('Nursery', nur_rows, nur_n), ('Broodstock', bro_rows, bro_n)):
+        if not n: out.append(f"{nm}: no bottom rope audits recorded."); continue
+        if not rows: out.append(f"{nm}: all {n} audited hapas conform."); continue
+        ponds = sorted({r[0] for r in rows}); mets = {}
+        for r in rows:
+            for part in r[2].split(', '): mets[part.split(' (')[0]] = mets.get(part.split(' (')[0], 0) + 1
+        out.append(f"{nm}: {len(rows)} of {n} hapas failed; ponds affected: {', '.join(ponds)}; most common failed metric: {max(mets, key=mets.get)} ({mets[max(mets, key=mets.get)]} hapas).")
+    return out + ['[Add comment]']
