@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611240947';
-import { S, ensure } from '../state.js?v=202611240947';
-import { periodize, relabel } from '../period.js?v=202611240947';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240947';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611241413';
+import { S, ensure } from '../state.js?v=202611241413';
+import { periodize, relabel } from '../period.js?v=202611241413';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611241413';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { srEffBlock, srFeedBlock, washBlock } from './blocks.js?v=202611240947';
-import * as A from '../analytics.js?v=202611240947';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240947';
+import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts } from './blocks.js?v=202611241413';
+import * as A from '../analytics.js?v=202611241413';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611241413';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611240947';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611241413';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
@@ -71,6 +71,7 @@ export async function render({ view, ctx }) {
           pp.map(r => [r.pond, fmtDate(r.flipping_date), r.stocking_date ? fmtDate(r.stocking_date) : '–', sb(r.prep_score), sb(r.wq_score), sb(r.post_score), sb(r.overall_score), r.rating ?? '–', r.action_points || '–']), { empty: 'No scored ponds this month' }),
         h('div', { class: 'note' }, 'Preparation = average of 9 stage scores (KPIs met ÷ 5). Overall = average of preparation and post-stocking. Rating bands: <75% = 1, 75–80% = 2, 81–90% = 3, 91–95% = 4, 96–99% = 4.5, 100% = 5.'))));
     }
+    body.append(g(...flipSummaryCharts(fl).map(c => card('Days late summary: days taken per stage', c, h('div', { class: 'note' }, 'Calculated from the Nursery and Broodstock flipping records: every pond in progress or flipped this month. The line is the expected days per stage.')))));
     body.append(g(...[['broodstock', 'Broodstock ponds'], ['nursery', 'Nursery ponds']].map(([k, label]) => {
       const { st, ponds, lateCount, inScope } = fl.matrix[k]; const P = ponds;
       if (!P.length) return card(`Pond flipping: ${label}`, noData(inScope ? 'No delayed ponds' : 'No ponds in progress'));

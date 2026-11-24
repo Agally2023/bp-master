@@ -1,12 +1,15 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611240947';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611240947';
-import { db } from '../db.js?v=202611240947';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611240947';
-import { importPanel, batchesPanel } from './import.js?v=202611240947';
-import { table } from './common.js?v=202611240947';
-import { zipLib } from '../xlsx.js?v=202611240947';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611240947';
-import { download } from '../util.js?v=202611240947';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611241413';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611241413';
+import { db } from '../db.js?v=202611241413';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611241413';
+import { importPanel, batchesPanel } from './import.js?v=202611241413';
+import { flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611241413';
+import * as A from '../analytics.js?v=202611241413';
+import { isoWeek } from '../util.js?v=202611241413';
+import { table } from './common.js?v=202611241413';
+import { zipLib } from '../xlsx.js?v=202611241413';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611241413';
+import { download } from '../util.js?v=202611241413';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -27,9 +30,9 @@ export async function render({ view }) {
     clear(main);
     if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), syncBtn(), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
     const m = modByKey(current);
-    const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
+    const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel'], ...(m.special === 'flip' ? [['late', 'Days late summary']] : [])].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
     const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), syncBtn(), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
-    if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); if (m.key === 'biosecurity_audits') pane.append(hygienePhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
+    if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); if (m.key === 'biosecurity_audits') pane.append(hygienePhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else if (tab === 'late' && m.special === 'flip') pane.append(await daysLateTab()); else pane.append(await records(m));
   }
   drawSide(); drawMain();
 }
@@ -204,4 +207,13 @@ function hygienePhotos() {
   } }, area, item, status, date, file, h('button', { class: 'btn', type: 'submit' }, 'Add photos'));
   box.append(h('h2', {}, 'Hygiene & biosecurity photos'), h('p', { class: 'muted' }, 'Add photos with the area, status and date. The weekly report shows the week\'s photos in a grid of four (extra photos go on further slides), with these details in the bottom-right corner of each picture.'), form, msg, list);
   draw(); return box;
+}
+
+// Days late summary: nothing to type. It is calculated from every Nursery and Broodstock flipping record (ponds in progress and ponds flipped this month).
+async function daysLateTab() {
+  const box = h('div', {}); let rows = [];
+  try { rows = await db.load('pond_flips'); } catch (e) { return h('div', { class: 'note' }, 'Could not load the flipping records: ' + e.message); }
+  const now = new Date(), w = isoWeek(now), fl = A.flips({ pond_flips: rows }, w.year ?? w[0], w.week ?? w[1]);
+  box.append(h('p', { class: 'muted' }, 'This tab is filled automatically from the Nursery and Broodstock flipping records (Form / Import). Days late = days taken minus the expected days.'), ...flipSummaryCharts(fl, 8), ...flipMatrixBlocks(fl, fmtDate));
+  return box;
 }

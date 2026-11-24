@@ -1,6 +1,6 @@
-import { h, pct } from '../util.js?v=202611240947';
-import { lineChart } from '../charts.js?v=202611240947';
-import { table } from './common.js?v=202611240947';
+import { h, pct } from '../util.js?v=202611241413';
+import { lineChart } from '../charts.js?v=202611241413';
+import { table } from './common.js?v=202611241413';
 
 const COLORS = ['#C0392B', '#CB8306', '#0E812E', '#00BDF0', '#7030A0'];
 // Frequency of non-conformances by incubation (RAS), every week of the year to date: table + one curve per incubation.

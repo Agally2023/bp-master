@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611240947';
-import { periodWord } from './period.js?v=202611240947';
+import { S } from './state.js?v=202611241413';
+import { periodWord } from './period.js?v=202611241413';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -13,6 +13,7 @@ function frame(o) {
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': o.title || 'chart' });
   const vals = o.series.flatMap(s => s.values).filter(v => v != null && !Number.isNaN(v));
   if (o.target != null) vals.push(o.target);
+  if (o.line) vals.push(...o.line.values.filter(v => v != null));
   let lo = o.min ?? Math.min(0, ...vals), hi = o.max ?? Math.max(...vals, 0.0001);
   if (o.stacked) hi = o.max ?? Math.max(...o.labels.map((_, i) => o.series.reduce((s, x) => s + (x.values[i] || 0), 0)), 0.0001);
   if (o.max == null) {                                   // round the top up to a tidy tick step (e.g. 0, 25, 50, 75, 100 %)
@@ -61,7 +62,7 @@ export function barChart(o) {
   const c = frame(o), { svg, m, iw, y, f } = c, n = o.labels.length, gw = iw / n, k = o.stacked ? 1 : o.series.length, bw = Math.min(34, gw * 0.76 / k);
   o.labels.forEach((l, i) => {
     const cx = m.l + gw * (i + 0.5);
-    if (i % c.step === 0) svg.append(el('text', { x: cx, y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, String(l).slice(0, 10)));
+    if (i % c.step === 0) svg.append(el('text', { x: cx, y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, String(l).slice(0, o.labelLen || 10)));
     let acc = 0;
     o.series.forEach((s, j) => {
       const v = s.values[i]; if (v == null || Number.isNaN(v)) return; const col = s.color || BARPAL[j % BARPAL.length];
@@ -71,5 +72,11 @@ export function barChart(o) {
       if (o.stacked) acc += v;
     });
   });
+  if (o.line) {   // reference line over the bars (e.g. expected days per stage)
+    let d = ''; o.line.values.forEach((v, i) => { if (v != null) d += (d ? 'L' : 'M') + (m.l + gw * (i + 0.5)).toFixed(1) + ' ' + y(v).toFixed(1); });
+    svg.append(el('path', { d, fill: 'none', stroke: o.line.color || '#FFC000', 'stroke-width': 2.5 }));
+    o.line.values.forEach((v, i) => { if (v != null) svg.append(el('circle', { cx: m.l + gw * (i + 0.5), cy: y(v), r: 3, fill: o.line.color || '#FFC000' })); });
+    return finish(c, { ...o, legend: true, series: [...o.series, { name: o.line.name, color: o.line.color || '#FFC000' }] });
+  }
   return finish(c, o);
 }

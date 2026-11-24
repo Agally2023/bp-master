@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611240947';
-import { lineChart, barChart } from '../charts.js?v=202611240947';
-import { table, kpi } from './common.js?v=202611240947';
-import * as A from '../analytics.js?v=202611240947';
+import { h, pct } from '../util.js?v=202611241413';
+import { lineChart, barChart } from '../charts.js?v=202611241413';
+import { table, kpi } from './common.js?v=202611241413';
+import * as A from '../analytics.js?v=202611241413';
 // Blocks shared by the dashboard and the report preview.
 const has = a => (a || []).some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
@@ -48,4 +48,14 @@ export function summaryKpis(data, y, w, ras = 'RAS2', by = 'stage') {
     kpi('Egg separation (ABP)', eg.current == null ? '–' : eg.current.toFixed(2), { note: eg.low.length + ' jar(s) at 0–2 stars' }),
     kpi('Hapa exchange: Nursery', pct(hx.nursery.current, 1), { cls: 'gold' }), kpi('Hapa exchange: Broodstock', pct(hx.broodstock.current, 1), { cls: 'gold' }),
     sink('Nursery (4)', sk.nursery), sink('Broodstock (10)', sk.broodstock));
+}
+
+// "Days Late Summary": days taken per stage for every pond in progress or flipped in the month (calculated from the Nursery / Broodstock flipping records), with the expected days as a line.
+export function flipSummaryCharts(fl, max = 6) {
+  return [['nursery', 'Nursery'], ['broodstock', 'Broodstock']].map(([k, label]) => {
+    const { st, all, month } = fl.matrix[k], P = (all || []).slice(0, max), mn = new Date(month + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
+    if (!P.length) return h('div', { class: 'note' }, `${label}: no ponds in progress or flipped in ${mn}.`);
+    return barChart({ title: `${label} ${mn} pond flipping & preparation compliance`, labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
+      series: P.map(r => ({ name: r.pond, values: st.map(x => r.stage_days?.[x.name] ?? null) })), line: { name: 'Expected days/stage', values: st.map(x => x.expected), color: '#FFC000' }, fmt: v => String(Math.round(v)), min: 0 });
+  });
 }
