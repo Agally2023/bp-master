@@ -1,5 +1,5 @@
-import { h, clear, toast } from '../util.js';
-import { db } from '../db.js';
+import { h, clear, toast } from '../util.js?v=202611240426';
+import { db } from '../db.js?v=202611240426';
 
 const P = () => window.bpmPrefs;
 const CFG = window.BPM_CONFIG || {};

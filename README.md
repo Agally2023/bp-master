@@ -63,3 +63,6 @@ BP Master reads the Biosecurity dashboard's data from the shared Supabase projec
 
 ## Excel export
 Entry > any module > Records > "Export all to Excel" downloads every stored record of that module; Entry > "Import all" page > "Export all data to Excel" downloads one workbook with a sheet per module. Files follow the Victory Farms Excel template exactly: title 22 bold navy, "Victory Farms", date, navy (002060) header bar with bold white text, light-navy (D6E3FF) table label band, labels black, entered numbers/dates blue, calculated black, numbers right-aligned with negatives in ( ), % one decimal, dates dd/mm/yyyy, column widths, 85% zoom, no gridlines, template footer, logo top right. Everything is built in the browser (`web/js/xlsxwrite.js`), so no data leaves the app.
+
+## Releasing the web app
+Run `python3 tools/stamp.py` before every commit that changes `web/`. It stamps `?v=<time>` on every module and stylesheet URL so browsers can never serve a mix of old and new files; the dashboard footer shows the stamped version.
