@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240912';
-import { S, ensure } from '../state.js?v=202611240912';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611240912';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611240912';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611240920';
+import { S, ensure } from '../state.js?v=202611240920';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611240920';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611240920';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611240912';
-import * as A from '../analytics.js?v=202611240912';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611240912';
+import { db } from '../db.js?v=202611240920';
+import * as A from '../analytics.js?v=202611240920';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611240920';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611240912';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611240920';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring'];
 const CFG = window.BPM_CONFIG || {};
@@ -38,7 +38,7 @@ const SECTIONS = [
   { key: 'prep_scoring', title: 'Pond Preparation Scoring', slide: 12, an: (d, y, w) => A.prepScoring(d, y, w, weekRange(y, w).sun.toISOString()),
     body: a => [table(['Pond', 'Flipped', 'Preparation (%)', 'Water quality (%)', 'Post-stocking (%)', 'Overall (%)', 'Rating (0-5)'], a.slice(0, 12).map(r => [r.pond, fmtDate(r.flipping_date), ...[r.prep_score, r.wq_score, r.post_score, r.overall_score].map(v => v == null ? '–' : pc0(v)), r.rating ?? '–']), { empty: 'No ponds scored this month' })] },
   { key: 'bottom_rope', title: 'Bottom Rope Non-Conformance (Nursery & Broodstock)', slide: 13, an: (d, y, w) => A.bottomRope(d, y, w),
-    body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? barChart({ labels: a[k].labels, series: [{ name: '% hapas failed the audit', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: pc0, valueLabels: true, maxLabels: 30, h: 190, title: 'Bottom rope non-conformance: ' + k }) : null) },
+    body: a => ['Nursery', 'Broodstock'].map(k => has(a[k].trend) ? barChart({ labels: a[k].labels, series: [{ name: '% hapas failed the audit', values: a[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: pc0, maxLabels: 30, h: 190, title: 'Bottom rope non-conformance: ' + k }) : null) },
   { key: 'rope_analysis', title: 'Bottom Rope Conformance and Failure Analysis', slide: 13, an: (d, y, w) => A.ropeAnalysis(d, y, w),
     body: a => [Object.values(a.lines).some(has) ? lineChart({ labels: a.labels, series: [{ name: 'Nursery', values: a.lines.Nursery, color: '#CB8306' }, { name: 'Broodstock', values: a.lines.Broodstock, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Hapas conforming (%)', min: 0, max: 1, joinGaps: true, fmt: pc0, h: 200 }) : null,
       table(['Unit', 'Pond', 'Hapa', 'Failed audit metrics (ropes)'], ['Nursery', 'Broodstock'].flatMap(k => a.kinds[k].hapas.slice(0, 8).map(x => [k, x.pond, x.hapa, x.metrics.map(m => `${m[0]} (${m[1]})`).join(', ')])), { empty: 'No failed hapas' })] },

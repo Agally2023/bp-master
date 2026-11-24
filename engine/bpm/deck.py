@@ -202,7 +202,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
             for r in runs[1:]: r.text = ''
     # --- slide 2: workstation compliance
     s = S(2)
-    cats = [f' Wk {w} ' for w, _ in ws_trend]
+    cats = [f'{w}' for w, _ in ws_trend]
     replace_chart(shape(s, 'Chart 6'), cats, [v for _, v in ws_trend], '0%', xt='ISO week', yt='Compliance (%)')
     cur = ws_trend[-1][1]
     shape(s, 'Oval 9').text_frame.paragraphs[0].runs[0].text = f'{cur:.1%}' if cur is not None else '-'
@@ -234,7 +234,7 @@ def build(template, out, year, week, report_date, ws_trend, ws_nc, comments, d3_
         g, by_pond = br[key]
         wk = list(range(max(1, week - 11), week + 1))                       # last 12 weeks
         vals = [float(g.loc[w, 'nc_pct']) if w in g.index else None for w in wk]
-        bar_replace(shape(s, chart_name), [f'Wk {w}' for w in wk], vals, '0%', f'Bottom rope non-conformance: % of hapas failed ({key.capitalize()})', 'ISO week', 'Hapas failed the audit (%)')
+        bar_replace(shape(s, chart_name), [f'{w}' for w in wk], vals, '0%', f'Bottom rope non-conformance: % of hapas failed ({key.capitalize()})', 'ISO week', 'Hapas failed the audit (%)')
         pic = shape(s, pic_name)
         bp = by_pond.sort_values(['failed', 'audited'], ascending=False)
         if len(bp) > 5:
@@ -302,7 +302,7 @@ def batch2(prs, year, week, comments, x):
         done.add(4)
     if 'para' in x:
         P = x['para']; s = S(6)
-        cats = [f' Wk {w} ' for w in P['weeks']]
+        cats = [f'{w}' for w in P['weeks']]
         for name, key, fmt in (('Chart 5', 'int', '0.0'), ('Chart 6', 'prev', '0%')):
             ser = [('New SOP Start', [None] * len(cats))] + [(st, P['stage'][st][key]) for st in P['stages']]
             replace_chart(shape(s, name), cats, ser, fmt, xt='ISO week', yt='Prevalence (%)' if '%' in fmt else 'Parasites per infected sample')
@@ -329,8 +329,7 @@ def bar_replace(sh, cats, vals, fmt, title, xt, yt):
     parent.remove(sh._element)
     ch = gf.chart; ch.has_legend = False; ch.font.size = Pt(10)
     ch.has_title = True; ch.chart_title.text_frame.text = title; ch.chart_title.text_frame.paragraphs[0].runs[0].font.size = Pt(12); ch.chart_title.text_frame.paragraphs[0].runs[0].font.bold = True
-    pl = ch.plots[0]; pl.gap_width = 60; pl.has_data_labels = True
-    pl.data_labels.number_format = fmt; pl.data_labels.number_format_is_linked = False; pl.data_labels.font.size = Pt(9)
+    pl = ch.plots[0]; pl.gap_width = 60; pl.has_data_labels = False
     se = pl.series[0]; se.format.fill.solid(); se.format.fill.fore_color.rgb = RGBColor(0x0E, 0x81, 0x2E)
     va = ch.value_axis; va.minimum_scale = 0; va.tick_labels.number_format = fmt; va.tick_labels.number_format_is_linked = False
     va.major_gridlines.format.line.color.rgb = RGBColor(0xD9, 0xD9, 0xD9)
@@ -402,7 +401,7 @@ def batch3(prs, year, week, comments, x):
             _drop_shape(shape(s, 'Picture 8')); _drop_shape(shape(s, 'TextBox 13'))
         if 'egg' in x:
             e = x['egg']
-            replace_chart(shape(s, 'Chart 22'), [f' Wk {w} ' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
+            replace_chart(shape(s, 'Chart 22'), [f'{w}' for w, _ in e['trend']], [v for _, v in e['trend']], '0.00', xt='ISO week', yt='ABP rating (1-5)')
             shape(s, 'Oval 11').text_frame.paragraphs[0].runs[0].text = f"{e['trend'][-1][1]:.2f}" if e['trend'][-1][1] is not None else '-'
             pic = shape(s, 'Picture 15'); low = e['low']; _low0 = low
             nz = lambda v, f: '-' if v is None or v != v else format(v, f)
@@ -449,7 +448,7 @@ def add_hapa_slide(prs, year, week, comments, H, protos):
     for r in ttl.text_frame.paragraphs[0].runs[1:]: r.text = ''
     ttl.width = Emu(7600000)
     pns, bs = H['pns'], H['bs']
-    cd = CategoryChartData(number_format='0%'); cd.categories = [f'Wk {w}' for w, _ in pns]
+    cd = CategoryChartData(number_format='0%'); cd.categories = [f'{w}' for w, _ in pns]
     cd.add_series('PNS Exchange Rate', [v for _, v in pns]); cd.add_series('BS Exchange Rate', [v for _, v in bs])
     gf = ns.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(300000), Emu(900000), Emu(7600000), Emu(3600000), cd)
     ch = gf.chart; ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False

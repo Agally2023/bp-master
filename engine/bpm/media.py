@@ -122,7 +122,7 @@ def add_brood_slide(out, bd, lines, anchor='hapa exchange'):
     for ph in list(s.placeholders):
         if ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
             ph._element.getparent().remove(ph._element)
-    W, H = prs.slide_width, prs.slide_height; cats = [f' Wk {w} ' for w in bd['weeks']]
+    W, H = prs.slide_width, prs.slide_height; cats = [f'{w}' for w in bd['weeks']]
     def chart(x, name, vals, color, tname, ytitle):
         cd = CategoryChartData(); cd.categories = cats; cd.add_series(name, vals); cd.add_series(tname, [1.0] * len(cats))
         gf = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(x), Emu(int(H * 0.15)), Emu(int(W * 0.45)), Emu(int(H * 0.50)), cd); ch = gf.chart
@@ -158,7 +158,7 @@ def add_rope_slide(out, gn, gb, fails, lines, anchor='bottom rope'):
         if ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
             ph._element.getparent().remove(ph._element)
     W, H = prs.slide_width, prs.slide_height
-    weeks = sorted(set(gn.index) | set(gb.index)); cd = CategoryChartData(); cd.categories = [f' Wk {w} ' for w in weeks]
+    weeks = sorted(set(gn.index) | set(gb.index)); cd = CategoryChartData(); cd.categories = [f'{w}' for w in weeks]
     for nm, g in (('Nursery', gn), ('Broodstock', gb)): cd.add_series(nm, [None if w not in g.index else float(1 - g.loc[w, 'nc_pct']) for w in weeks])
     ch = s.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Emu(int(W * 0.03)), Emu(int(H * 0.15)), Emu(int(W * 0.45)), Emu(int(H * 0.52)), cd).chart
     ch.has_legend = True; ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False; ch.has_title = False
