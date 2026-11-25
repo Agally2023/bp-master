@@ -40,3 +40,8 @@ Quality Control folder and pushes changed workbooks to `qc-sync` (push mode). Sa
 
 Files handled: `VF 3-Day pond Survival.xlsx` (3-day recounts) and `VF Egg Collection Monitoring Data.xlsx` (jars and ABP ratings). To add a file, add its parser to `MODULES` in `functions/qc-sync/index.ts` and its name to `SOURCES` in `tools/node-sync/sync.mjs`.
 Result and any error show in Settings > Automatic updates. `.env` and `.sync-state.json` are git-ignored.
+
+## Option C: sign in with your own Microsoft account (fully automatic, no folder or file picking)
+No IT secret needed if your tenant lets users register apps. In the app: Data entry > **Sync setup** and follow the 4 steps (Entra app registration, SPA redirect `https://<your-site>/ms-callback.html`,
+delegated `Files.Read.All`). Paste the client ID, press Sync once and sign in; the app then renews access silently and syncs every 10 minutes while it is open.
+To make every device work without setup, put `msClientId` / `msTenant` in `web/config.js`. If the tenant blocks user app registration or consent, ask IT for the delegated consent or use Option A/B.

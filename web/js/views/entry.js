@@ -1,13 +1,13 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251206';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251206';
-import { db } from '../db.js?v=202611251206';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251206';
-import { importPanel, batchesPanel } from './import.js?v=202611251206';
-import { table } from './common.js?v=202611251206';
-import { zipLib } from '../xlsx.js?v=202611251206';
-import * as FS from '../folder-sync.js?v=202611251206';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251206';
-import { download } from '../util.js?v=202611251206';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251211';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251211';
+import { db } from '../db.js?v=202611251211';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251211';
+import { importPanel, batchesPanel } from './import.js?v=202611251211';
+import { table } from './common.js?v=202611251211';
+import { zipLib } from '../xlsx.js?v=202611251211';
+import * as FS from '../folder-sync.js?v=202611251211';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251211';
+import { download } from '../util.js?v=202611251211';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -168,24 +168,45 @@ async function pickAndPush() {
 // Sync: pick the OneDrive-synced SharePoint folder once; every Excel file in it is then read, each sheet is recognised from the module markers and the
 // new rows are loaded (same importer as Data entry). Needs Chrome or Edge. Other browsers fall back to choosing the files.
 function syncBtn() {
-  const label = async () => { const n = await FS.folderName(); return n ? `Sync files (${n})` : 'Sync files from folder'; };
-  const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Excel files in your synced SharePoint folder' }, 'Sync files'); label().then(t => b.textContent = t);
+  const label = async () => GS.configured() ? 'Sync files from SharePoint' : (await FS.folderName()) ? `Sync files (${await FS.folderName()})` : 'Sync files';
+  const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the audit workbooks in SharePoint' }, 'Sync files'); label().then(t => b.textContent = t);
   const msg = h('span', { class: 'muted', style: 'font-size:.85em' });
-  const change = h('button', { class: 'btn sec', type: 'button', title: 'Choose a different folder', onclick: async () => { try { await FS.chooseFolder(); b.textContent = await label(); toast('Folder saved. Press Sync files.'); } catch (e) { if (e.name !== 'AbortError') toast('Could not open the folder: ' + e.message, true); } } }, 'Change folder');
+  const setup = h('button', { class: 'btn sec', type: 'button', title: 'Connect SharePoint (one time) or choose a local folder', onclick: () => syncSetup(async () => { b.textContent = await label(); }) }, 'Sync setup');
+  const report = r => {
+    const tot = r.imported.reduce((n, x) => n + x.rows, 0);
+    toast(r.problems.length ? 'Sync problem: ' + r.problems[0] : tot ? `Synced ${tot.toLocaleString()} new rows: ` + [...new Set(r.imported.filter(x => x.rows).map(x => x.module))].join(', ') : `Up to date (${r.files + r.unchanged} file(s) checked, nothing new)`, !!r.problems.length);
+    if (r.imported.length) drawAfterSync();
+  };
   b.onclick = async () => {
     b.disabled = true; const old = b.textContent;
     try {
+      if (GS.configured()) { b.textContent = 'Syncing…'; const r = await GS.syncSharePoint(t => { msg.textContent = t; }, true); msg.textContent = ''; report(r); return; }
       if (!FS.supported()) { await pickAndPush(); return; }
       if (!(await FS.folderName())) { await FS.chooseFolder(); }
       if ((await FS.permission(true)) !== 'granted') { toast('Allow access to the folder to sync', true); return; }
-      b.textContent = 'Syncing…';
-      const r = await FS.syncFolder(t => { msg.textContent = t; }); msg.textContent = '';
-      const tot = r.imported.reduce((n, x) => n + x.rows, 0);
-      toast(r.problems.length ? 'Sync problem: ' + r.problems[0] : tot ? `Synced ${tot.toLocaleString()} new rows: ` + [...new Set(r.imported.filter(x => x.rows).map(x => x.module))].join(', ') : `Up to date (${r.files + r.unchanged} file(s) checked, nothing new)`, !!r.problems.length);
-      if (r.imported.length) drawAfterSync();
+      b.textContent = 'Syncing…'; const r = await FS.syncFolder(t => { msg.textContent = t; }); msg.textContent = ''; report(r);
     } catch (e) { if (e.name !== 'AbortError') toast('Sync failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = await label().catch(() => old); }
   };
-  return h('span', { class: 'row', style: 'gap:.4rem;align-items:center' }, b, change, msg);
+  return h('span', { class: 'row', style: 'gap:.4rem;align-items:center' }, b, setup, msg);
+}
+// One-time connection of SharePoint (Microsoft sign-in with your own account, read-only), or a local-folder fallback.
+function syncSetup(done) {
+  const c = GS.cfg(), inp = (v, ph) => h('input', { value: v, placeholder: ph, style: 'width:100%' });
+  const client = inp(c.client, 'Application (client) ID'), tenant = inp(c.tenant === 'organizations' ? '' : c.tenant, 'Directory (tenant) ID (optional)'), folder = inp(c.folder, 'SharePoint folder link');
+  const d = h('dialog', { style: 'max-width:600px;border:1px solid #D6E3FF;border-radius:10px;padding:20px' },
+    h('h2', { style: 'margin:0 0 8px' }, 'Automatic SharePoint sync'),
+    h('p', {}, 'Register the app once in your own Microsoft account, then the app signs in once and syncs silently every 10 minutes while it is open.'),
+    h('ol', {}, h('li', {}, 'entra.microsoft.com > App registrations > New registration. Name: BP Master. Supported accounts: this organisation only.'),
+      h('li', {}, 'Redirect URI: platform "Single-page application", value: ', h('b', {}, GS.redirectUri())),
+      h('li', {}, 'API permissions > Add > Microsoft Graph > Delegated > Files.Read.All. Press Grant consent if offered.'),
+      h('li', {}, 'Copy the Application (client) ID and Directory (tenant) ID below.')),
+    h('label', {}, 'Client ID'), client, h('label', {}, 'Tenant ID'), tenant, h('label', {}, 'SharePoint folder to read'), folder,
+    h('div', { class: 'row', style: 'margin-top:14px;gap:8px' },
+      h('button', { class: 'btn', type: 'button', onclick: () => { GS.saveCfg({ client: client.value, tenant: tenant.value, folder: folder.value }); toast(client.value.trim() ? 'Saved. Press Sync: a Microsoft sign-in opens once.' : 'Microsoft sync turned off'); d.close(); done?.(); } }, 'Save'),
+      h('button', { class: 'btn sec', type: 'button', onclick: async () => { try { await FS.chooseFolder(); toast('Local folder saved'); d.close(); done?.(); } catch (e) { if (e.name !== 'AbortError') toast(e.message, true); } } }, 'Use a local folder instead'),
+      GS.signedIn() ? h('button', { class: 'btn sec', type: 'button', onclick: () => { GS.signOut(); toast('Signed out of Microsoft'); d.close(); } }, 'Sign out') : null,
+      h('button', { class: 'btn sec', type: 'button', onclick: () => d.close() }, 'Close')));
+  d.addEventListener('close', () => d.remove()); document.body.append(d); d.showModal();
 }
 function drawAfterSync() { document.dispatchEvent(new CustomEvent('bpm-data-changed')); }
 
@@ -233,10 +254,11 @@ function hygienePhotos() {
 // Automatic sync: while the app is open, every 10 minutes (and once shortly after opening), if the browser still has permission to read the chosen folder.
 let autoBusy = false;
 async function autoSync() {
-  if (autoBusy || document.hidden || !FS.supported() || !db.tok && !db.demo) return;
+  if (autoBusy || document.hidden || !db.tok && !db.demo) return;
   try {
-    if ((await FS.permission(false)) !== 'granted') return; autoBusy = true;
-    const r = await FS.syncFolder(); const tot = r.imported.reduce((n, x) => n + x.rows, 0);
+    let r;
+    if (GS.configured()) { if (!GS.signedIn()) return; autoBusy = true; r = await GS.syncSharePoint(); }
+    else { if (!FS.supported() || (await FS.permission(false)) !== 'granted') return; autoBusy = true; r = await FS.syncFolder(); } const tot = r.imported.reduce((n, x) => n + x.rows, 0);
     if (tot) toast(`Auto-sync loaded ${tot.toLocaleString()} new rows: ` + [...new Set(r.imported.filter(x => x.rows).map(x => x.module))].join(', '));
   } catch { } finally { autoBusy = false; }
 }

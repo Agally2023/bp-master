@@ -1,10 +1,10 @@
 // Folder sync: the person picks the OneDrive-synced SharePoint folder once. Sync then reads every Excel workbook in it (sub-folders included),
 // recognises each sheet by the markers in the module registry (sheet name + header row, the same detection as Data entry > Import) and loads the
 // new rows with the app's own importer. A workbook is only re-read when its content changed; re-importing is safe because stored rows are skipped.
-import { openWorkbook } from './xlsx.js?v=202611251206';
-import { detectModules, parseSheet, validate, withHashes } from './engine.js?v=202611251206';
-import { S, invalidate } from './state.js?v=202611251206';
-import { db } from './db.js?v=202611251206';
+import { openWorkbook } from './xlsx.js?v=202611251211';
+import { detectModules, parseSheet, validate, withHashes } from './engine.js?v=202611251211';
+import { S, invalidate } from './state.js?v=202611251211';
+import { db } from './db.js?v=202611251211';
 
 export const supported = () => typeof window.showDirectoryPicker === 'function';
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('bpm-folder-sync', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -30,6 +30,20 @@ async function* walk(dir, depth = 0) {
   }
 }
 
+// Reads one workbook: every sheet recognised by the registry markers is validated and its new rows stored (shared by the folder and SharePoint syncs).
+export async function ingest(name, buf, hash, out, onProgress = () => { }) {
+  const wb = await openWorkbook(buf), det = await detectModules(wb, S.reg);
+  for (const { m, spec } of det) {
+    onProgress(`${name} › ${spec.sheet}…`);
+    const parsed = parseSheet(m, spec, await wb.rows(spec.sheet)), v = validate(m, spec, parsed);
+    if (!v.valid.length) continue;
+    const recs = await withHashes(m, v.valid), r = await db.insert(m.key, recs, { merge: !!m.natural });
+    await db.recordBatch({ module: m.key, filename: `${name} › ${spec.sheet}`.slice(0, 200), file_sha256: hash + ':' + spec.sheet, rows_read: v.read, rows_loaded: r.inserted, rows_rejected: v.rejected, issues: v.issues.map(i => ({ s: i.severity, m: i.message })) });
+    invalidate(m.key); out.imported.push({ module: m.label, rows: r.inserted, updated: r.updated || 0, file: name });
+  }
+}
+export const sha256Hex = sha;
+
 // Returns { files, imported:[{module,rows,file}], problems:[], skipped }
 export async function syncFolder(onProgress = () => { }) {
   const dir = await kv('get', 'dir'); if (!dir) throw new Error('No folder chosen yet');
@@ -43,15 +57,7 @@ export async function syncFolder(onProgress = () => { }) {
     try {
       const buf = await f.arrayBuffer(), hash = await sha(buf);
       if (seen[name]?.hash === hash) { seen[name] = { sig, hash }; out.unchanged++; continue; }   // touched but identical
-      const wb = await openWorkbook(buf), det = await detectModules(wb, S.reg);
-      for (const { m, spec } of det) {
-        onProgress(`${name} › ${spec.sheet}…`);
-        const parsed = parseSheet(m, spec, await wb.rows(spec.sheet)), v = validate(m, spec, parsed);
-        if (!v.valid.length) continue;
-        const recs = await withHashes(m, v.valid), r = await db.insert(m.key, recs, { merge: !!m.natural });
-        await db.recordBatch({ module: m.key, filename: `${name} › ${spec.sheet}`.slice(0, 200), file_sha256: hash + ':' + spec.sheet, rows_read: v.read, rows_loaded: r.inserted, rows_rejected: v.rejected, issues: v.issues.map(i => ({ s: i.severity, m: i.message })) });
-        invalidate(m.key); out.imported.push({ module: m.label, rows: r.inserted, updated: r.updated || 0, file: name });
-      }
+      await ingest(name, buf, hash, out, onProgress);
       await db.audit('sync', 'folder', hash.slice(0, 12), { file: name });
       seen[name] = { sig, hash };
     } catch (e) { out.problems.push(`${name}: ${e.message}`); }
