@@ -1,0 +1,9 @@
+{
+  "folders": [
+    "C:/Users/YOU/Victory Farms Ltd/AquaData - Documents/Hatchery Department/3.Aqua Operations Department",
+    "C:/Users/YOU/Desktop/Audit files"
+  ],
+  "email": "you@victoryfarms.com",
+  "password": "your BP Master password (or set the BPM_PASSWORD environment variable instead)",
+  "intervalSeconds": 120
+}
