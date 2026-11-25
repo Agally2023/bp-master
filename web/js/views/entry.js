@@ -1,14 +1,14 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251514';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251514';
-import { db } from '../db.js?v=202611251514';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251514';
-import { importPanel, batchesPanel } from './import.js?v=202611251514';
-import { table } from './common.js?v=202611251514';
-import { zipLib } from '../xlsx.js?v=202611251514';
-import * as FS from '../folder-sync.js?v=202611251514';
-import * as GS from '../graph-sync.js?v=202611251514';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251514';
-import { download } from '../util.js?v=202611251514';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251533';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251533';
+import { db } from '../db.js?v=202611251533';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251533';
+import { importPanel, batchesPanel } from './import.js?v=202611251533';
+import { table } from './common.js?v=202611251533';
+import { zipLib } from '../xlsx.js?v=202611251533';
+import * as FS from '../folder-sync.js?v=202611251533';
+import * as GS from '../graph-sync.js?v=202611251533';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251533';
+import { download } from '../util.js?v=202611251533';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -151,19 +151,20 @@ async function setupDialog() {
   d.addEventListener('close', () => d.remove()); document.body.append(d); d.showModal();
 }
 
-// Without the Microsoft app, Sync asks for the Quality Control workbooks (the OneDrive-synced copies on this computer) and sends them to qc-sync.
-const QC_FILES = { 'vf 3-day pond survival': ['day3_recounts'], 'vf egg collection monitoring data': ['egg_volumetric_jars', 'egg_separation_ratings'] };
-async function pickAndPush() {
-  const inp = h('input', { type: 'file', accept: '.xlsx', multiple: true, style: 'display:none' }); document.body.append(inp);
+// Fallback when the browser cannot open a folder (phones, Firefox, Safari) and Microsoft sign-in is not set up: choose the workbooks yourself.
+// Every sheet is recognised from the module markers (same as the folder sync), so any audit workbook works, including "VF Hatchery Masterfile.xlsx",
+// "VF 3-Day pond Survival.xlsx" and "VF Egg Collection Monitoring Data.xlsx". Re-choosing a file is safe: existing rows are skipped.
+async function pickAndPush(onProgress = () => { }) {
+  const inp = h('input', { type: 'file', accept: '.xlsx,.xlsm', multiple: true, style: 'display:none' }); document.body.append(inp);
   const files = await new Promise(res => { inp.onchange = () => res([...inp.files]); inp.addEventListener('cancel', () => res([])); inp.click(); }); inp.remove();
-  if (!files.length) { toast('No file chosen. Pick "VF 3-Day pond Survival.xlsx" and "VF Egg Collection Monitoring Data.xlsx" from your synced Quality Control folder.', true); return; }
-  const out = [];
+  if (!files.length) { toast('No file chosen. Pick the workbooks from your synced folder, e.g. "VF Hatchery Masterfile.xlsx".', true); return null; }
+  const out = { files: 0, imported: [], problems: [], unchanged: 0 };
   for (const f of files) {
-    const keys = QC_FILES[f.name.replace(/\.xlsx$/i, '').replace(/[\s_]+/g, ' ').replace(/ \(\d+\)$/, '').trim().toLowerCase()];
-    if (!keys) { out.push(`${f.name}: not a Quality Control file I know`); continue; }
-    for (const k of keys) { try { out.push((await db.pushFile(k, f)).message); } catch (e) { out.push(`${f.name} (${k}): ${e.message}`); } }
+    if (f.size > 60e6) { out.problems.push(`${f.name}: over 60 MB`); continue; }
+    try { onProgress(`Reading ${f.name}…`); const buf = await f.arrayBuffer(), hash = await FS.sha256Hex(buf); out.files++; const n = out.imported.length; await FS.ingest(f.name, buf, hash, out, onProgress); if (out.imported.length === n) out.problems.push(`${f.name}: no sheet in it matched a known audit format (or the file is protected by a sensitivity label: save a copy without the label)`); }
+    catch (e) { out.problems.push(`${f.name}: ${e.message}`); }
   }
-  toast(out.join(' | '), out.some(x => /not a Quality|error|failed|Missing|not found/i.test(x)));
+  return out;
 }
 
 // Sync: pick the OneDrive-synced SharePoint folder once; every Excel file in it is then read, each sheet is recognised from the module markers and the
@@ -182,7 +183,7 @@ function syncBtn() {
     b.disabled = true; const old = b.textContent;
     try {
       if (GS.configured()) { b.textContent = 'Syncing…'; const r = await GS.syncSharePoint(t => { msg.textContent = t; }, true); msg.textContent = ''; report(r); return; }
-      if (!FS.supported()) { await pickAndPush(); return; }
+      if (!FS.supported()) { const r = await pickAndPush(t => { msg.textContent = t; }); msg.textContent = ''; if (r) report(r); return; }
       if (!(await FS.folderName())) { await FS.chooseFolder(); }
       if ((await FS.permission(true)) !== 'granted') { toast('Allow access to the folder to sync', true); return; }
       b.textContent = 'Syncing…'; const r = await FS.syncFolder(t => { msg.textContent = t; }); msg.textContent = ''; report(r);

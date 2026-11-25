@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611251514';
-import { lineChart, barChart } from '../charts.js?v=202611251514';
-import { table, kpi } from './common.js?v=202611251514';
-import * as A from '../analytics.js?v=202611251514';
+import { h, pct } from '../util.js?v=202611251533';
+import { lineChart, barChart } from '../charts.js?v=202611251533';
+import { table, kpi } from './common.js?v=202611251533';
+import * as A from '../analytics.js?v=202611251533';
 // Blocks shared by the dashboard and the report preview.
 const chunks = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const has = a => (a || []).some(v => v != null);
