@@ -27,3 +27,16 @@ select cron.schedule('bpm-qc-sync', '7 * * * *', $$select net.http_post('https:/
   headers := jsonb_build_object('x-sync-key','<SYNC_KEY>'))$$);
 ```
 Adding more files: insert a row in `bpm_sync_sources` (drive_id + item_id) and add its parser to `MODULES` in `functions/qc-sync/index.ts`.
+
+## Option B: Node.js folder watcher (no IT app registration needed)
+Use this when the Microsoft app cannot be registered. A small Node.js program on an always-on Windows PC watches the OneDrive-synced
+Quality Control folder and pushes changed workbooks to `qc-sync` (push mode). Same parsers and `row_hash` as the importer, so re-sending is safe.
+
+1. In SharePoint open the Quality Control library and click **Sync** (OneDrive then keeps a local copy, e.g. `C:\Users\<you>\Victory Farms Kenya\Quality Control`).
+2. Install Node.js 18 or later (nodejs.org). Download this repo (or just the `tools/node-sync` folder).
+3. In `tools/node-sync` copy `.env.example` to `.env` and set `WATCH_DIR` to the synced folder and `SYNC_KEY` to the value of the `SYNC_KEY` secret in Supabase (Edge Functions > qc-sync > Secrets).
+4. Test once: `node sync.mjs --once` (add `--force` to re-send every file). Expect lines like `VF_3-Day_pond_Survival.xlsx -> day3_recounts: Watcher push: ...`.
+5. Run it permanently: `npm i -g pm2`, `pm2 start sync.mjs --name bp-sync`, `pm2 save`, `pm2 startup` (or a Windows Task Scheduler task running `node sync.mjs --once` every 5 minutes).
+
+Files handled: `VF 3-Day pond Survival.xlsx` (3-day recounts) and `VF Egg Collection Monitoring Data.xlsx` (jars and ABP ratings). To add a file, add its parser to `MODULES` in `functions/qc-sync/index.ts` and its name to `SOURCES` in `tools/node-sync/sync.mjs`.
+Result and any error show in Settings > Automatic updates. `.env` and `.sync-state.json` are git-ignored.

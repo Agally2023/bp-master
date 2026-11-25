@@ -1,0 +1,1 @@
+{ "name": "bp-master-node-sync", "version": "1.0.0", "private": true, "type": "module", "scripts": { "start": "node sync.mjs", "once": "node sync.mjs --once", "force": "node sync.mjs --force" } }

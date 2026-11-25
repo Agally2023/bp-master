@@ -11,3 +11,6 @@ web/demo-data.json
 node_modules/
 *.log
 !engine/templates/VF_BP_Weekly_Template.pptx
+
+tools/node-sync/.env
+tools/node-sync/.sync-state.json

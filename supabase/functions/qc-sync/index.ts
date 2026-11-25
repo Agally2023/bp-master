@@ -163,9 +163,31 @@ async function syncOne(src: Record<string, any>, token: string, force: boolean) 
   return { key: src.key, status: "ok", message: msg };
 }
 
+// ---- push mode: the Node.js watcher (tools/node-sync) sends a workbook it found in the synced SharePoint folder. Same parsers, same row_hash, so it is idempotent.
+async function pushOne(key: string, buf: ArrayBuffer, modified: string | null) {
+  const mod = MODULES[key]; if (!mod) throw new Error("no importer for source " + key);
+  const wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: false });
+  const p = await mod.parse(wb);
+  for (let i = 0; i < p.rows.length; i += 400) {
+    const r = await rest(`${mod.table}?on_conflict=row_hash&select=row_hash`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(p.rows.slice(i, i + 400)) });
+    if (!r.ok) throw new Error("Database write failed: " + (await r.text()).slice(0, 300));
+  }
+  const latest = p.rows.map((x) => String(x[p.dateKey])).sort().pop() ?? null;
+  const msg = `Watcher push: ${p.rows.length} complete rows read, ${p.pending} awaiting recount, ${p.bad} skipped; latest ${latest}.`;
+  await rest(`bpm_sync_sources?key=eq.${key}`, { method: "PATCH", body: JSON.stringify({ remote_modified: modified, last_run: new Date().toISOString(), last_status: "ok", last_message: msg, rows_read: p.read, rows_new: p.rows.length, latest_data_date: latest }) });
+  await rest("bpm_sync_log", { method: "POST", body: JSON.stringify({ source: key, status: "ok", message: msg, rows_read: p.read, rows_new: p.rows.length }) });
+  return { key, status: "ok", message: msg };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (!(await allowed(req))) return json({ error: "unauthorized" }, 401);
+  const u0 = new URL(req.url);
+  if (u0.searchParams.get("push") === "1") {        // body = the .xlsx file; ?source=<key>; optional x-modified header
+    const key = u0.searchParams.get("source") ?? "";
+    try { const buf = await req.arrayBuffer(); if (buf.byteLength < 100 || buf.byteLength > 40e6) return json({ error: "file missing or over 40 MB" }, 400); return json({ results: [await pushOne(key, buf, req.headers.get("x-modified"))] }); }
+    catch (e) { const m = String((e as Error).message); await rest(`bpm_sync_sources?key=eq.${key}`, { method: "PATCH", body: JSON.stringify({ last_run: new Date().toISOString(), last_status: "error", last_message: m }) }); return json({ results: [{ key, status: "error", message: m }] }, 422); }
+  }
   if (!env("MS_TENANT_ID") || !env("MS_CLIENT_ID") || !env("MS_CLIENT_SECRET")) return json({ error: "Microsoft app not configured yet (MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET secrets missing)" }, 503);
   const url = new URL(req.url); const force = url.searchParams.get("force") === "1"; const only = url.searchParams.get("source");
   const results: unknown[] = [];
