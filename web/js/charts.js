@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611250913';
-import { periodWord } from './period.js?v=202611250913';
+import { S } from './state.js?v=202611250915';
+import { periodWord } from './period.js?v=202611250915';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -43,10 +43,10 @@ function finish(c, o) {
   const { svg, m, y } = c;
   if (o.target != null) svg.append(el('line', { x1: m.l, x2: c.W - m.r, y1: y(o.target), y2: y(o.target), stroke: '#D7263D', 'stroke-dasharray': '5 4', 'stroke-width': 1.5 }), el('text', { x: c.W - m.r, y: y(o.target) - 4, 'text-anchor': 'end', fill: '#D7263D' }, o.targetLabel || 'Target'));
   const wrap = document.createElement('div'); wrap.className = 'chartbox';
-  if (o.title) { const t = document.createElement('div'); t.className = 'chart-title'; t.textContent = o.title; wrap.append(t); }
-  wrap.append(svg);
+  const head = document.createElement('div'); head.className = 'chart-head';          // title (if any) and the PNG button sit above the graph, outside the plot area
+  if (o.title) { const t = document.createElement('div'); t.className = 'chart-title'; t.textContent = o.title; head.append(t); }
   const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'chart-dl'; dl.title = 'Download this graph as a PNG'; dl.textContent = 'PNG';
-  dl.onclick = () => downloadPng(c, o); wrap.append(dl);
+  dl.onclick = () => downloadPng(c, o); head.append(dl); wrap.append(head, svg);
   if (o.series.length > 1 || o.legend) { const lg = document.createElement('div'); lg.className = 'legend'; o.series.forEach((s, i) => { const sp = document.createElement('span'); const sw = document.createElement('i'); sw.style.background = s.color || PAL[i % PAL.length]; sp.append(sw, s.name); lg.append(sp); }); wrap.append(lg); }
   return wrap;
 }
