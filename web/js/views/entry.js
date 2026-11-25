@@ -1,12 +1,12 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611250917';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611250917';
-import { db } from '../db.js?v=202611250917';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611250917';
-import { importPanel, batchesPanel } from './import.js?v=202611250917';
-import { table } from './common.js?v=202611250917';
-import { zipLib } from '../xlsx.js?v=202611250917';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611250917';
-import { download } from '../util.js?v=202611250917';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251200';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251200';
+import { db } from '../db.js?v=202611251200';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251200';
+import { importPanel, batchesPanel } from './import.js?v=202611251200';
+import { table } from './common.js?v=202611251200';
+import { zipLib } from '../xlsx.js?v=202611251200';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251200';
+import { download } from '../util.js?v=202611251200';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -149,6 +149,21 @@ async function setupDialog() {
   d.addEventListener('close', () => d.remove()); document.body.append(d); d.showModal();
 }
 
+// Without the Microsoft app, Sync asks for the Quality Control workbooks (the OneDrive-synced copies on this computer) and sends them to qc-sync.
+const QC_FILES = { 'vf 3-day pond survival': ['day3_recounts'], 'vf egg collection monitoring data': ['egg_volumetric_jars', 'egg_separation_ratings'] };
+async function pickAndPush() {
+  const inp = h('input', { type: 'file', accept: '.xlsx', multiple: true, style: 'display:none' }); document.body.append(inp);
+  const files = await new Promise(res => { inp.onchange = () => res([...inp.files]); inp.addEventListener('cancel', () => res([])); inp.click(); }); inp.remove();
+  if (!files.length) { toast('No file chosen. Pick "VF 3-Day pond Survival.xlsx" and "VF Egg Collection Monitoring Data.xlsx" from your synced Quality Control folder.', true); return; }
+  const out = [];
+  for (const f of files) {
+    const keys = QC_FILES[f.name.replace(/\.xlsx$/i, '').replace(/[\s_]+/g, ' ').replace(/ \(\d+\)$/, '').trim().toLowerCase()];
+    if (!keys) { out.push(`${f.name}: not a Quality Control file I know`); continue; }
+    for (const k of keys) { try { out.push((await db.pushFile(k, f)).message); } catch (e) { out.push(`${f.name} (${k}): ${e.message}`); } }
+  }
+  toast(out.join(' | '), out.some(x => /not a Quality|error|failed|Missing|not found/i.test(x)));
+}
+
 // Pull changed Quality Control workbooks from SharePoint (3-day recounts, egg jars and ratings) without uploading files.
 function syncBtn() {
   const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Quality Control files on SharePoint', onclick: async () => {
@@ -157,7 +172,7 @@ function syncBtn() {
       if (typeof db.syncFiles !== 'function') { toast('This page is running an older copy of the app. Reload it (Ctrl+Shift+R) and press Sync again.', true); return; }
       const r = await db.syncFiles();
       if (r.demo) { toast('Sync needs the live app (demo mode has no SharePoint link)', true); return; }
-      if (r.notConfigured) { await setupDialog(); return; }
+      if (r.notConfigured) { await pickAndPush(); return; }       // no Microsoft app: send the files from this computer instead
       const res = r.results || []; const bad = res.filter(x => x.status === 'error');
       toast(bad.length ? 'Sync problem: ' + bad[0].message : res.every(x => x.status === 'unchanged') ? 'Already up to date: the files have not changed' : 'Synced: ' + res.filter(x => x.status === 'ok').map(x => x.key.replace(/_/g, ' ')).join(', '), !!bad.length);
       for (const k of ['day3_recounts', 'egg_volumetric_jars', 'egg_separation_ratings']) { invalidate(k); S.data[k] = undefined; } await db.audit('sync', 'sharepoint', 'qc');
