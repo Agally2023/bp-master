@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611250401';
+import { S } from './state.js?v=202611250407';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611250401';
-import { MONTHS, dayShort } from './period.js?v=202611250401';
+import { mean, sum, weekRange } from './util.js?v=202611250407';
+import { MONTHS, dayShort } from './period.js?v=202611250407';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -243,7 +243,7 @@ export function flips(data, y, w) {
     const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled) || (r.scheduled === c.scheduled && Object.keys(r.stage_days || {}).length >= Object.keys(c.stage_days || {}).length)) latest.set(r.pond, r); }
     const late = r => sum(st.map(x => { const v = r.stage_days?.[x.name]; return v != null && v > x.expected ? v - x.expected : 0; }));
     const every = [...latest.values()].sort((a, b) => late(b) - late(a) || String(a.pond).localeCompare(String(b.pond)));
-    return [kind, { st, ponds: every.filter(r => late(r) > 0).slice(0, 8), lateCount: every.filter(r => late(r) > 0).length, inScope: latest.size, all: every.slice(0, 8), total: every.length, windowText }];
+    return [kind, { st, ponds: every.filter(r => late(r) > 0).slice(0, 8), lateCount: every.filter(r => late(r) > 0).length, inScope: latest.size, all: every, total: every.length, windowText }];
   }));
   return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog, matrix };
 }

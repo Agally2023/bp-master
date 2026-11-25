@@ -138,8 +138,7 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:                                                    # Days Late Summary slides (latest 3 weeks), Broodstock then Nursery, right after the flipping slide
         if 'days_late' not in exclude and extra.get('flip'):
             for kind, label in (('nursery', 'Nursery'), ('broodstock', 'Broodstock')):
-                spec = X.days_late(*extra['flip'][kind], label, extra['flip']['since'], extra['flip']['until'])
-                if spec: media.add_spec_slide(out, spec, anchor='pond flipping')
+                for spec in reversed(X.days_late(*extra['flip'][kind], label, extra['flip']['since'], extra['flip']['until'])): media.add_spec_slide(out, spec, anchor='pond flipping')
     except Exception as e: warn('Days late summary', e)
     for key, fn_, tbl in (('sinkers', X.sinkers, 'bottom_rope_audits'), ('ws_frequency', X.ws_frequency, 'workstation_audits'), ('sr_efficiency', X.sr_efficiency, 'sr_efficiency'),
                           ('sr_feed', X.sr_feed, 'sex_reversal_feed'), ('hapa_wash', X.hapa_wash, 'hapa_wash_dispatch')):

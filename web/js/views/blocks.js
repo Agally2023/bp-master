@@ -1,8 +1,9 @@
-import { h, pct } from '../util.js?v=202611250401';
-import { lineChart, barChart } from '../charts.js?v=202611250401';
-import { table, kpi } from './common.js?v=202611250401';
-import * as A from '../analytics.js?v=202611250401';
+import { h, pct } from '../util.js?v=202611250407';
+import { lineChart, barChart } from '../charts.js?v=202611250407';
+import { table, kpi } from './common.js?v=202611250407';
+import * as A from '../analytics.js?v=202611250407';
 // Blocks shared by the dashboard and the report preview.
+const chunks = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const has = a => (a || []).some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
 export function sinkersBlock(sk, o = {}) {
@@ -28,11 +29,12 @@ export function washBlock(a, o = {}) {
 // Days Late Summary table (stage x pond, days late = days taken minus expected) for ponds whose flip started in the latest 3 weeks.
 export function flipMatrixBlocks(fl) {
   return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
-    const { st, all: P, total, windowText } = fl.matrix[k];
-    if (!P.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
-    const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v: Math.max(0, v - x.expected), cls: v > x.expected ? 'late' : '' }; })]);
-    return h('div', {}, h('h4', {}, `Days Late Summary: ${label} ponds`), table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
-      h('div', { class: 'note' }, `Flips started in the ${windowText}: ${total}${total > P.length ? ` (the ${P.length} most delayed shown)` : ''}. Days late = days taken minus expected days (red = late).`));
+    const { st, all, total, windowText } = fl.matrix[k];
+    if (!all.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
+    const parts = chunks(all, 8);
+    return h('div', {}, ...parts.map((P, i) => h('div', { class: i ? 'mt' : '' }, h('h4', {}, `Days Late Summary: ${label} ponds` + (parts.length > 1 ? ` (${i + 1}/${parts.length})` : '')),
+      table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v: Math.max(0, v - x.expected), cls: v > x.expected ? 'late' : '' }; })]), { num: P.map((_, j) => j + 1) }))),
+      h('div', { class: 'note' }, `Every flip started in the ${windowText}: ${total} pond${total === 1 ? '' : 's'}, most delayed first. Days late = days taken minus expected days (red = late).`));
   });
 }
 // Summary tiles (same figures as the dashboard) shown above the report slides.
@@ -50,11 +52,12 @@ export function summaryKpis(data, y, w, ras = 'RAS2', by = 'stage') {
 }
 
 // Days Late Summary charts: days taken per stage for ponds flipped in the latest 3 weeks, expected days as a line.
-export function flipSummaryCharts(fl, max = 8) {
+export function flipSummaryCharts(fl) {
   return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
-    const { st, all, windowText } = fl.matrix[k], P = (all || []).slice(0, max);
-    if (!P.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
-    return barChart({ title: `${label} pond flipping & preparation compliance: ${windowText}`, labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
-      series: P.map(r => ({ name: r.pond, values: st.map(x => r.stage_days?.[x.name] ?? null) })), line: { name: 'Expected days/stage', values: st.map(x => x.expected), color: '#FFC000' }, fmt: v => String(Math.round(v)), min: 0 });
+    const { st, all, windowText } = fl.matrix[k];
+    if (!all.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
+    const parts = chunks(all, 8);
+    return h('div', {}, ...parts.map((P, i) => barChart({ title: `${label} pond flipping & preparation compliance: ${windowText}` + (parts.length > 1 ? ` (${i + 1}/${parts.length})` : ''), labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
+      series: P.map(r => ({ name: r.pond, values: st.map(x => r.stage_days?.[x.name] ?? null) })), line: { name: 'Expected days/stage', values: st.map(x => x.expected), color: '#FFC000' }, fmt: v => String(Math.round(v)), min: 0 })));
   });
 }
