@@ -1,0 +1,11 @@
+{
+  "appId": "ke.co.victoryfarms.bpmaster",
+  "appName": "BP Master",
+  "webDir": "www",
+  "server": {
+    "url": "https://bp-master.steveochieng299.workers.dev/",
+    "cleartext": false,
+    "allowNavigation": ["bp-master.steveochieng299.workers.dev", "*.supabase.co", "login.microsoftonline.com", "bp-master-report.onrender.com"]
+  },
+  "android": { "allowMixedContent": false, "backgroundColor": "#111111" }
+}

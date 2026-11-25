@@ -1,0 +1,17 @@
+{
+  "name": "bp-master-desktop",
+  "version": "1.0.0",
+  "description": "BP Master: Victory Farms Best Practice audit reporting (Windows app)",
+  "author": "Victory Farms",
+  "main": "main.js",
+  "private": true,
+  "scripts": { "start": "electron .", "dist": "electron-builder --win nsis --publish never" },
+  "devDependencies": { "electron": "^33.2.0", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "ke.co.victoryfarms.bpmaster",
+    "productName": "BP Master",
+    "files": ["main.js", "offline.html", "icon.png"],
+    "win": { "target": "nsis", "icon": "icon.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "BP Master" }
+  }
+}
