@@ -272,3 +272,5 @@ td.redtxt{color:#e00000;font-weight:700}
 .note.stale{border:0;background:transparent;color:#C00000;font-weight:700;font-style:italic;padding:2px 0;margin:0 0 6px}
 
 .slot .pcap{position:absolute;right:4px;bottom:4px;z-index:1;max-width:96%;text-align:right;font-size:11px;font-weight:700;line-height:1.25;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px;pointer-events:none}
+
+.chartbox{position:relative}.chart-dl{position:absolute;top:0;right:0;font-size:11px;padding:2px 8px;border:1px solid #cfd8cf;border-radius:6px;background:#fff;color:var(--vf-green-dk);cursor:pointer;opacity:.55}.chartbox:hover .chart-dl,.chart-dl:focus{opacity:1}@media print{.chart-dl{display:none}}

@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611250407';
-import { periodWord } from './period.js?v=202611250407';
+import { S } from './state.js?v=202611250912';
+import { periodWord } from './period.js?v=202611250912';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -39,6 +39,8 @@ function finish(c, o) {
   const wrap = document.createElement('div'); wrap.className = 'chartbox';
   if (o.title) { const t = document.createElement('div'); t.className = 'chart-title'; t.textContent = o.title; wrap.append(t); }
   wrap.append(svg);
+  const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'chart-dl'; dl.title = 'Download this graph as a PNG'; dl.textContent = 'PNG';
+  dl.onclick = () => downloadPng(c, o); wrap.append(dl);
   if (o.series.length > 1 || o.legend) { const lg = document.createElement('div'); lg.className = 'legend'; o.series.forEach((s, i) => { const sp = document.createElement('span'); const sw = document.createElement('i'); sw.style.background = s.color || PAL[i % PAL.length]; sp.append(sw, s.name); lg.append(sp); }); wrap.append(lg); }
   return wrap;
 }
@@ -79,4 +81,23 @@ export function barChart(o) {
     return finish(c, { ...o, legend: true, series: [...o.series, { name: o.line.name, color: o.line.color || '#FFC000' }] });
   }
   return finish(c, o);
+}
+
+// PNG download of any graph: the SVG is cloned with its styles inlined, then drawn on a white canvas with the title and legend, at 2x resolution.
+function downloadPng(c, o) {
+  const W = c.W, H = c.H, sc = 2, tH = o.title ? 26 : 0, items = (o.series.length > 1 || o.legend) ? o.series : [];
+  const clone = c.svg.cloneNode(true); clone.setAttribute('xmlns', NS); clone.setAttribute('width', W); clone.setAttribute('height', H);
+  clone.querySelectorAll('text').forEach(t => { t.setAttribute('font-family', 'Arial, Helvetica, sans-serif'); if (!t.getAttribute('font-size')) t.setAttribute('font-size', '11'); if (!t.getAttribute('fill')) t.setAttribute('fill', '#444'); });
+  clone.querySelectorAll('.ax').forEach(e => e.setAttribute('stroke', '#cfd8cf')); clone.querySelectorAll('.gl').forEach(e => e.setAttribute('stroke', '#e8eee8'));
+  const bg = el('rect', { x: 0, y: 0, width: W, height: H, fill: '#ffffff' }); clone.insertBefore(bg, clone.firstChild);
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' })), img = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas'), ctx = cv.getContext('2d'), lgH = items.length ? 26 : 0; cv.width = W * sc; cv.height = (H + tH + lgH) * sc;
+    ctx.scale(sc, sc); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H + tH + lgH);
+    if (o.title) { ctx.fillStyle = '#0B5A22'; ctx.font = 'bold 15px Arial, sans-serif'; ctx.fillText(o.title, 10, 19); }
+    ctx.drawImage(img, 0, tH, W, H); URL.revokeObjectURL(url);
+    let x = 12; ctx.font = '12px Arial, sans-serif'; items.forEach((it, i) => { ctx.fillStyle = it.color || PAL[i % PAL.length]; ctx.fillRect(x, tH + H + 8, 12, 12); ctx.fillStyle = '#333'; ctx.fillText(it.name, x + 17, tH + H + 18); x += 17 + ctx.measureText(it.name).width + 16; });
+    cv.toBlob(b => { const a = document.createElement('a'), nm = (o.title || o.yTitle || 'graph').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60); a.href = URL.createObjectURL(b); a.download = `${nm || 'graph'}.png`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('Could not create the PNG for this graph.'); }; img.src = url;
 }
