@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611250355';
-import { S, ensure } from '../state.js?v=202611250355';
-import { periodize, relabel } from '../period.js?v=202611250355';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611250355';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611250401';
+import { S, ensure } from '../state.js?v=202611250401';
+import { periodize, relabel } from '../period.js?v=202611250401';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611250401';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611250355';
-import * as A from '../analytics.js?v=202611250355';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611250355';
+import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611250401';
+import * as A from '../analytics.js?v=202611250401';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611250401';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611250355';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611250401';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
@@ -72,7 +72,7 @@ export async function render({ view, ctx }) {
         h('div', { class: 'note' }, 'Preparation = average of 9 stage scores (KPIs met ÷ 5). Overall = average of preparation and post-stocking. Rating bands: <75% = 1, 75–80% = 2, 81–90% = 3, 91–95% = 4, 96–99% = 4.5, 100% = 5.'))));
     }
     { const cs = flipSummaryCharts(fl), ts = flipMatrixBlocks(fl);
-      body.append(g(...cs.map((c, i) => card(`Days Late Summary: ${i ? 'nursery' : 'broodstock'} ponds`, c, ts[i], h('div', { class: 'note' }, 'Calculated automatically from the latest 2 weeks of Nursery and Broodstock flipping records. The line is the expected days per stage.'))))); }
+      body.append(g(...cs.map((c, i) => card(`Days Late Summary: ${i ? 'nursery' : 'broodstock'} ponds`, c, ts[i], h('div', { class: 'note' }, 'Calculated automatically from the latest 3 weeks of Nursery and Broodstock flipping records. The line is the expected days per stage.'))))); }
     body.append(g(card('Pond flipping: delayed ponds in progress', table(A.flipHead, fl.progress.filter(r => r.over.length).slice(0, 10).map(r => A.flipRow(r, fmtDate)), { empty: 'No delayed ponds' }), h('div', { class: 'note' }, `${fl.progress.length} ponds are in progress; only the delayed ones are listed.`)),
       card('Hapa exchange compliance (exchanged / scheduled, %)', has(hx.nursery.trend) || has(hx.broodstock.trend)
         ? h('div', {}, lineChart({ labels: hx.labels, series: [{ name: 'Nursery (PNS)', values: hx.nursery.trend, color: '#CB8306' }, { name: 'Broodstock (BS)', values: hx.broodstock.trend, color: '#0E812E' }], xTitle: 'ISO week', yTitle: 'Exchanged / scheduled (%)', min: 0.5, max: 1.1, joinGaps: true, fmt: v => (v * 100).toFixed(0) + '%', valueLabels: hx.labels.length <= 14 }),

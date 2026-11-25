@@ -1,9 +1,9 @@
-import { setPonds } from './engine.js?v=202611250355';
-import { h, $, clear, toast } from './util.js?v=202611250355';
-import { db, isDemo } from './db.js?v=202611250355';
-import { S, currentWeek, setWeek } from './state.js?v=202611250355';
-import { weeksAvailable } from './analytics.js?v=202611250355';
-import { ensure } from './state.js?v=202611250355';
+import { setPonds } from './engine.js?v=202611250401';
+import { h, $, clear, toast } from './util.js?v=202611250401';
+import { db, isDemo } from './db.js?v=202611250401';
+import { S, currentWeek, setWeek } from './state.js?v=202611250401';
+import { weeksAvailable } from './analytics.js?v=202611250401';
+import { ensure } from './state.js?v=202611250401';
 
 const CFG = window.BPM_CONFIG || {};
 const ICON = {
@@ -17,11 +17,11 @@ const ICON = {
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611250355') },
-  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611250355') },
-  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611250355') },
-  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611250355') },
-  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611250355') },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611250401') },
+  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611250401') },
+  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611250401') },
+  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611250401') },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611250401') },
 ];
 let idleT;
 function idleReset() { clearTimeout(idleT); idleT = setTimeout(signOut, (window.bpmPrefs?.get().idle || CFG.IDLE_LOGOUT_MINUTES || 15) * 60000); }

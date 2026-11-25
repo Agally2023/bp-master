@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611250355';
+import { S } from './state.js?v=202611250401';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611250355';
-import { MONTHS, dayShort } from './period.js?v=202611250355';
+import { mean, sum, weekRange } from './util.js?v=202611250401';
+import { MONTHS, dayShort } from './period.js?v=202611250401';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -234,10 +234,10 @@ export function flips(data, y, w) {
     return { kind: kind === 'broodstock' ? 'Broodstock' : 'Nursery', pond: r.pond, scheduled: r.scheduled, done: done.length || Object.keys(r.stage_days || {}).length, total: st.length, next: next?.name || '',
       complete: flipComplete(r, st, asOf), over: st.filter(x => (r.stage_days?.[x.name] ?? 0) > x.expected).map(x => ({ stage: x.name, days: r.stage_days[x.name], exp: x.expected })) };
   }).filter(r => r.total && !r.complete).sort((a, b) => a.kind.localeCompare(b.kind) || String(a.scheduled).localeCompare(String(b.scheduled)));
-  // Days Late Summary: only flips started in the latest 2 weeks (week view) or in the selected month/day, calculated from the Nursery and Broodstock flipping records.
-  const wk = S.period === 'week', from = wk ? weekRange(y, w - 1).mon : null, inWin = r => wk ? (r.scheduled && new Date(r.scheduled + 'T00:00:00Z') >= from && new Date(r.scheduled + 'T00:00:00Z') <= sun) : (r.iso_year === y && r.iso_week === w);
+  // Days Late Summary: only flips started in the latest 3 weeks (week view) or in the selected month/day, calculated from the Nursery and Broodstock flipping records.
+  const wk = S.period === 'week', from = wk ? weekRange(y, w - 2).mon : null, inWin = r => wk ? (r.scheduled && new Date(r.scheduled + 'T00:00:00Z') >= from && new Date(r.scheduled + 'T00:00:00Z') <= sun) : (r.iso_year === y && r.iso_week === w);
   const fd = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
-  const windowText = wk ? `latest 2 weeks (${fd(from)} to ${fd(sun)})` : 'selected ' + (S.period === 'month' ? 'month' : 'day');
+  const windowText = wk ? `latest 3 weeks (${fd(from)} to ${fd(sun)})` : 'selected ' + (S.period === 'month' ? 'month' : 'day');
   const matrix = Object.fromEntries(['nursery', 'broodstock'].map(kind => {
     const st = defs[kind] || [], sel = rows.filter(r => String(r.kind).toLowerCase() === kind && inWin(r));
     const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled) || (r.scheduled === c.scheduled && Object.keys(r.stage_days || {}).length >= Object.keys(c.stage_days || {}).length)) latest.set(r.pond, r); }

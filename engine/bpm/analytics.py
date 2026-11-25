@@ -207,7 +207,7 @@ def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None
     k = fl[fl.kind == kind]
     sched = pd.to_datetime(k.scheduled)
     mask = (sched.dt.year == year) & (sched.dt.month == month)
-    if since is not None:                                    # Days Late Summary: only flips started in the latest 2 weeks
+    if since is not None:                                    # Days Late Summary: only flips started in the latest 3 weeks
         mask = (sched >= pd.Timestamp(since)) & (sched <= pd.Timestamp(until or as_of))
     elif total:
         keep = {(p, s) for p, s, _ in flip_progress(fl, kind, total, as_of, last_expected)}

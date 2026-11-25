@@ -108,7 +108,7 @@ def hapa_wash(rows, year, week):
                 tables=[dict(head=['Hapa size', 'Received', 'Washed', 'Dispatched', 'Exchanged', 'Wash cost'], rows=tab, widths=[22, 12, 12, 12, 12, 14])], lines=[f'Year to date: {int(sum(v["washed"] for v in size.values())):,} hapas washed, {int(sum(v["dispatched"] for v in size.values())):,} dispatched; wash cost {cost:,.0f}.'])
 
 def days_late(piv, exp, d, label, since, until):
-    """Days Late Summary for ponds whose flip started in the latest 2 weeks: days taken per stage (bars) against expected days (line), plus the stage x pond days-late table."""
+    """Days Late Summary for ponds whose flip started in the latest 3 weeks: days taken per stage (bars) against expected days (line), plus the stage x pond days-late table."""
     if piv is None or piv.shape[1] == 0: return None
     def late(p): return sum(max(0, v - exp.get(stg, 99)) for stg, v in piv[p].items() if v == v and v is not None and exp.get(stg) is not None)
     ponds = sorted(piv.columns, key=lambda p: (-late(p), str(p)))[:8]; stages = list(piv.index)
@@ -119,4 +119,4 @@ def days_late(piv, exp, d, label, since, until):
     return dict(title=f'Days Late Summary: {label} Ponds', anchor='pond flipping',
                 charts=[dict(kind='barline', cats=stages, series=[(str(p), [nm(piv.loc[st, p]) for st in stages], pal[i % 8]) for i, p in enumerate(ponds)], line=('Expected days/stage', [float(exp[st]) for st in stages], 'FFC000'), fmt='0', y='Days', x='Stage', h=0.4)],
                 tables=[dict(head=[f'{label}: days late', 'Expected'] + [str(p) for p in ponds], rows=rows, widths=[22, 8] + [8] * len(ponds), red_positive=True)],
-                lines=[f'Ponds whose flip started {fmt(since)} to {fmt(until)} (latest 2 weeks): {piv.shape[1]}; {ndelayed} with at least one delayed stage. Days late = days taken minus expected days.'])
+                lines=[f'Ponds whose flip started {fmt(since)} to {fmt(until)} (latest 3 weeks): {piv.shape[1]}; {ndelayed} with at least one delayed stage. Days late = days taken minus expected days.'])

@@ -87,7 +87,7 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
                 import datetime as _dt
                 as_of = min(_dt.date.today(), sun if isinstance(sun, _dt.date) else sun.date())
                 lastx = {k: (stage_defs.get(k) or [{}])[-1].get('expected') for k in tot}
-                since = (sun if isinstance(sun, _dt.date) else sun.date()) - _dt.timedelta(days=13); until = sun if isinstance(sun, _dt.date) else sun.date()
+                since = (sun if isinstance(sun, _dt.date) else sun.date()) - _dt.timedelta(days=20); until = sun if isinstance(sun, _dt.date) else sun.date()
                 tn, en, _ = A.flip_table(fl, 'nursery', year, sun.month, tot['nursery'], as_of, lastx['nursery'], since, until); tb, eb, _ = A.flip_table(fl, 'broodstock', year, sun.month, tot['broodstock'], as_of, lastx['broodstock'], since, until)
                 prog = {k: A.flip_progress(fl, k, tot[k], as_of, lastx[k]) for k in tot if tot[k]}; flip_prog, flip_tot = prog, tot
                 extra['flip'] = dict(nursery=(tn, en), broodstock=(tb, eb), since=since, until=until)
@@ -135,7 +135,7 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
     try:
         if brood is not None and 'brood_density' not in exclude: media.add_brood_slide(out, brood, cm['brood_density'])
     except Exception as e: warn('Broodstock slide', e)
-    try:                                                    # Days Late Summary slides (latest 2 weeks), Broodstock then Nursery, right after the flipping slide
+    try:                                                    # Days Late Summary slides (latest 3 weeks), Broodstock then Nursery, right after the flipping slide
         if 'days_late' not in exclude and extra.get('flip'):
             for kind, label in (('nursery', 'Nursery'), ('broodstock', 'Broodstock')):
                 spec = X.days_late(*extra['flip'][kind], label, extra['flip']['since'], extra['flip']['until'])

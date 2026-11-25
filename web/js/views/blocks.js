@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611250355';
-import { lineChart, barChart } from '../charts.js?v=202611250355';
-import { table, kpi } from './common.js?v=202611250355';
-import * as A from '../analytics.js?v=202611250355';
+import { h, pct } from '../util.js?v=202611250401';
+import { lineChart, barChart } from '../charts.js?v=202611250401';
+import { table, kpi } from './common.js?v=202611250401';
+import * as A from '../analytics.js?v=202611250401';
 // Blocks shared by the dashboard and the report preview.
 const has = a => (a || []).some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
@@ -25,7 +25,7 @@ export function washBlock(a, o = {}) {
   return [barChart({ labels: a.labels, series: [{ name: 'Washed', values: a.washed, color: '#0E812E' }, { name: 'Dispatched', values: a.dispatched, color: '#CB8306' }, { name: 'Exchanged', values: a.exchanged, color: '#00BDF0' }], xTitle: 'ISO week', yTitle: 'Hapas (no.)', min: 0, fmt: v => String(Math.round(v)), legend: true, h: o.h }),
     table(['Hapa size', 'Received', 'Washed', 'Dispatched', 'Exchanged', 'Wash cost'], a.sizes.map(r => [r.size, r.received, r.washed, r.dispatched, r.exchanged, Math.round(r.cost).toLocaleString()]), { num: [1, 2, 3, 4, 5] })];
 }
-// Days Late Summary table (stage x pond, days late = days taken minus expected) for ponds whose flip started in the latest 2 weeks.
+// Days Late Summary table (stage x pond, days late = days taken minus expected) for ponds whose flip started in the latest 3 weeks.
 export function flipMatrixBlocks(fl) {
   return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
     const { st, all: P, total, windowText } = fl.matrix[k];
@@ -49,7 +49,7 @@ export function summaryKpis(data, y, w, ras = 'RAS2', by = 'stage') {
     sink('Nursery (4)', sk.nursery), sink('Broodstock (10)', sk.broodstock));
 }
 
-// Days Late Summary charts: days taken per stage for ponds flipped in the latest 2 weeks, expected days as a line.
+// Days Late Summary charts: days taken per stage for ponds flipped in the latest 3 weeks, expected days as a line.
 export function flipSummaryCharts(fl, max = 8) {
   return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
     const { st, all, windowText } = fl.matrix[k], P = (all || []).slice(0, max);

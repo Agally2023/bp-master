@@ -419,7 +419,7 @@ def batch3(prs, year, week, comments, x):
         if F.get('since') is not None:                                     # title follows the latest-2-weeks window instead of a fixed month
             tt = shape(s, 'Text Placeholder 1')
             if tt is not None and tt.has_text_frame and tt.text_frame.paragraphs[0].runs:
-                rr = tt.text_frame.paragraphs[0].runs; rr[0].text = f"Pond Flipping Audit: Latest 2 Weeks ({F['since'].strftime('%d %b')} - {F['until'].strftime('%d %b')})"
+                rr = tt.text_frame.paragraphs[0].runs; rr[0].text = f"Pond Flipping Audit: Latest 3 Weeks ({F['since'].strftime('%d %b')} - {F['until'].strftime('%d %b')})"
                 for r in rr[1:]: r.text = ''
         for pic_name, kind, label in (('Picture 2', 'broodstock', 'Broodstock ponds'), ('Picture 5', 'nursery', 'Nursery ponds')):
             piv, exp = F[kind]; pic = shape(s, pic_name)
