@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611251222';
-import { periodWord } from './period.js?v=202611251222';
+import { S } from './state.js?v=202611251514';
+import { periodWord } from './period.js?v=202611251514';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
