@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611250915';
-import { periodWord } from './period.js?v=202611250915';
+import { S } from './state.js?v=202611250917';
+import { periodWord } from './period.js?v=202611250917';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -90,7 +90,14 @@ export function barChart(o) {
 }
 
 // PNG download of any graph: the SVG is cloned with its styles inlined, then drawn on a white canvas with the title and legend, at 2x resolution.
-function downloadPng(c, o) {
+function chartTitle(c, o) {   // graphs without their own title take the heading of the card / report slide they sit in (plus the axis title when the card holds several graphs)
+  if (o.title) return o.title;
+  const box = c.svg.closest('.card, .slide'), hd = box && box.querySelector('h2, h3'), base = hd ? hd.textContent.trim() : '';
+  const many = box ? box.querySelectorAll('svg.chart').length > 1 : false;
+  return [base, many && o.yTitle ? o.yTitle : ''].filter(Boolean).join(': ') || o.yTitle || 'Graph';
+}
+function downloadPng(c, o0) {
+  const o = { ...o0, title: chartTitle(c, o0) };
   const W = c.W, H = c.H, sc = 2, tH = o.title ? 26 : 0, items = (o.series.length > 1 || o.legend) ? o.series : [];
   const clone = c.svg.cloneNode(true); clone.setAttribute('xmlns', NS); clone.setAttribute('width', W); clone.setAttribute('height', H);
   clone.querySelectorAll('text').forEach(t => { t.setAttribute('font-family', 'Arial, Helvetica, sans-serif'); if (!t.getAttribute('font-size')) t.setAttribute('font-size', '11'); if (!t.getAttribute('fill')) t.setAttribute('fill', '#444'); });

@@ -1,5 +1,5 @@
-import { db } from './db.js?v=202611250915';
-import { isoWeek, weekRange } from './util.js?v=202611250915';
+import { db } from './db.js?v=202611250917';
+import { isoWeek, weekRange } from './util.js?v=202611250917';
 export const S = { reg: null, week: null, data: {}, loaded: new Set(), listeners: [] };
 export const modByKey = k => S.reg.modules.find(m => m.key === k);
 // Dashboard / report preview download only the columns they read (no row_hash, batch or audit-user ids): about a third less data.
