@@ -1,9 +1,9 @@
-import { setPonds } from './engine.js?v=202611251535';
-import { h, $, clear, toast } from './util.js?v=202611251535';
-import { db, isDemo } from './db.js?v=202611251535';
-import { S, currentWeek, setWeek } from './state.js?v=202611251535';
-import { weeksAvailable } from './analytics.js?v=202611251535';
-import { ensure, cacheClear } from './state.js?v=202611251535';
+import { setPonds } from './engine.js?v=202611251538';
+import { h, $, clear, toast } from './util.js?v=202611251538';
+import { db, isDemo } from './db.js?v=202611251538';
+import { S, currentWeek, setWeek } from './state.js?v=202611251538';
+import { weeksAvailable } from './analytics.js?v=202611251538';
+import { ensure, cacheClear } from './state.js?v=202611251538';
 
 const CFG = window.BPM_CONFIG || {};
 const ICON = {
@@ -17,11 +17,11 @@ const ICON = {
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611251535') },
-  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611251535') },
-  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611251535') },
-  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611251535') },
-  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611251535') },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611251538') },
+  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611251538') },
+  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611251538') },
+  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611251538') },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611251538') },
 ];
 let idleT;
 function idleReset() { clearTimeout(idleT); idleT = setTimeout(signOut, (window.bpmPrefs?.get().idle || CFG.IDLE_LOGOUT_MINUTES || 15) * 60000); }
@@ -135,6 +135,16 @@ export async function init() {
   } catch { S.ponds = []; }
   await db.init();
   $('#signout').onclick = signOut;
+  $('#refresh').onclick = async e => {   // reload every table from the server (drops the local copy) and pick up a newer app version if one was published
+    const b = e.currentTarget; b.classList.add('busy');
+    try {
+      const cur = (document.querySelector('script[src*="app.js"]')?.src.match(/v=(\d+)/) || [])[1];
+      const html = await (await fetch('index.html?r=' + Date.now(), { cache: 'no-store' })).text(), nu = (html.match(/app\.js\?v=(\d+)/) || [])[1];
+      if (cur && nu && cur !== nu) { await cacheClear(); location.reload(); return; }
+    } catch { }
+    S.data = {}; S.loaded.clear(); S.since = {}; S.slim.clear(); S.failed.clear(); await cacheClear();
+    try { if (db.user) await route(); } finally { b.classList.remove('busy'); }
+  };
   let lastAct = 0; for (const ev of ['click', 'keydown', 'mousemove']) document.addEventListener(ev, () => { const t = Date.now(); if (db.user && t - lastAct > 1000) { lastAct = t; idleReset(); } }, { passive: true });
   window.addEventListener('hashchange', () => db.user && route());
   const rec = db.takeRecovery(location.hash);   // opened from a password-reset email?
