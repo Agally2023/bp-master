@@ -1,5 +1,6 @@
-import { S } from './state.js?v=202611251533';
-import { periodWord } from './period.js?v=202611251533';
+import { download } from './util.js?v=202611251535';
+import { S } from './state.js?v=202611251535';
+import { periodWord } from './period.js?v=202611251535';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -110,7 +111,7 @@ function downloadPng(c, o0) {
     if (o.title) { ctx.fillStyle = '#0B5A22'; ctx.font = 'bold 15px Arial, sans-serif'; ctx.fillText(o.title, 10, 19); }
     ctx.drawImage(img, 0, tH, W, H); URL.revokeObjectURL(url);
     let x = 12; ctx.font = '12px Arial, sans-serif'; items.forEach((it, i) => { ctx.fillStyle = it.color || PAL[i % PAL.length]; ctx.fillRect(x, tH + H + 8, 12, 12); ctx.fillStyle = '#333'; ctx.fillText(it.name, x + 17, tH + H + 18); x += 17 + ctx.measureText(it.name).width + 16; });
-    cv.toBlob(b => { const a = document.createElement('a'), nm = (o.title || o.yTitle || 'graph').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60); a.href = URL.createObjectURL(b); a.download = `${nm || 'graph'}.png`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
+    cv.toBlob(b => { const nm = (o.title || o.yTitle || 'graph').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60); download(`${nm || 'graph'}.png`, b); }, 'image/png');
   };
   img.onerror = () => { URL.revokeObjectURL(url); alert('Could not create the PNG for this graph.'); }; img.src = url;
 }

@@ -50,5 +50,20 @@ export async function sha256(text) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
-export function download(name, blob) { const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+// Saves a file. Browser and Windows app: normal download. Android app (Capacitor WebView ignores blob downloads): write the file to the app cache and open the share sheet (Save to Files / Drive / WhatsApp / Open).
+export function download(name, blob) {
+  const C = window.Capacitor;
+  if (C?.isNativePlatform?.()) {
+    (async () => {
+      try {
+        const FSx = C.registerPlugin('Filesystem'), Sh = C.registerPlugin('Share');
+        const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+        const f = await FSx.writeFile({ path: name, data: b64, directory: 'CACHE' });
+        await Sh.share({ title: name, url: f.uri, dialogTitle: 'Save or share ' + name });
+      } catch (e) { if (!/cancel/i.test(String(e && e.message || e))) alert('Could not save ' + name + ': ' + (e && e.message || e) + '. Update the app (Android) from the latest build.'); }
+    })();
+    return;
+  }
+  const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 export const esc = s => String(s ?? '');
