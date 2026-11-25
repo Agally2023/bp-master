@@ -216,7 +216,7 @@ def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None
     d.loc[d.days < 0, 'days'] = float('nan')                 # negative days come from a blank/typed date in the Excel file: shown as '-', never as a value
     d = d[d.groupby('pond').scheduled.transform('max') == d.scheduled]        # a pond flipped twice shows its latest flip
     ponds = (d.drop_duplicates('pond').sort_values('scheduled')['pond']).tolist()
-    st = d.drop_duplicates('stage').sort_values('order')[['stage', 'expected_days']]
+    st = d.drop_duplicates('stage').sort_values('order')[['stage', 'expected_days']].dropna(subset=['expected_days'])      # stages no longer in the stage list (e.g. removed ones) are not shown
     piv = d.pivot_table(index='stage', columns='pond', values='days', aggfunc='first').reindex(index=st.stage, columns=ponds)
     return piv, dict(zip(st.stage, st.expected_days)), d
 

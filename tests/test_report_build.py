@@ -62,3 +62,10 @@ def test_bottom_rope_analysis_slide():
     text = ' '.join(sh.text_frame.text for s in Presentation(out).slides for sh in s.shapes if sh.has_text_frame)
     assert 'Bottom Rope Conformance and Failure Analysis' in text, warns
     assert not [w for w in warns if 'Bottom rope conformance' in w], warns
+
+
+def test_days_late_summary_slides_present():
+    from pptx import Presentation
+    out, w = build(T0, 47); assert not w
+    txt = [' '.join(sh.text_frame.text for sh in s.shapes if sh.has_text_frame) for s in Presentation(out).slides]
+    assert any('Days Late Summary: Broodstock' in t for t in txt) and any('Days Late Summary: Nursery' in t for t in txt)

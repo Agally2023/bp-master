@@ -107,7 +107,7 @@ def hapa_wash(rows, year, week):
     return dict(title='Hapas Received, Washed and Dispatched', anchor='bottom rope', charts=[dict(kind='bar', cats=[str(w) for w in weeks], series=[('Washed', [tot('washed', w) for w in weeks], GREEN), ('Dispatched', [tot('dispatched', w) for w in weeks], GOLD), ('Exchanged', [tot('exchanged', w) for w in weeks], CYAN)], fmt='0', y='Hapas (no.)', x='ISO week', h=0.34)],
                 tables=[dict(head=['Hapa size', 'Received', 'Washed', 'Dispatched', 'Exchanged', 'Wash cost'], rows=tab, widths=[22, 12, 12, 12, 12, 14])], lines=[f'Year to date: {int(sum(v["washed"] for v in size.values())):,} hapas washed, {int(sum(v["dispatched"] for v in size.values())):,} dispatched; wash cost {cost:,.0f}.'])
 
-def days_late(piv, exp, d, label, since, until):
+def days_late(piv, exp, label, since, until):
     """Days Late Summary for every pond whose flip started in the latest 3 weeks: days taken per stage (bars) against expected days (line), plus the stage x pond days-late table. 8 ponds per slide, most delayed first. Returns a list of specs."""
     if piv is None or piv.shape[1] == 0: return []
     def late(p): return sum(max(0, v - exp.get(stg, 99)) for stg, v in piv[p].items() if v == v and v is not None and exp.get(stg) is not None)
