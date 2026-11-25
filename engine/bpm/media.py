@@ -132,16 +132,30 @@ def add_spec_slide(out, spec, anchor=None):
     for k, c in enumerate(charts):
         cd = CategoryChartData(); cd.categories = c['cats']
         for nm, vals, col in c['series']: cd.add_series(nm, [None if v is None else float(v) for v in vals])
+        if c['kind'] == 'barline': cd.add_series(c['line'][0], c['line'][1])
         n = len(charts); w = 0.94 / n; x = 0.03 + k * (0.94 / n) + (0.01 if n > 1 else 0)
-        ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED if c['kind'] == 'bar' else XL_CHART_TYPE.LINE_MARKERS, Emu(int(W * x)), Emu(int(H * y)), Emu(int(W * (w - (0.02 if n > 1 else 0)))), Emu(int(H * c.get('h', 0.34))), cd).chart
+        ch = s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED if c['kind'] in ('bar', 'barline') else XL_CHART_TYPE.LINE_MARKERS, Emu(int(W * x)), Emu(int(H * y)), Emu(int(W * (w - (0.02 if n > 1 else 0)))), Emu(int(H * c.get('h', 0.34))), cd).chart
         ch.has_title = False; ch.has_legend = len(c['series']) > 1; ch.font.size = Pt(10)
         if ch.has_legend: ch.legend.position = XL_LEGEND_POSITION.BOTTOM; ch.legend.include_in_layout = False
         va = ch.value_axis; va.tick_labels.number_format = c['fmt']; va.tick_labels.number_format_is_linked = False; va.has_major_gridlines = True
         va.minimum_scale = c.get('min', 0)
         if c.get('max') is not None: va.maximum_scale = c['max']
         va.has_title = True; va.axis_title.text_frame.text = c['y']; ch.category_axis.has_title = True; ch.category_axis.axis_title.text_frame.text = c['x']
+        if c['kind'] == 'barline':      # move the lser series into a line plot on the same axes (expected days)
+            from lxml import etree
+            bar = ch._chartSpace.chart.plotArea.find(qn('c:barChart')); sers = bar.findall(qn('c:ser')); lser = sers[-1]; bar.remove(lser)
+            lc = etree.Element(qn('c:lineChart')); etree.SubElement(lc, qn('c:grouping')).set('val', 'standard'); etree.SubElement(lc, qn('c:varyColors')).set('val', '0'); lc.append(lser); etree.SubElement(lser, qn('c:smooth')).set('val', '0')
+            for tag in ('c:invertIfNegative',):
+                for e in lser.findall(qn(tag)): lser.remove(e)
+            mk = etree.SubElement(lc, qn('c:marker')); mk.set('val', '1')
+            for ax in bar.findall(qn('c:axId')): etree.SubElement(lc, qn('c:axId')).set('val', ax.get('val'))
+            bar.addnext(lc)
+            sp = etree.fromstring('<c:spPr xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:ln w="31750"><a:solidFill><a:srgbClr val="%s"/></a:solidFill></a:ln></c:spPr>' % c['line'][2])
+            old_sp = lser.find(qn('c:spPr'))
+            if old_sp is not None: lser.remove(old_sp)
+            lser.find(qn('c:tx')).addnext(sp)
         for se, (nm, vals, col) in zip(ch.plots[0].series, c['series']):
-            if c['kind'] == 'bar': se.format.fill.solid(); se.format.fill.fore_color.rgb = rgb(col)
+            if c['kind'] in ('bar', 'barline'): se.format.fill.solid(); se.format.fill.fore_color.rgb = rgb(col)
             else:
                 se.format.line.color.rgb = rgb(col); se.format.line.width = Pt(2.25); se.smooth = False; se.marker.format.fill.solid(); se.marker.format.fill.fore_color.rgb = rgb(col)
         if c['kind'] == 'line' and len(ch.plots[0].series) > 1 and c['series'][-1][0].lower().startswith(('standard', 'target')): ch.plots[0].series[-1].marker.style = None
@@ -154,7 +168,8 @@ def add_spec_slide(out, spec, anchor=None):
     for t in spec.get('tables') or []:
         if not t['rows']: continue
         font = 9 if len(t['rows']) <= 8 else 8; box = type('A', (), dict(left=Emu(int(W * 0.04)), top=Emu(int(H * y)), width=Emu(int(W * 0.92))))()
-        deck.table(s, box, t['head'], t['rows'], t['widths'], deck.BLUE_DARK, font=font); y += 0.047 * (len(t['rows']) + 1) + 0.02
+        kw = dict(fill_fn=lambda r, c, v: RGBColor(0xFF, 0x00, 0x00) if c >= 2 and v != '-' and v > 0 else None, color_fn=lambda r, c, v: RGBColor(0xFF, 0xFF, 0xFF) if c >= 2 and v != '-' and v > 0 else None) if t.get('red_positive') else {}
+        deck.table(s, box, t['head'], t['rows'], t['widths'], deck.BLUE_DARK, font=font, **kw); y += 0.047 * (len(t['rows']) + 1) + 0.02
     lines = [l for l in spec.get('lines') or [] if l]
     if lines:
         box = s.shapes.add_textbox(Emu(int(W * 0.04)), Emu(int(H * min(y, 0.86))), Emu(int(W * 0.92)), Emu(int(H * 0.1))); tf = box.text_frame; tf.word_wrap = True

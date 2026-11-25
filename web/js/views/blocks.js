@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611241413';
-import { lineChart, barChart } from '../charts.js?v=202611241413';
-import { table, kpi } from './common.js?v=202611241413';
-import * as A from '../analytics.js?v=202611241413';
+import { h, pct } from '../util.js?v=202611250355';
+import { lineChart, barChart } from '../charts.js?v=202611250355';
+import { table, kpi } from './common.js?v=202611250355';
+import * as A from '../analytics.js?v=202611250355';
 // Blocks shared by the dashboard and the report preview.
 const has = a => (a || []).some(v => v != null);
 const pc0 = v => (v * 100).toFixed(0) + '%';
@@ -25,17 +25,16 @@ export function washBlock(a, o = {}) {
   return [barChart({ labels: a.labels, series: [{ name: 'Washed', values: a.washed, color: '#0E812E' }, { name: 'Dispatched', values: a.dispatched, color: '#CB8306' }, { name: 'Exchanged', values: a.exchanged, color: '#00BDF0' }], xTitle: 'ISO week', yTitle: 'Hapas (no.)', min: 0, fmt: v => String(Math.round(v)), legend: true, h: o.h }),
     table(['Hapa size', 'Received', 'Washed', 'Dispatched', 'Exchanged', 'Wash cost'], a.sizes.map(r => [r.size, r.received, r.washed, r.dispatched, r.exchanged, Math.round(r.cost).toLocaleString()]), { num: [1, 2, 3, 4, 5] })];
 }
-// Pond flipping: days late per stage for the delayed ponds (the "Days Late" blueprint), nursery and broodstock.
-export function flipMatrixBlocks(fl, fmtDate) {
-  return [['broodstock', 'Broodstock ponds'], ['nursery', 'Nursery ponds']].map(([k, label]) => {
-    const { st, ponds: P, lateCount, inScope } = fl.matrix[k];
-    if (!P.length) return h('div', { class: 'note' }, `${label}: ${inScope ? 'no delayed ponds' : 'no ponds in progress'}.`);
+// Days Late Summary table (stage x pond, days late = days taken minus expected) for ponds whose flip started in the latest 2 weeks.
+export function flipMatrixBlocks(fl) {
+  return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
+    const { st, all: P, total, windowText } = fl.matrix[k];
+    if (!P.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
     const rows = st.map(x => [x.name, x.expected, ...P.map(r => { const v = r.stage_days?.[x.name]; return v == null || v < 0 ? '-' : { v: Math.max(0, v - x.expected), cls: v > x.expected ? 'late' : '' }; })]);
-    return h('div', {}, h('h4', {}, `${label}: days late per stage`), table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
-      h('div', { class: 'note' }, `Days late = days taken minus expected days (red = late). ${lateCount > P.length ? `The ${P.length} most delayed of ${lateCount} ponds.` : `${lateCount} of ${inScope} ponds.`}`));
+    return h('div', {}, h('h4', {}, `Days Late Summary: ${label} ponds`), table(['Stage', 'Expected (days)', ...P.map(r => r.pond)], rows, { num: P.map((_, i) => i + 1) }),
+      h('div', { class: 'note' }, `Flips started in the ${windowText}: ${total}${total > P.length ? ` (the ${P.length} most delayed shown)` : ''}. Days late = days taken minus expected days (red = late).`));
   });
 }
-
 // Summary tiles (same figures as the dashboard) shown above the report slides.
 export function summaryKpis(data, y, w, ras = 'RAS2', by = 'stage') {
   const ws = A.workstation(data, y, w), bio = A.biosecurity(data, y, w), par = A.parasitology(data, y, w, ras, by), d3 = A.day3(data, y, w), eg = A.eggs(data, y, w), hx = A.hapaExchange(data, y, w), sk = A.sinkers(data, y, w);
@@ -50,12 +49,12 @@ export function summaryKpis(data, y, w, ras = 'RAS2', by = 'stage') {
     sink('Nursery (4)', sk.nursery), sink('Broodstock (10)', sk.broodstock));
 }
 
-// "Days Late Summary": days taken per stage for every pond in progress or flipped in the month (calculated from the Nursery / Broodstock flipping records), with the expected days as a line.
-export function flipSummaryCharts(fl, max = 6) {
-  return [['nursery', 'Nursery'], ['broodstock', 'Broodstock']].map(([k, label]) => {
-    const { st, all, month } = fl.matrix[k], P = (all || []).slice(0, max), mn = new Date(month + '-01T00:00:00Z').toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
-    if (!P.length) return h('div', { class: 'note' }, `${label}: no ponds in progress or flipped in ${mn}.`);
-    return barChart({ title: `${label} ${mn} pond flipping & preparation compliance`, labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
+// Days Late Summary charts: days taken per stage for ponds flipped in the latest 2 weeks, expected days as a line.
+export function flipSummaryCharts(fl, max = 8) {
+  return [['broodstock', 'Broodstock'], ['nursery', 'Nursery']].map(([k, label]) => {
+    const { st, all, windowText } = fl.matrix[k], P = (all || []).slice(0, max);
+    if (!P.length) return h('div', { class: 'note' }, `${label}: no flips started in the ${windowText}.`);
+    return barChart({ title: `${label} pond flipping & preparation compliance: ${windowText}`, labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
       series: P.map(r => ({ name: r.pond, values: st.map(x => r.stage_days?.[x.name] ?? null) })), line: { name: 'Expected days/stage', values: st.map(x => x.expected), color: '#FFC000' }, fmt: v => String(Math.round(v)), min: 0 });
   });
 }

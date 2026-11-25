@@ -202,12 +202,14 @@ def flip_progress(fl, kind, total, as_of=None, last_expected=None):
         out.append((pond, sched, n))
     return sorted(out, key=lambda t: (t[1], t[0]))
 
-def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None):
+def flip_table(fl, kind, year, month, total=None, as_of=None, last_expected=None, since=None, until=None):
     """Stage x pond table of days taken, plus expected days. Shows every pond in progress (any week or month) plus ponds scheduled in the given month."""
     k = fl[fl.kind == kind]
     sched = pd.to_datetime(k.scheduled)
     mask = (sched.dt.year == year) & (sched.dt.month == month)
-    if total:
+    if since is not None:                                    # Days Late Summary: only flips started in the latest 2 weeks
+        mask = (sched >= pd.Timestamp(since)) & (sched <= pd.Timestamp(until or as_of))
+    elif total:
         keep = {(p, s) for p, s, _ in flip_progress(fl, kind, total, as_of, last_expected)}
         mask = mask | pd.Series([(p, s) in keep for p, s in zip(k.pond, k.scheduled)], index=k.index)
     d = k[mask].copy()

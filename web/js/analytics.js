@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611241413';
+import { S } from './state.js?v=202611250355';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611241413';
-import { MONTHS, dayShort } from './period.js?v=202611241413';
+import { mean, sum, weekRange } from './util.js?v=202611250355';
+import { MONTHS, dayShort } from './period.js?v=202611250355';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -234,17 +234,16 @@ export function flips(data, y, w) {
     return { kind: kind === 'broodstock' ? 'Broodstock' : 'Nursery', pond: r.pond, scheduled: r.scheduled, done: done.length || Object.keys(r.stage_days || {}).length, total: st.length, next: next?.name || '',
       complete: flipComplete(r, st, asOf), over: st.filter(x => (r.stage_days?.[x.name] ?? 0) > x.expected).map(x => ({ stage: x.name, days: r.stage_days[x.name], exp: x.expected })) };
   }).filter(r => r.total && !r.complete).sort((a, b) => a.kind.localeCompare(b.kind) || String(a.scheduled).localeCompare(String(b.scheduled)));
-  // Stage x pond table of days taken (as on the weekly slide): every pond in progress plus ponds scheduled in the month of the selected week.
-  const inProg = new Set(prog.map(r => r.kind.toLowerCase() + '|' + r.pond + '|' + r.scheduled));
+  // Days Late Summary: only flips started in the latest 2 weeks (week view) or in the selected month/day, calculated from the Nursery and Broodstock flipping records.
+  const wk = S.period === 'week', from = wk ? weekRange(y, w - 1).mon : null, inWin = r => wk ? (r.scheduled && new Date(r.scheduled + 'T00:00:00Z') >= from && new Date(r.scheduled + 'T00:00:00Z') <= sun) : (r.iso_year === y && r.iso_week === w);
+  const fd = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+  const windowText = wk ? `latest 2 weeks (${fd(from)} to ${fd(sun)})` : 'selected ' + (S.period === 'month' ? 'month' : 'day');
   const matrix = Object.fromEntries(['nursery', 'broodstock'].map(kind => {
-    const st = defs[kind] || [];
-    const sel = rows.filter(r => String(r.kind).toLowerCase() === kind && (inProg.has(kind + '|' + r.pond + '|' + r.scheduled) || String(r.scheduled).slice(0, 7) === sun.toISOString().slice(0, 7)));
-    const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled)) latest.set(r.pond, r); }
-    // "Days Late" blueprint: only ponds with a stage beyond its expected days, most delayed first (max 8 columns).
+    const st = defs[kind] || [], sel = rows.filter(r => String(r.kind).toLowerCase() === kind && inWin(r));
+    const latest = new Map(); for (const r of sel) { const c = latest.get(r.pond); if (!c || String(r.scheduled) > String(c.scheduled) || (r.scheduled === c.scheduled && Object.keys(r.stage_days || {}).length >= Object.keys(c.stage_days || {}).length)) latest.set(r.pond, r); }
     const late = r => sum(st.map(x => { const v = r.stage_days?.[x.name]; return v != null && v > x.expected ? v - x.expected : 0; }));
-    const lateAll = [...latest.values()].filter(r => late(r) > 0).sort((a, b) => late(b) - late(a) || String(a.pond).localeCompare(String(b.pond)));
     const every = [...latest.values()].sort((a, b) => late(b) - late(a) || String(a.pond).localeCompare(String(b.pond)));
-    return [kind, { st, ponds: lateAll.slice(0, 8), lateCount: lateAll.length, inScope: latest.size, all: every, month: sun.toISOString().slice(0, 7) }];
+    return [kind, { st, ponds: every.filter(r => late(r) > 0).slice(0, 8), lateCount: every.filter(r => late(r) > 0).length, inScope: latest.size, all: every.slice(0, 8), total: every.length, windowText }];
   }));
   return { nursery: inw.filter(r => String(r.kind).toLowerCase() === 'nursery'), brood: inw.filter(r => String(r.kind).toLowerCase() === 'broodstock'), all: rows, progress: prog, matrix };
 }
