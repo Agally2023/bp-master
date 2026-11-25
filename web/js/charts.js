@@ -1,5 +1,5 @@
-import { S } from './state.js?v=202611250912';
-import { periodWord } from './period.js?v=202611250912';
+import { S } from './state.js?v=202611250913';
+import { periodWord } from './period.js?v=202611250913';
 // Dependency-free SVG charts in the Victory Farms palette.
 // Bars never use red (red is reserved for targets / non-compliance markers): their own palette, in order
 export const BARPAL = ['#0E812E', '#CB8306', '#00BDF0', '#3B6FD4', '#9B59D0', '#14A3A3'];
@@ -16,15 +16,21 @@ function frame(o) {
   if (o.line) vals.push(...o.line.values.filter(v => v != null));
   let lo = o.min ?? Math.min(0, ...vals), hi = o.max ?? Math.max(...vals, 0.0001);
   if (o.stacked) hi = o.max ?? Math.max(...o.labels.map((_, i) => o.series.reduce((s, x) => s + (x.values[i] || 0), 0)), 0.0001);
-  if (o.max == null) {                                   // round the top up to a tidy tick step (e.g. 0, 25, 50, 75, 100 %)
-    const raw = (hi - lo) / 4 || 0.25, pw = Math.pow(10, Math.floor(Math.log10(raw))), nz = [1, 2, 2.5, 5, 10].find(k => k * pw >= raw * 1.0001) * pw;
-    hi = lo + Math.ceil((hi - lo) / nz - 1e-9) * nz; if (hi - lo < nz * 4) hi = lo + nz * 4;
+  // Even scale: 4 to 6 equal intervals of a tidy step (1, 2, 2.5, 5 x 10^n); whole-number steps for count data. The top is rounded up to the next tidy tick, never left uneven.
+  let nT = 4;
+  if (hi > lo) {
+    const intData = vals.length && vals.every(Number.isInteger) && Math.max(...vals) >= 4, cands = intData ? [1, 2, 5, 10] : [1, 2, 2.5, 5, 10]; let best = null;
+    for (const n of (o.max != null && !o.stacked ? [4, 5, 6] : [4, 5, 6])) {
+      const raw = (hi - lo) / n, pw = Math.pow(10, Math.floor(Math.log10(raw))); let nz = cands.map(k => k * pw).find(v => v >= raw * 0.9999) ?? 10 * pw; if (intData && nz < 1) nz = 1;
+      const top = lo + n * nz; if (!best || top < best.top - 1e-9) best = { n, nz, top };
+    }
+    hi = best.top; nT = best.n;
   }
   if (lo === hi) hi = lo + 1;
   const iw = W - m.l - m.r, ih = H - m.t - m.b, y = v => m.t + ih - (v - lo) / (hi - lo) * ih;
   const f = o.fmt || fmtDef;
-  for (let i = 0; i <= 4; i++) {
-    const v = lo + (hi - lo) * i / 4;
+  for (let i = 0; i <= nT; i++) {
+    const v = lo + (hi - lo) * i / nT;
     svg.append(el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'gl' }), el('text', { x: m.l - 6, y: y(v) + 3, 'text-anchor': 'end', fill: '#555' }, f(v)));
   }
   const step = Math.ceil(o.labels.length / (o.maxLabels || 14));
@@ -46,7 +52,7 @@ function finish(c, o) {
 }
 export function lineChart(o) {
   const c = frame(o), { svg, m, iw, y, f } = c, n = o.labels.length, x = i => m.l + (n === 1 ? iw / 2 : i * iw / (n - 1));
-  o.labels.forEach((l, i) => { if (i % c.step === 0 || i === n - 1) svg.append(el('text', { x: x(i), y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, l)); });
+  o.labels.forEach((l, i) => { if ((n - 1 - i) % c.step === 0) svg.append(el('text', { x: x(i), y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, l)); });
   o.series.forEach((s, k) => {
     const col = o.series.length === 1 ? PAL[0] : (s.color || PAL[k % PAL.length]); let d = '', pen = false;   // a single line is always Victory Farms green
     s.values.forEach((v, i) => { if (v == null || Number.isNaN(v)) { if (!o.joinGaps) pen = false; return; } d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
@@ -64,7 +70,7 @@ export function barChart(o) {
   const c = frame(o), { svg, m, iw, y, f } = c, n = o.labels.length, gw = iw / n, k = o.stacked ? 1 : o.series.length, bw = Math.min(34, gw * 0.76 / k);
   o.labels.forEach((l, i) => {
     const cx = m.l + gw * (i + 0.5);
-    if (i % c.step === 0) svg.append(el('text', { x: cx, y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, String(l).slice(0, o.labelLen || 10)));
+    if ((o.labels.length - 1 - i) % c.step === 0) svg.append(el('text', { x: cx, y: c.H - m.b + 15, 'text-anchor': 'middle', fill: '#444' }, String(l).slice(0, o.labelLen || 10)));
     let acc = 0;
     o.series.forEach((s, j) => {
       const v = s.values[i]; if (v == null || Number.isNaN(v)) return; const col = s.color || BARPAL[j % BARPAL.length];
