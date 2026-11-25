@@ -1,12 +1,13 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251200';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251200';
-import { db } from '../db.js?v=202611251200';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251200';
-import { importPanel, batchesPanel } from './import.js?v=202611251200';
-import { table } from './common.js?v=202611251200';
-import { zipLib } from '../xlsx.js?v=202611251200';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251200';
-import { download } from '../util.js?v=202611251200';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611251206';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611251206';
+import { db } from '../db.js?v=202611251206';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611251206';
+import { importPanel, batchesPanel } from './import.js?v=202611251206';
+import { table } from './common.js?v=202611251206';
+import { zipLib } from '../xlsx.js?v=202611251206';
+import * as FS from '../folder-sync.js?v=202611251206';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611251206';
+import { download } from '../util.js?v=202611251206';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -164,22 +165,29 @@ async function pickAndPush() {
   toast(out.join(' | '), out.some(x => /not a Quality|error|failed|Missing|not found/i.test(x)));
 }
 
-// Pull changed Quality Control workbooks from SharePoint (3-day recounts, egg jars and ratings) without uploading files.
+// Sync: pick the OneDrive-synced SharePoint folder once; every Excel file in it is then read, each sheet is recognised from the module markers and the
+// new rows are loaded (same importer as Data entry). Needs Chrome or Edge. Other browsers fall back to choosing the files.
 function syncBtn() {
-  const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Quality Control files on SharePoint', onclick: async () => {
-    b.disabled = true; const old = b.textContent; b.textContent = 'Syncing…';
+  const label = async () => { const n = await FS.folderName(); return n ? `Sync files (${n})` : 'Sync files from folder'; };
+  const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the Excel files in your synced SharePoint folder' }, 'Sync files'); label().then(t => b.textContent = t);
+  const msg = h('span', { class: 'muted', style: 'font-size:.85em' });
+  const change = h('button', { class: 'btn sec', type: 'button', title: 'Choose a different folder', onclick: async () => { try { await FS.chooseFolder(); b.textContent = await label(); toast('Folder saved. Press Sync files.'); } catch (e) { if (e.name !== 'AbortError') toast('Could not open the folder: ' + e.message, true); } } }, 'Change folder');
+  b.onclick = async () => {
+    b.disabled = true; const old = b.textContent;
     try {
-      if (typeof db.syncFiles !== 'function') { toast('This page is running an older copy of the app. Reload it (Ctrl+Shift+R) and press Sync again.', true); return; }
-      const r = await db.syncFiles();
-      if (r.demo) { toast('Sync needs the live app (demo mode has no SharePoint link)', true); return; }
-      if (r.notConfigured) { await pickAndPush(); return; }       // no Microsoft app: send the files from this computer instead
-      const res = r.results || []; const bad = res.filter(x => x.status === 'error');
-      toast(bad.length ? 'Sync problem: ' + bad[0].message : res.every(x => x.status === 'unchanged') ? 'Already up to date: the files have not changed' : 'Synced: ' + res.filter(x => x.status === 'ok').map(x => x.key.replace(/_/g, ' ')).join(', '), !!bad.length);
-      for (const k of ['day3_recounts', 'egg_volumetric_jars', 'egg_separation_ratings']) { invalidate(k); S.data[k] = undefined; } await db.audit('sync', 'sharepoint', 'qc');
-    } catch (e) { toast('Sync failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = old; }
-  } }, 'Sync files from SharePoint');
-  return b;
+      if (!FS.supported()) { await pickAndPush(); return; }
+      if (!(await FS.folderName())) { await FS.chooseFolder(); }
+      if ((await FS.permission(true)) !== 'granted') { toast('Allow access to the folder to sync', true); return; }
+      b.textContent = 'Syncing…';
+      const r = await FS.syncFolder(t => { msg.textContent = t; }); msg.textContent = '';
+      const tot = r.imported.reduce((n, x) => n + x.rows, 0);
+      toast(r.problems.length ? 'Sync problem: ' + r.problems[0] : tot ? `Synced ${tot.toLocaleString()} new rows: ` + [...new Set(r.imported.filter(x => x.rows).map(x => x.module))].join(', ') : `Up to date (${r.files + r.unchanged} file(s) checked, nothing new)`, !!r.problems.length);
+      if (r.imported.length) drawAfterSync();
+    } catch (e) { if (e.name !== 'AbortError') toast('Sync failed: ' + e.message, true); } finally { b.disabled = false; b.textContent = await label().catch(() => old); }
+  };
+  return h('span', { class: 'row', style: 'gap:.4rem;align-items:center' }, b, change, msg);
 }
+function drawAfterSync() { document.dispatchEvent(new CustomEvent('bpm-data-changed')); }
 
 // Excel export of every stored record (not just the 100 shown), in the Victory Farms template style.
 function exportBtn(mods, name, label) {
@@ -221,3 +229,15 @@ function hygienePhotos() {
   draw(); return box;
 }
 
+
+// Automatic sync: while the app is open, every 10 minutes (and once shortly after opening), if the browser still has permission to read the chosen folder.
+let autoBusy = false;
+async function autoSync() {
+  if (autoBusy || document.hidden || !FS.supported() || !db.tok && !db.demo) return;
+  try {
+    if ((await FS.permission(false)) !== 'granted') return; autoBusy = true;
+    const r = await FS.syncFolder(); const tot = r.imported.reduce((n, x) => n + x.rows, 0);
+    if (tot) toast(`Auto-sync loaded ${tot.toLocaleString()} new rows: ` + [...new Set(r.imported.filter(x => x.rows).map(x => x.module))].join(', '));
+  } catch { } finally { autoBusy = false; }
+}
+setTimeout(autoSync, 20000); setInterval(autoSync, 600000);
