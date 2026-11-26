@@ -55,12 +55,19 @@ export function download(name, blob) {
   const C = window.Capacitor;
   if (C?.isNativePlatform?.()) {
     (async () => {
+      const P = C.Plugins || {}, FSx = P.Filesystem || C.registerPlugin?.('Filesystem'), Sh = P.Share || C.registerPlugin?.('Share');
       try {
-        const FSx = C.registerPlugin('Filesystem'), Sh = C.registerPlugin('Share');
+        if (!FSx?.writeFile || !Sh?.share) throw new Error('NOPLUGIN');
         const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
         const f = await FSx.writeFile({ path: name, data: b64, directory: 'CACHE' });
         await Sh.share({ title: name, url: f.uri, dialogTitle: 'Save or share ' + name });
-      } catch (e) { if (!/cancel/i.test(String(e && e.message || e))) alert('Could not save ' + name + ': ' + (e && e.message || e) + '. Update the app (Android) from the latest build.'); }
+      } catch (e) {
+        const msg = String(e && e.message || e); if (/cancel/i.test(msg)) return;
+        if (/image\//.test(blob.type)) {   // this app build has no file-saving plugin yet: show the picture so it can be copied or screenshotted until the app is updated
+          const u = URL.createObjectURL(blob), d = h('dialog', { style: 'max-width:96vw;padding:10px;border-radius:10px' }, h('p', { style: 'margin:0 0 8px' }, name + ': install the latest app build to save files directly. Meanwhile press and hold the picture, or take a screenshot.'), h('img', { src: u, style: 'max-width:100%' }), h('div', { style: 'margin-top:8px;text-align:right' }, h('button', { class: 'btn', onclick: () => d.close() }, 'Close')));
+          d.addEventListener('close', () => { URL.revokeObjectURL(u); d.remove(); }); document.body.append(d); d.showModal();
+        } else alert('Could not save ' + name + ' (' + msg + '). Install the latest Android app build.');
+      }
     })();
     return;
   }
