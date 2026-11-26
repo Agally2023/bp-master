@@ -1,8 +1,8 @@
 // The statistics catalogue: each analysis reads the year-to-date records up to the selected week and returns
 // { n, stats:[[label,value]], comment:"Hypothesis: ...", chart?, table? }  (or null when there is nothing to analyse).
 // chart = { kind:'line'|'bar', cats, series:[[name, values, hex]], x, y, pct?, min?, max? }; table = { head, rows }.
-import * as T from './stats.js?v=202611260513';
-import { S } from './state.js?v=202611260513';
+import * as T from './stats.js?v=202611260532';
+import { S } from './state.js?v=202611260532';
 const { fp, fn, fpc, describe, clean } = T;
 const G = '0E812E', O = 'CB8306', R = 'C0392B', C = '00BDF0', B = '3B6FD4', P = '9B59D0';
 const num = v => { if (v == null || v === '') return null; const x = Number(String(v).replace(/[^0-9.\-eE]/g, '')); return Number.isFinite(x) ? x : null; };

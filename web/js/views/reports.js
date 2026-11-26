@@ -1,15 +1,15 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611260513';
-import { S, ensure } from '../state.js?v=202611260513';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611260513';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611260513';
-import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611260513';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611260532';
+import { S, ensure } from '../state.js?v=202611260532';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611260532';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611260532';
+import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611260532';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611260513';
-import { chartEl } from './statistics.js?v=202611260513';
-import * as A from '../analytics.js?v=202611260513';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611260513';
+import { db } from '../db.js?v=202611260532';
+import { statSection } from './statistics.js?v=202611260532';
+import * as A from '../analytics.js?v=202611260532';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611260532';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611260513';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611260532';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
 const CFG = window.BPM_CONFIG || {};
@@ -99,13 +99,8 @@ export async function render({ view, ctx }) {
         h('div', { class: 'inner' }, prev, s.photos ? null : h('div', {}, h('label', { class: 'f' }, 'Comment (editable, auto-drafted from the data)', text),
           h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
     }
-    // analyses ticked on the Statistics tab: one extra slide each (chart, table, hypothesis comment); untick them there to remove
-    for (const st of R.sections.filter(x => x.section_key.startsWith('stat_') && x.include !== false && x.payload)) {
-      const p = st.payload, lines = (st.comment || '').split('\n').filter(Boolean).concat((p.lines || []).filter(l => String(l).startsWith('Results:')));
-      slides.append(h('details', { class: 'sec' }, h('summary', {}, h('span', {}, `Statistics: ${p.title}`), h('span', { class: 'sp' }), h('span', { class: 'muted' }, 'edit or remove on the Statistics tab')),
-        h('div', { class: 'inner' }, h('div', { class: 'slide' }, h('h3', {}, p.title), h('div', { class: 'sbody' }, h('div', {}, ...(p.charts || []).map(c => chartEl({ ...c, pct: c.fmt === '0%', title: p.title })),
-          ...(p.tables || []).map(t => table(t.head, t.rows))), h('div', {}, h('div', { class: 'sbox' }, h('ul', {}, lines.map(l => h('li', {}, l)))))), h('img', { class: 'slogo', src: 'assets/victoryfarms-logo.png', alt: '' }), h('div', { class: 'sfoot' }, 'Victory Farms Confidential')))));
-    }
+    // Statistical analyses: own section in report format (objective, graph, table, editable Hypothesis comment, tick = PowerPoint slide)
+    try { body.append(await statSection({ R, y, w, canEdit, locked })); } catch (e) { console.error(e); body.append(h('div', { class: 'note stale' }, 'Statistical analyses could not be loaded: ' + e.message)); }
   };
   weekPicker(ctx, raw, draw); view.append(body); await draw();
 }
