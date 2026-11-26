@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611260549';
-import { S, ensure } from '../state.js?v=202611260549';
-import { periodize, relabel } from '../period.js?v=202611260549';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611260549';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611260555';
+import { S, ensure } from '../state.js?v=202611260555';
+import { periodize, relabel } from '../period.js?v=202611260555';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611260555';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611260549';
-import * as A from '../analytics.js?v=202611260549';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611260549';
+import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611260555';
+import * as A from '../analytics.js?v=202611260555';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611260555';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611260549';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611260555';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];

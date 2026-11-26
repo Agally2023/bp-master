@@ -290,3 +290,4 @@ td.redtxt{color:#e00000;font-weight:700}
 .stat-tile .tt{font-weight:600;font-size:.95em;color:#333}.stat-tile .tv{font-size:1.6em;font-weight:700;color:var(--vf-green);margin-top:4px}.stat-tile .tl{font-size:.8em;color:#777;margin-bottom:6px}
 .stat-tile .tc{font-size:.85em;color:#444;margin-top:8px}.tile-more{margin-top:10px}
 .vpill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78em;font-weight:600;background:#E8ECE9;color:#444}.vpill.sig{background:#FCE8C4;color:#7A4A00}.vpill.ns{background:#D6F0DC;color:#0B5A22}
+.msel{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}.msel summary{cursor:pointer}.msel-list{display:grid;gap:6px;margin-top:8px}.msel-row{display:flex;align-items:center;gap:6px}input[readonly]{background:#F3F6F4}

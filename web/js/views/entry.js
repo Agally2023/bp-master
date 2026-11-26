@@ -1,14 +1,14 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611260549';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611260549';
-import { db } from '../db.js?v=202611260549';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611260549';
-import { importPanel, batchesPanel } from './import.js?v=202611260549';
-import { table } from './common.js?v=202611260549';
-import { zipLib } from '../xlsx.js?v=202611260549';
-import * as FS from '../folder-sync.js?v=202611260549';
-import * as GS from '../graph-sync.js?v=202611260549';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611260549';
-import { download } from '../util.js?v=202611260549';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611260555';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611260555';
+import { db } from '../db.js?v=202611260555';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611260555';
+import { importPanel, batchesPanel } from './import.js?v=202611260555';
+import { table } from './common.js?v=202611260555';
+import { zipLib } from '../xlsx.js?v=202611260555';
+import * as FS from '../folder-sync.js?v=202611260555';
+import * as GS from '../graph-sync.js?v=202611260555';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611260555';
+import { download } from '../util.js?v=202611260555';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -49,12 +49,20 @@ async function records(m) {
 const nowHM = () => new Date().toTimeString().slice(0, 5);
 const TIME_LOCKED = new Set(['audit_time']), TIME_AUTO = new Set(['audit_time', 'load_time', 'stock_time', 'start_feeding_time', 'end_feeding_time']);
 const restamp = form => { for (const n of TIME_AUTO) { const el = form.elements[n]; if (el) el.value = nowHM(); } };
+// Workstation audit islands: RAS drop-down, total islands automatic, non-compliant islands picked from a drop-down list, compliant islands automatic.
+const WS_ISLANDS = { RAS1: ['FTT', 'TFT', 'Tray System', 'Incubators room'], RAS2: ['Kibuogi', 'Mbasa', 'Mfangano', 'Remba', 'Ringiti', 'Takawiri'] };
 function inputFor(m, f) {
+  if (m.key === 'workstation_audits') {
+    if (f.name === 'ras') return h('select', { name: 'ras', required: true, 'aria-label': f.label }, h('option', { value: '' }, '— choose RAS —'), Object.keys(WS_ISLANDS).map(o => h('option', {}, o)));
+    if (f.name === 'total_islands' || f.name === 'compliant_islands') return h('input', { name: f.name, type: 'number', readonly: true, 'aria-label': f.label, title: 'Filled in automatically', placeholder: 'automatic' });
+    if (f.name === 'noncompliant_island') return h('input', { name: f.name, type: 'text', readonly: true, 'aria-label': f.label, placeholder: 'choose RAS first', hidden: true });
+  }
   const common = { name: f.name, required: !!f.req, 'aria-label': f.label };
   if (f.type === 'select' && f.options) return h('select', common, h('option', { value: '' }, '—'), f.options.map(o => h('option', {}, o)));
   if (f.type === 'bool') return h('select', common, h('option', { value: '' }, '—'), h('option', { value: 'true' }, 'Yes'), h('option', { value: 'false' }, 'No'));
   if (f.type === 'date') return h('input', { ...common, type: 'date', max: todayIso(), min: m.minDate });
   if (f.type === 'int' || f.type === 'num') return h('input', { ...common, type: 'number', step: f.type === 'int' ? '1' : 'any', min: f.min, max: f.max, inputmode: 'decimal' });
+  if (TIME_LOCKED.has(f.name)) return h('input', { ...common, type: 'text', value: nowHM(), readonly: true, title: 'Filled in automatically when the record is saved' });
   if (TIME_AUTO.has(f.name)) return h('input', { ...common, type: 'time', value: nowHM(), readonly: TIME_LOCKED.has(f.name), title: TIME_LOCKED.has(f.name) ? 'Filled in automatically when the record is saved' : 'Current time; correct it if the event happened earlier' });
   return h('input', { ...common, type: 'text', maxlength: 300, autocomplete: 'off' });
 }
@@ -66,6 +74,13 @@ function formFor(m, saved) {
   for (const f of fields) {
     if (f.type === 'stages') continue;
     form.append(h('label', { class: 'f' + (f.name === 'comment' || f.name === 'comments' ? ' wide' : '') }, h('span', {}, f.label, f.req ? h('span', { class: 'req' }, ' *') : null), inputFor(m, f)));
+  }
+  if (m.key === 'workstation_audits') {
+    const ras = form.elements.ras, tot = form.elements.total_islands, comp = form.elements.compliant_islands, hid = form.elements.noncompliant_island, panel = h('div', { class: 'msel-list' }), sum = h('summary', {}, 'Choose RAS first');
+    const dd = h('details', { class: 'msel' }, sum, panel); hid.after(dd);
+    const upd = () => { const picked = [...panel.querySelectorAll('input:checked')].map(i => i.value), n = (WS_ISLANDS[ras.value] || []).length; hid.value = picked.join(', '); tot.value = n || ''; comp.value = n ? n - picked.length : ''; sum.textContent = !n ? 'Choose RAS first' : picked.length ? `${picked.length} non-compliant: ${picked.join(', ')}` : 'None (all islands compliant): tick any that are not'; try { showDerived(); } catch { } };
+    const paint = () => { clear(panel); for (const i of WS_ISLANDS[ras.value] || []) panel.append(h('label', { class: 'msel-row' }, h('input', { type: 'checkbox', value: i, onchange: upd }), ' ' + i)); upd(); };
+    ras.addEventListener('change', paint); form.addEventListener('reset', () => setTimeout(paint)); paint();
   }
   if (m.special === 'flip') {
     const kindSel = form.querySelector('[name=kind]'); const grid = h('div', { class: 'form wide' });
