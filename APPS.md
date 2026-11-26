@@ -10,3 +10,4 @@ Folders: `desktop/` (Windows, Electron) and `mobile/` (Android, Capacitor). They
 
 **Saving files in the apps.** Windows: Excel, PowerPoint and PNG downloads work as in Chrome. Android: the app writes the file to its cache and opens the share sheet (Save to Files, Drive, WhatsApp, Open). This needs the Filesystem and Share plugins, which are included in the Android build, so rebuild and reinstall the APK once (Actions > build-apps) to get PNG/Excel/PowerPoint saving. Web changes (cache, Sync button, dashboards) reach both apps without reinstalling.
 **Sync in the apps.** Windows (Chromium) can choose a folder like Chrome. Android has no folder access: Sync opens the file picker, choose the workbook (e.g. VF Hatchery Masterfile.xlsx) from Files / OneDrive.
+- Windows: downloads (PNG, Excel, PowerPoint) go straight to the Downloads folder and the folder opens with the file selected (needs the rebuilt installer).

@@ -1,6 +1,7 @@
 // BP Master for Windows: a real installed app (own window, icon, taskbar entry) that opens the live BP Master, so every release reaches the app at once.
 const { app, BrowserWindow, shell, session, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const START = process.env.BPM_URL || 'https://bp-master.steveochieng299.workers.dev/';
 const HOME = new URL(START).hostname;
 const POPUP_OK = new Set([HOME, 'login.microsoftonline.com']);       // Microsoft sign-in popup for the SharePoint sync
@@ -24,6 +25,12 @@ function create() {
 app.whenReady().then(() => {
   // folder sync (File System Access) and downloads (Excel/PowerPoint exports) are allowed for BP Master only
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(new URL(wc.getURL() || 'about:blank').hostname === HOME && ['fileSystem', 'clipboard-sanitized-write', 'notifications'].includes(perm)));
+  // downloads (PNG graphs, Excel, PowerPoint) are saved straight to the Downloads folder, then the folder opens with the file selected
+  session.defaultSession.on('will-download', (_e, item) => {
+    const ext = path.extname(item.getFilename()), base = path.join(app.getPath('downloads'), path.basename(item.getFilename(), ext)); let p = base + ext, i = 1;
+    while (fs.existsSync(p)) p = `${base} (${i++})${ext}`;
+    item.setSavePath(p); item.once('done', (_ev, state) => { if (state === 'completed') shell.showItemInFolder(p); });
+  });
   create(); app.on('activate', () => BrowserWindow.getAllWindows().length || create());
 });
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });

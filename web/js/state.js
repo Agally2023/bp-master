@@ -1,5 +1,5 @@
-import { db } from './db.js?v=202611251538';
-import { isoWeek, weekRange } from './util.js?v=202611251538';
+import { db } from './db.js?v=202611260405';
+import { isoWeek, weekRange } from './util.js?v=202611260405';
 export const S = { reg: null, week: null, data: {}, loaded: new Set(), listeners: [] };
 export const modByKey = k => S.reg.modules.find(m => m.key === k);
 // Dashboard / report preview download only the columns they read (no row_hash, batch or audit-user ids): about a third less data.
@@ -48,13 +48,13 @@ export async function ensure(keys, since0 = -Infinity, slim = false) {
     };
     const apply = d => { S.data[k] = d; S.loaded.add(k); S.since[k] = since; useSlim ? S.slim.add(k) : S.slim.delete(k); S.failed.delete(k); };
     if (!inflight.has(id)) {
-      const cached = slim && db.mode !== 'demo' ? await cacheGet(k, !!useSlim) : null;
+      const cached = db.mode !== 'demo' ? await cacheGet(k, !!useSlim) : null;
       if (cached && Array.isArray(cached.rows) && (cached.since ?? -Infinity) <= since && Date.now() - cached.ts < 7 * 864e5) {
         apply(cached.rows);   // show the last copy now, refresh behind the scenes
         const p = fetchFresh().then(d => { if (sig(d) !== sig(cached.rows)) { apply(d); cachePut(k, !!useSlim, since, d); S.dataListeners.forEach(f => f()); } else cachePut(k, !!useSlim, since, d); }).catch(() => { }).finally(() => inflight.delete(id));
         inflight.set(id, p); return;
       }
-      const p = fetchFresh().then(d => { apply(d); if (slim && db.mode !== 'demo') cachePut(k, !!useSlim, since, d); }).catch(e => { S.failed.set(k, e.message); if (!S.data[k]) S.data[k] = []; }).finally(() => inflight.delete(id));
+      const p = fetchFresh().then(d => { apply(d); if (db.mode !== 'demo') cachePut(k, !!useSlim, since, d); }).catch(e => { S.failed.set(k, e.message); if (!S.data[k]) S.data[k] = []; }).finally(() => inflight.delete(id));
       inflight.set(id, p);
     }
     return inflight.get(id);

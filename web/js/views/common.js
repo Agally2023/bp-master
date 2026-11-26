@@ -1,8 +1,8 @@
-import { h, clear, pct, fmtDate } from '../util.js?v=202611251538';
-import { S, setWeek, setPeriod, currentWeek } from '../state.js?v=202611251538';
-import { MODES, periodize, periodLabel, periodRangeText, currentPeriod } from '../period.js?v=202611251538';
-import { weeksAvailable } from '../analytics.js?v=202611251538';
-import { weekRange } from '../util.js?v=202611251538';
+import { h, clear, pct, fmtDate } from '../util.js?v=202611260405';
+import { S, setWeek, setPeriod, currentWeek } from '../state.js?v=202611260405';
+import { MODES, periodize, periodLabel, periodRangeText, currentPeriod } from '../period.js?v=202611260405';
+import { weeksAvailable } from '../analytics.js?v=202611260405';
+import { weekRange } from '../util.js?v=202611260405';
 
 // Weekly / Monthly / Daily switch and the period list. `raw` is the loaded data; the list is built from the data re-keyed for the chosen view.
 export function weekPicker(ctx, raw, onChange) {

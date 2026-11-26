@@ -69,3 +69,13 @@ def test_days_late_summary_slides_present():
     out, w = build(T0, 47); assert not w
     txt = [' '.join(sh.text_frame.text for sh in s.shapes if sh.has_text_frame) for s in Presentation(out).slides]
     assert any('Days Late Summary: Broodstock' in t for t in txt) and any('Days Late Summary: Nursery' in t for t in txt)
+
+
+def test_statistics_slides_from_payload():
+    spec = {'id': 'x', 'title': 'Incubation: Workstation compliance trend (control chart)', 'lines': ['Hypothesis: workstation compliance has no trend. Rejected (p = 0.010).', 'Results: Overall compliance 91.0%'],
+            'charts': [{'kind': 'line', 'cats': ['44', '45', '46'], 'series': [['Compliance', [0.9, None, 0.95], '0E812E']], 'x': 'ISO week', 'y': 'Compliant (%)', 'fmt': '0%', 'min': 0, 'max': 1}],
+            'tables': [{'head': ['A', 'B'], 'rows': [['1', '2'], ['3', '4']], 'widths': [0.5, 0.5]}]}
+    out = os.path.join(tempfile.mkdtemp(), 'r.pptx')
+    pipeline.build_week(copy.deepcopy(T0), 2026, 47, out, server.TEMPLATE, server.STAGE_DEFS, {}, [], [], 'RAS2', stat_specs=[spec])
+    txt = [' '.join(sh.text_frame.text for sh in s.shapes if sh.has_text_frame) for s in Presentation(out).slides]
+    assert any('Hypothesis: workstation compliance has no trend' in t for t in txt), [w for w in pipeline.WARNINGS]

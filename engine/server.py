@@ -50,7 +50,7 @@ class H(BaseHTTPRequestHandler):
             try: year, week = int(body['year']), int(body['week'])
             except (KeyError, TypeError, ValueError): return self._err(400, 'year and week are required')
             if not (2020 <= year <= 2100 and 1 <= week <= 53): return self._err(400, 'bad week')
-            tmp = tempfile.mkdtemp(prefix='bpm_'); out = os.path.join(tmp, f'VF_BP_Week_{week}.pptx'); images, overrides, exclude = [], {}, []
+            tmp = tempfile.mkdtemp(prefix='bpm_'); out = os.path.join(tmp, f'VF_BP_Week_{week}.pptx'); images, overrides, exclude, stat_specs = [], {}, [], []
             if LOCAL is not None:
                 T = LOCAL
             else:
@@ -64,7 +64,13 @@ class H(BaseHTTPRequestHandler):
                 if not rep: return self._err(404, 'no report for that week')
                 if rep[0]['status'] not in ('approved', 'exported'): return self._err(409, 'report is not approved')
                 T = {t: load_table(t, tok, year) for t in NEED}
-                for s in sb(f"/rest/v1/bpm_report_sections?report_id=eq.{rep[0]['id']}&select=section_key,comment,include", tok):
+                for s in sb(f"/rest/v1/bpm_report_sections?report_id=eq.{rep[0]['id']}&select=section_key,comment,include,payload", tok):
+                    if str(s['section_key']).startswith('stat_'):      # analyses ticked on the Statistics tab: one extra slide each
+                        if s['include'] is not False and isinstance(s.get('payload'), dict):
+                            sp = dict(s['payload'])
+                            if s.get('comment'): sp['lines'] = [l.strip() for l in s['comment'].split('\n') if l.strip()] + [l for l in sp.get('lines', []) if str(l).startswith('Results:')]
+                            stat_specs.append(sp)
+                        continue
                     if s['include'] is False: exclude.append(s['section_key'])
                     elif s['comment']: overrides[s['section_key']] = s['comment']
                 for im in sb(f"/rest/v1/bpm_report_images?report_id=eq.{rep[0]['id']}&select=section_key,slot,kind,storage_path,caption", tok):
@@ -85,7 +91,7 @@ class H(BaseHTTPRequestHandler):
                 src = dict(bio=get(f'/rest/v1/bio_photos?select=id,log_date,location,item,file_path&log_date=gte.{mon}&log_date=lte.{sun}&order=log_date.desc,id.desc'),
                            hygiene=get(f'/rest/v1/bpm_hygiene_photos?select=area,item,status,photo_date,storage_path&photo_date=gte.{mon}&photo_date=lte.{sun}&order=photo_date.asc,created_at.asc'),
                            pond=get('/rest/v1/bpm_pond_photos?select=pond,stage,photo_date,storage_path&order=photo_date.desc,created_at.desc&limit=500'), fetch=fetch)
-            pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude, photo_src=src)
+            pipeline.build_week(T, year, week, out, TEMPLATE, STAGE_DEFS, overrides, images, exclude, photo_src=src, stat_specs=stat_specs)
             data = open(out, 'rb').read(); self.send_response(200); self._cors()
             self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'); self.send_header('Content-Length', str(len(data))); self.send_header('Cache-Control', 'no-store'); self.send_header('X-Report-Warnings', ' | '.join(pipeline.WARNINGS).encode('ascii', 'replace').decode()[:900]); self.send_header('Access-Control-Expose-Headers', 'X-Report-Warnings'); self.end_headers(); self.wfile.write(data)
         except json.JSONDecodeError: self._err(400, 'bad request')

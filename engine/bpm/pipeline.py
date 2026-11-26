@@ -30,7 +30,7 @@ def _safe_replace_chart(sh, cats, *args, **kwargs):
 
 deck.replace_chart = _safe_replace_chart
 
-def build_week(T, year, week, out, template, stage_defs, overrides=None, images=None, exclude=(), ras='RAS2', photo_src=None):
+def build_week(T, year, week, out, template, stage_defs, overrides=None, images=None, exclude=(), ras='RAS2', photo_src=None, stat_specs=None):
     """T: {module_key: [row dicts]}; overrides: {section_key: comment text}; images: [{section_key, slot, kind, path}]; exclude: section keys to drop."""
     flip_prog = flip_tot = None; WARNINGS.clear()
     ws = F.workstation(T.get('workstation_audits', [])); nur = F.bottom_rope(T.get('bottom_rope_audits', []), 'nursery'); bro = F.bottom_rope(T.get('bottom_rope_audits', []), 'broodstock')
@@ -149,6 +149,16 @@ def build_week(T, year, week, out, template, stage_defs, overrides=None, images=
                 if (overrides or {}).get(key): spec['lines'] = [l.strip() for l in overrides[key].split('\n') if l.strip()]
                 media.add_spec_slide(out, spec)
         except Exception as e: warn('Slide ' + key, e)
+    for sp in reversed(stat_specs or []):                    # Statistics tab: each ticked analysis is a slide (chart, table, hypothesis comment), placed after the flipping slides
+        try:
+            sp = dict(sp); sp.setdefault('anchor', 'pond flipping')
+            for t in sp.get('tables') or []:
+                t['rows'] = t['rows'][:6 if sp.get('charts') else 12]
+                t.setdefault('widths', [1 / max(1, len(t['head']))] * len(t['head']))
+            for c in sp.get('charts') or []:
+                c['h'] = 0.30; c['series'] = [tuple(x) for x in c['series']]; c.setdefault('fmt', '0.0'); c.setdefault('x', ''); c.setdefault('y', '')
+            media.add_spec_slide(out, sp)
+        except Exception as e: warn('Statistics slide ' + str(sp.get('id')), e)
     images = list(images or [])
     if photo_src:
         try: images += _auto_photos(photo_src, images, flip_prog, flip_tot)

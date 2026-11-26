@@ -64,6 +64,6 @@ export function download(name, blob) {
     })();
     return;
   }
-  const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 180000);   // keep the file for 3 min: a save dialog can stay open longer than a few seconds
 }
 export const esc = s => String(s ?? '');
