@@ -1,10 +1,10 @@
 // Folder sync: the person picks the OneDrive-synced SharePoint folder once. Sync then reads every Excel workbook in it (sub-folders included),
 // recognises each sheet by the markers in the module registry (sheet name + header row, the same detection as Data entry > Import) and loads the
 // new rows with the app's own importer. A workbook is only re-read when its content changed; re-importing is safe because stored rows are skipped.
-import { openWorkbook } from './xlsx.js?v=202611260555';
-import { detectModules, parseSheet, validate, withHashes } from './engine.js?v=202611260555';
-import { S, invalidate } from './state.js?v=202611260555';
-import { db } from './db.js?v=202611260555';
+import { openWorkbook } from './xlsx.js?v=202611261025';
+import { detectModules, parseSheet, validate, withHashes } from './engine.js?v=202611261025';
+import { S, invalidate } from './state.js?v=202611261025';
+import { db } from './db.js?v=202611261025';
 
 export const supported = () => typeof window.showDirectoryPicker === 'function';
 const idb = () => new Promise((res, rej) => { const r = indexedDB.open('bpm-folder-sync', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });

@@ -172,3 +172,16 @@ export const fn = (v, d = 2) => v == null || !Number.isFinite(v) ? '–' : Math.
 export const fpc = (v, d = 1) => v == null || !Number.isFinite(v) ? '–' : (v * 100).toFixed(d) + '%';
 export const sig = p => p == null ? 'too few records' : p < 0.05 ? 'significant (p ' + (p < 0.001 ? '<0.001' : '= ' + p.toFixed(3)) + ')' : 'not significant (p = ' + p.toFixed(3) + ')';
 export const cvBand = cv => cv == null ? '' : cv < 0.1 ? 'tight' : cv < 0.2 ? 'moderate' : cv < 0.3 ? 'variable' : 'erratic';
+
+// Wilcoxon signed-rank test (normal approximation with tie and continuity correction): H0 median of the differences = mu. Returns the median and IQR of the differences too.
+export function wilcoxon(xs, mu = 0) {
+  const all = clean(xs).map(v => v - mu), d = describe(all), nz = all.filter(v => v !== 0), n = nz.length;
+  const base = { n: all.length, nz: n, median: d.median, q1: d.q1, q3: d.q3, iqr: d.iqr, mean: d.mean, lo: d.n ? quantile([...all].sort((a, b) => a - b), 0.025) : null, hi: d.n ? quantile([...all].sort((a, b) => a - b), 0.975) : null, p: null };
+  if (n < 6) return base;
+  const ord = nz.map((v, i) => [Math.abs(v), v, i]).sort((a, b) => a[0] - b[0]), ranks = new Array(n); let ties = 0;
+  for (let i = 0; i < n;) { let j = i; while (j + 1 < n && ord[j + 1][0] === ord[i][0]) j++; const r = (i + j) / 2 + 1, t = j - i + 1; for (let k = i; k <= j; k++) ranks[ord[k][2]] = r; ties += t ** 3 - t; i = j + 1; }
+  const Wp = sum(nz.map((v, i) => v > 0 ? ranks[i] : 0)), mean = n * (n + 1) / 4, varr = n * (n + 1) * (2 * n + 1) / 24 - ties / 48;
+  if (varr <= 0) return base; const z = (Wp - mean - 0.5 * Math.sign(Wp - mean)) / Math.sqrt(varr);
+  return { ...base, W: Wp, z, p: Math.min(1, 2 * (1 - normCdf(Math.abs(z)))) };
+}
+export function wilcoxonPaired(before, after) { const d = []; for (let i = 0; i < Math.min(before.length, after.length); i++) if (Number.isFinite(before[i]) && Number.isFinite(after[i])) d.push(after[i] - before[i]); return wilcoxon(d, 0); }
