@@ -1,14 +1,14 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611260532';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611260532';
-import { db } from '../db.js?v=202611260532';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611260532';
-import { importPanel, batchesPanel } from './import.js?v=202611260532';
-import { table } from './common.js?v=202611260532';
-import { zipLib } from '../xlsx.js?v=202611260532';
-import * as FS from '../folder-sync.js?v=202611260532';
-import * as GS from '../graph-sync.js?v=202611260532';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611260532';
-import { download } from '../util.js?v=202611260532';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611260549';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611260549';
+import { db } from '../db.js?v=202611260549';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611260549';
+import { importPanel, batchesPanel } from './import.js?v=202611260549';
+import { table } from './common.js?v=202611260549';
+import { zipLib } from '../xlsx.js?v=202611260549';
+import * as FS from '../folder-sync.js?v=202611260549';
+import * as GS from '../graph-sync.js?v=202611260549';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611260549';
+import { download } from '../util.js?v=202611260549';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -27,10 +27,10 @@ export async function render({ view }) {
   }
   async function drawMain() {
     clear(main);
-    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), syncBtn(), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
+    if (current === 'ALL') { main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, 'Import from Excel: all audit files'), (db.user.role === 'admin' ? syncBtn() : null), exportBtn(S.reg.modules, 'BP_Master_all_data', 'Export all data to Excel')), importPanel(null)), h('div', { class: 'card mt' }, h('h2', {}, 'Recent imports'), await batchesPanel())); return; }
     const m = modByKey(current);
     const tabs = h('div', { class: 'tabs', role: 'tablist' }, [['form', 'Form'], ['records', 'Records'], ['import', 'Import from Excel']].map(([k, l]) => h('button', { role: 'tab', 'aria-selected': tab === k, onclick: () => { tab = k; drawMain(); } }, l)));
-    const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), syncBtn(), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
+    const pane = h('div', {}); main.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0;flex:1' }, m.label), (db.user.role === 'admin' ? syncBtn() : null), exportBtn([m], m.label, 'Export to Excel')), tabs, pane));
     if (tab === 'form') { pane.append(formFor(m, () => { })); if (m.special === 'flip') pane.append(pondPhotos()); if (m.key === 'biosecurity_audits') pane.append(hygienePhotos()); } else if (tab === 'import') pane.append(importPanel(m.key)); else pane.append(await records(m));
   }
   drawSide(); drawMain();
@@ -45,12 +45,17 @@ async function records(m) {
     table(cols.map(f => f.label), rows.map(r => cols.map(f => { const v = r[f.name]; return v == null ? '' : typeof v === 'number' ? num(v, 3) : String(v); })), { empty: 'No records yet. Use the form or import an Excel file.' }));
 }
 
+// Times are automatic: the audit time is stamped when the record is saved (locked); other clock times start at the current time and can be corrected.
+const nowHM = () => new Date().toTimeString().slice(0, 5);
+const TIME_LOCKED = new Set(['audit_time']), TIME_AUTO = new Set(['audit_time', 'load_time', 'stock_time', 'start_feeding_time', 'end_feeding_time']);
+const restamp = form => { for (const n of TIME_AUTO) { const el = form.elements[n]; if (el) el.value = nowHM(); } };
 function inputFor(m, f) {
   const common = { name: f.name, required: !!f.req, 'aria-label': f.label };
   if (f.type === 'select' && f.options) return h('select', common, h('option', { value: '' }, '—'), f.options.map(o => h('option', {}, o)));
   if (f.type === 'bool') return h('select', common, h('option', { value: '' }, '—'), h('option', { value: 'true' }, 'Yes'), h('option', { value: 'false' }, 'No'));
   if (f.type === 'date') return h('input', { ...common, type: 'date', max: todayIso(), min: m.minDate });
   if (f.type === 'int' || f.type === 'num') return h('input', { ...common, type: 'number', step: f.type === 'int' ? '1' : 'any', min: f.min, max: f.max, inputmode: 'decimal' });
+  if (TIME_AUTO.has(f.name)) return h('input', { ...common, type: 'time', value: nowHM(), readonly: TIME_LOCKED.has(f.name), title: TIME_LOCKED.has(f.name) ? 'Filled in automatically when the record is saved' : 'Current time; correct it if the event happened earlier' });
   return h('input', { ...common, type: 'text', maxlength: 300, autocomplete: 'off' });
 }
 
@@ -82,10 +87,10 @@ function formFor(m, saved) {
     clear(derivedBox); derivedBox.append(h('span', { class: 'muted' }, 'Calculated automatically: '), ...(d.length ? d.map(f => h('span', {}, h('b', {}, f.label + ' '), typeof row[f.name] === 'number' ? (Number.isInteger(row[f.name]) ? String(row[f.name]) : num(row[f.name], 4)) : String(row[f.name]), '   ')) : [h('span', { class: 'muted' }, '—')]), ...(row.iso_week ? [h('span', { class: 'muted' }, ` · Week ${row.iso_week}, ${row.iso_year}`)] : []));
   };
   form.addEventListener('input', showDerived);
-  const btn = h('button', { class: 'btn', type: 'submit' }, 'Save record'); const clr = h('button', { class: 'btn sec', type: 'button', onclick: () => { form.reset(); showDerived(); msg.replaceChildren(); } }, 'Clear');
+  const btn = h('button', { class: 'btn', type: 'submit' }, 'Save record'); const clr = h('button', { class: 'btn sec', type: 'button', onclick: () => { form.reset(); restamp(form); showDerived(); msg.replaceChildren(); } }, 'Clear');
   form.append(derivedBox, msg, h('div', { class: 'row wide' }, btn, clr));
   form.addEventListener('submit', async e => {
-    e.preventDefault(); msg.replaceChildren(); const row = build(), probs = [], t = todayIso();
+    e.preventDefault(); msg.replaceChildren(); if (form.elements.audit_time) form.elements.audit_time.value = nowHM(); const row = build(), probs = [], t = todayIso();
     for (const f of fields) { if (f.type === 'stages') continue; const v = row[f.name]; if (f.req && (v == null || v === '')) probs.push(`${f.label} is required.`); if (f.type === 'date' && v && v > t) probs.push(`${f.label} is in the future.`); if (v != null && f.min != null && v < f.min) probs.push(`${f.label} must be ≥ ${f.min}.`); if (v != null && f.max != null && v > f.max) probs.push(`${f.label} must be ≤ ${f.max}.`); }
     if (m.key === 'workstation_audits' && row.compliant_islands > row.total_islands) probs.push('Compliant islands cannot exceed total islands.');
     if (m.key === 'hapa_exchanges' && row.exchanged > row.to_exchange) probs.push('Exchanged cannot exceed scheduled.');
@@ -95,7 +100,7 @@ function formFor(m, saved) {
       const recs = await withHashes(m, [{ row }]); const r = await db.insert(m.key, recs);
       await db.audit('entry', m.key, recs[0].row_hash.slice(0, 12));
       invalidate(m.key); S.data[m.key] = undefined;
-      if (r.inserted) { toast('Record saved'); form.reset(); if (m.special === 'flip') form.elements.kind.dispatchEvent(new Event('change')); showDerived(); } else msg.append(h('div', { class: 'note' }, 'An identical record already exists, so nothing was added.'));
+      if (r.inserted) { toast('Record saved'); form.reset(); restamp(form); if (m.special === 'flip') form.elements.kind.dispatchEvent(new Event('change')); showDerived(); } else msg.append(h('div', { class: 'note' }, 'An identical record already exists, so nothing was added.'));
     } catch (x) { msg.append(h('div', { class: 'err-msg' }, 'Could not save: ' + x.message)); } finally { btn.disabled = false; }
   });
   showDerived(); return form;
@@ -169,7 +174,7 @@ async function pickAndPush(onProgress = () => { }) {
 
 // Sync: pick the OneDrive-synced SharePoint folder once; every Excel file in it is then read, each sheet is recognised from the module markers and the
 // new rows are loaded (same importer as Data entry). Needs Chrome or Edge. Other browsers fall back to choosing the files.
-function syncBtn() {
+function syncBtn() {   // shown to administrators only
   const label = async () => GS.configured() ? 'Sync files from SharePoint' : (await FS.folderName()) ? `Sync files (${await FS.folderName()})` : 'Sync files';
   const b = h('button', { class: 'btn sec', type: 'button', title: 'Load new rows from the audit workbooks in SharePoint' }, 'Sync files'); label().then(t => b.textContent = t);
   const msg = h('span', { class: 'muted', style: 'font-size:.85em' });
@@ -256,7 +261,7 @@ function hygienePhotos() {
 // Automatic sync: while the app is open, every 10 minutes (and once shortly after opening), if the browser still has permission to read the chosen folder.
 let autoBusy = false;
 async function autoSync() {
-  if (autoBusy || document.hidden || !db.tok && !db.demo) return;
+  if (autoBusy || document.hidden || !db.tok && !db.demo || db.user?.role !== 'admin') return;   // sync is an administrator function
   try {
     let r;
     if (GS.configured()) { if (!GS.signedIn()) return; autoBusy = true; r = await GS.syncSharePoint(); }
