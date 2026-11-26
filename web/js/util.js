@@ -63,10 +63,7 @@ export function download(name, blob) {
         await Sh.share({ title: name, url: f.uri, dialogTitle: 'Save or share ' + name });
       } catch (e) {
         const msg = String(e && e.message || e); if (/cancel/i.test(msg)) return;
-        if (/image\//.test(blob.type)) {   // this app build has no file-saving plugin yet: show the picture so it can be copied or screenshotted until the app is updated
-          const u = URL.createObjectURL(blob), d = h('dialog', { style: 'max-width:96vw;padding:10px;border-radius:10px' }, h('p', { style: 'margin:0 0 8px' }, name + ': install the latest app build to save files directly. Meanwhile press and hold the picture, or take a screenshot.'), h('img', { src: u, style: 'max-width:100%' }), h('div', { style: 'margin-top:8px;text-align:right' }, h('button', { class: 'btn', onclick: () => d.close() }, 'Close')));
-          d.addEventListener('close', () => { URL.revokeObjectURL(u); d.remove(); }); document.body.append(d); d.showModal();
-        } else alert('Could not save ' + name + ' (' + msg + '). Install the latest Android app build.');
+        alert('Could not save ' + name + ' (' + (msg === 'NOPLUGIN' ? 'this Android app build cannot save files yet: install the latest BP-Master.apk' : msg) + ').');
       }
     })();
     return;

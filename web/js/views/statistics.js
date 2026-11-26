@@ -1,12 +1,12 @@
 // Statistics: about 30 analyses on the year-to-date records up to the selected week. Every analysis has an objective and a "Hypothesis: ..." comment
 // (editable). Tick "Include in report" to put the analysis, with its comment, in the weekly report preview and the PowerPoint.
-import { h, clear, toast } from '../util.js?v=202611260455';
-import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611260455';
-import { db } from '../db.js?v=202611260455';
-import { card } from './common.js?v=202611260455';
-import { lineChart, barChart } from '../charts.js?v=202611260455';
-import { build } from '../statlist.js?v=202611260455';
-import * as T from '../stats.js?v=202611260455';
+import { h, clear, toast } from '../util.js?v=202611260513';
+import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611260513';
+import { db } from '../db.js?v=202611260513';
+import { card } from './common.js?v=202611260513';
+import { lineChart, barChart } from '../charts.js?v=202611260513';
+import { build } from '../statlist.js?v=202611260513';
+import * as T from '../stats.js?v=202611260513';
 
 const KEYS = ['workstation_audits', 'parasitology_samples', 'ras_parasite_prevalence', 'ras_water_volume', 'stocking_audits', 'fry_transfers', 'fry_culling', 'egg_separation_ratings', 'egg_volumetric_jars', 'do_temp_drone', 'do_temp_mis_truck', 'egg_disinfection', 'egg_viability', 'day3_recounts', 'ibc_method_survival', 'biosecurity_audits', 'pond_flips', 'pond_prep_scoring', 'pond_feeding', 'hapa_wash_dispatch', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'hapa_cov_aerated', 'hapa_cov_unaerated', 'sr_efficiency', 'sex_reversal_feed'];
 export const statKey = id => 'stat_' + id;
