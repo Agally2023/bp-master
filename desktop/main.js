@@ -12,6 +12,7 @@ function create() {
   win = new BrowserWindow({ width: 1440, height: 900, minWidth: 900, minHeight: 600, backgroundColor: '#111111', icon: path.join(__dirname, 'icon.png'), title: 'BP Master',
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false } });
   Menu.setApplicationMenu(null);
+  win.webContents.setUserAgent(win.webContents.getUserAgent() + ' BPMasterApp/' + app.getVersion());
   win.loadURL(START);
   win.webContents.on('did-fail-load', (_e, code, _d, _u, isMain) => { if (isMain && code !== -3) win.loadFile(path.join(__dirname, 'offline.html')); });
   win.webContents.setWindowOpenHandler(({ url }) => {

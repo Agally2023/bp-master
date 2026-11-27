@@ -1,9 +1,9 @@
-import { setPonds } from './engine.js?v=202611270842';
-import { h, $, clear, toast } from './util.js?v=202611270842';
-import { db, isDemo } from './db.js?v=202611270842';
-import { S, currentWeek, setWeek } from './state.js?v=202611270842';
-import { weeksAvailable } from './analytics.js?v=202611270842';
-import { ensure, cacheClear } from './state.js?v=202611270842';
+import { setPonds } from './engine.js?v=202611270845';
+import { h, $, clear, toast } from './util.js?v=202611270845';
+import { db, isDemo } from './db.js?v=202611270845';
+import { S, currentWeek, setWeek } from './state.js?v=202611270845';
+import { weeksAvailable } from './analytics.js?v=202611270845';
+import { ensure, cacheClear } from './state.js?v=202611270845';
 
 const CFG = window.BPM_CONFIG || {};
 const ICON = {
@@ -12,17 +12,19 @@ const ICON = {
   rep: '<path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  upd: '<path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/>',
   col: '<path d="M15 6l-6 6 6 6"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270842') },
-  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270842') },
-  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270842') },
-  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270842') },
-  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270842') },
-  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270842') },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270845') },
+  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270845') },
+  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270845') },
+  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270845') },
+  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270845') },
+  { id: 'updates', label: 'App updates', title: 'App updates', icon: 'upd', load: () => import('./views/updates.js?v=202611270845') },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270845') },
 ];
 let idleT;
 function idleReset() { clearTimeout(idleT); idleT = setTimeout(signOut, (window.bpmPrefs?.get().idle || CFG.IDLE_LOGOUT_MINUTES || 15) * 60000); }

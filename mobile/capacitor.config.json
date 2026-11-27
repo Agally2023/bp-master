@@ -1,6 +1,7 @@
 {
   "appId": "ke.co.victoryfarms.bpmaster",
   "appName": "BP Master",
+  "appendUserAgent": "BPMasterApp/APPVER",
   "webDir": "www",
   "server": {
     "url": "https://bp-master.steveochieng299.workers.dev/",

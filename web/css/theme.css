@@ -311,3 +311,4 @@ td.redtxt{color:#e00000;font-weight:700}
 .lbp{left:6px}.lbf{right:6px}
 .lbcap{position:absolute;bottom:34px;left:0;right:0;text-align:center;color:#fff;font-size:14px;padding:0 12px}
 .lbcnt{position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#bbb;font-size:12px}
+.kv{border-collapse:collapse;margin:6px 0}.kv th{text-align:left;font-weight:600;padding:3px 16px 3px 0;color:var(--muted,#667)}.kv td{padding:3px 0}
