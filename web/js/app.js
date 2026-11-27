@@ -1,9 +1,9 @@
-import { setPonds } from './engine.js?v=202611270853';
-import { h, $, clear, toast } from './util.js?v=202611270853';
-import { db, isDemo } from './db.js?v=202611270853';
-import { S, currentWeek, setWeek } from './state.js?v=202611270853';
-import { weeksAvailable } from './analytics.js?v=202611270853';
-import { ensure, cacheClear } from './state.js?v=202611270853';
+import { setPonds } from './engine.js?v=202611270856';
+import { h, $, clear, toast } from './util.js?v=202611270856';
+import { db, isDemo } from './db.js?v=202611270856';
+import { S, currentWeek, setWeek } from './state.js?v=202611270856';
+import { weeksAvailable } from './analytics.js?v=202611270856';
+import { ensure, cacheClear } from './state.js?v=202611270856';
 
 const CFG = window.BPM_CONFIG || {};
 const ICON = {
@@ -18,13 +18,13 @@ const ICON = {
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270853') },
-  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270853') },
-  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270853') },
-  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270853') },
-  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270853') },
-  { id: 'updates', label: 'App updates', title: 'App updates', icon: 'upd', load: () => import('./views/updates.js?v=202611270853') },
-  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270853') },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270856') },
+  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270856') },
+  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270856') },
+  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270856') },
+  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270856') },
+  { id: 'updates', label: 'App updates', title: 'App updates', icon: 'upd', load: () => import('./views/updates.js?v=202611270856') },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270856') },
 ];
 let idleT;
 function idleReset() { clearTimeout(idleT); idleT = setTimeout(signOut, (window.bpmPrefs?.get().idle || CFG.IDLE_LOGOUT_MINUTES || 15) * 60000); }
@@ -135,7 +135,7 @@ let updTimer;
 async function watchUpdates() {
   const check = async () => {
     try {
-      const U = await import('./views/updates.js?v=202611270853'); const v = await U.latestWeb(); const box = $('#banner'); box.querySelector('.updbar')?.remove();
+      const U = await import('./views/updates.js?v=202611270856'); const v = await U.latestWeb(); const box = $('#banner'); box.querySelector('.updbar')?.remove();
       if (v && v > U.runningWeb()) box.append(h('div', { class: 'demo updbar' }, 'A new version of BP Master is available. ', h('button', { class: 'btn sm', onclick: e => U.applyWeb(e.currentTarget) }, 'Update now')));
     } catch { }
   };
@@ -163,6 +163,7 @@ export async function init() {
   window.addEventListener('hashchange', () => db.user && route());
   const rec = db.takeRecovery(location.hash);   // opened from a password-reset email?
   if (rec) { history.replaceState(null, '', location.pathname + location.search); return rec.error ? showLogin(rec.error) : showReset(); }
+  if (await db.resume?.()) return start();
   showLogin();
 }
 init();

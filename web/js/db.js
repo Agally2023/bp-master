@@ -95,6 +95,13 @@ class SupabaseDB {
     this._set(await v.json());
     return await this._finishSignIn();
   }
+  // Website updates reload the page, and the session is memory-only by design. Just before that reload the refresh token is parked in sessionStorage for 3 minutes so the user stays signed in.
+  saveResume() { try { if (this.refresh_token) sessionStorage.setItem('bpm_resume', JSON.stringify({ rt: this.refresh_token, t: Date.now() })); } catch { } }
+  async resume() {
+    let o = null; try { o = JSON.parse(sessionStorage.getItem('bpm_resume') || 'null'); sessionStorage.removeItem('bpm_resume'); } catch { }
+    if (!o || !o.rt || Date.now() - o.t > 180000) return false;
+    try { this.refresh_token = o.rt; await this._refresh(); await this._finishSignIn(); return !!this.user; } catch { this.tok = this.refresh_token = this.user = null; return false; }
+  }
   async _finishSignIn() {
     const me = this.authUser && this.authUser.id ? this.authUser : await (await this._f('/auth/v1/user')).json();   // the token response already carries the user
     let p = (await (await this._f(`/rest/v1/${P}profiles?id=eq.${me.id}&select=full_name,role,active,status`)).json())[0];

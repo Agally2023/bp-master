@@ -1,5 +1,6 @@
-import { h, clear, toast } from '../util.js?v=202611270853';
-import { cacheClear } from '../state.js?v=202611270853';
+import { h, clear, toast } from '../util.js?v=202611270856';
+import { cacheClear } from '../state.js?v=202611270856';
+import { db } from '../db.js?v=202611270856';
 const REPO = 'Agally2023/bp-master';
 const WEB = (/[?&]v=(\d+)/.exec(import.meta.url) || [])[1] || 'unknown';
 const UA = navigator.userAgent;
@@ -12,13 +13,17 @@ function openExt(url) { window.open(url, '_blank', 'noopener'); }
 
 // The newest deployed website version, read from the live index.html (never from the cache)
 export async function latestWeb() {
-  const r = await fetch('index.html?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status);
-  return (/[?&]v=(\d{12})/.exec(await r.text()) || [])[1] || '';
+  let last;
+  for (const url of ['./?_=' + Date.now(), 'index.html?_=' + Date.now(), 'index.html']) {   // same-origin page; the first form avoids the /index.html redirect some hosts add
+    for (let i = 0; i < 2; i++) { try { const r = await fetch(url, { cache: 'no-store', credentials: 'same-origin' }); if (r.ok) { const v = (/[?&]v=(\d{12})/.exec(await r.text()) || [])[1]; if (v) return v; } else last = new Error('HTTP ' + r.status); } catch (e) { last = e; } await new Promise(res => setTimeout(res, 600)); }
+  }
+  throw new Error(/fetch/i.test(String(last && last.message)) ? 'the app could not reach the website (check the internet connection)' : (last && last.message) || 'no version found');
 }
 export const runningWeb = () => WEB;
 export async function applyWeb(btn) { return refreshWeb(btn || {}); }
 async function refreshWeb(btn) {
   btn.disabled = true; btn.textContent = 'Updating…';
+  db.saveResume?.();   // stay signed in across the reload
   try { await cacheClear(); } catch { }
   try { for (const r of await navigator.serviceWorker?.getRegistrations?.() || []) await r.unregister(); } catch { }
   try { for (const k of await caches?.keys?.() || []) await caches.delete(k); } catch { }
