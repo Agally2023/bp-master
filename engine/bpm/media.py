@@ -62,10 +62,11 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
             pt = 14; bw = min(int(cw), int(len(cap) * pt * 7000 + 160000)); bh = int(H_ * 0.075) if len(cap) * pt * 7000 > cw * 0.9 else int(H_ * 0.045)
             tb = s.shapes.add_textbox(Emu(x + cw - bw), Emu(y + chh - bh), Emu(bw), Emu(bh)); tf = tb.text_frame; tf.word_wrap = True
             tf.margin_left = tf.margin_right = Emu(54000); tf.margin_top = tf.margin_bottom = Emu(18000); tf.vertical_anchor = MSO_ANCHOR.BOTTOM
-            tb.fill.solid(); tb.fill.fore_color.rgb = RGBColor(0, 0, 0)
-            clr = tb.fill._xPr.find('.//' + qn('a:srgbClr')); al = clr.makeelement(qn('a:alpha'), {'val': '45000'}); clr.append(al)
             p = tf.paragraphs[0]; p.alignment = PP_ALIGN.RIGHT
             r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xD7, 0x00)
+            rPr = r._r.get_or_add_rPr(); ef = rPr.makeelement(qn('a:effectLst'), {}); sh = ef.makeelement(qn('a:outerShdw'), {'blurRad': '38100', 'dist': '12700', 'dir': '2700000', 'algn': 'tl', 'rotWithShape': '0'})
+            c = sh.makeelement(qn('a:srgbClr'), {'val': '000000'}); c.append(c.makeelement(qn('a:alpha'), {'val': '85000'})); sh.append(c); ef.append(sh); rPr.insert(1 if rPr.find(qn('a:solidFill')) is not None else 0, ef)
+            ln = rPr.makeelement(qn('a:ln'), {'w': '9525'}); sf = ln.makeelement(qn('a:solidFill'), {}); sf.append(sf.makeelement(qn('a:srgbClr'), {'val': '000000'})); ln.append(sf); rPr.insert(0, ln)   # thin dark outline   # soft shadow keeps the gold readable without a box
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
 
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
