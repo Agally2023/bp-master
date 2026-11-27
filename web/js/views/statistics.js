@@ -1,12 +1,12 @@
 // Statistics tab = a compact dashboard of the analyses (headline number, verdict, one line; tap a tile for its graph).
 // The full report format (objective, graph, table, editable Hypothesis comment, tick to include in the PowerPoint) is statSection(), shown on the Reports tab.
-import { h, clear, toast } from '../util.js?v=202611270416';
-import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611270416';
-import { db } from '../db.js?v=202611270416';
-import { card, kpi } from './common.js?v=202611270416';
-import { lineChart, barChart } from '../charts.js?v=202611270416';
-import { build } from '../statlist.js?v=202611270416';
-import * as T from '../stats.js?v=202611270416';
+import { h, clear, toast } from '../util.js?v=202611270425';
+import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611270425';
+import { db } from '../db.js?v=202611270425';
+import { card, kpi } from './common.js?v=202611270425';
+import { lineChart, barChart } from '../charts.js?v=202611270425';
+import { build } from '../statlist.js?v=202611270425';
+import * as T from '../stats.js?v=202611270425';
 
 export const STAT_KEYS = ['workstation_audits', 'parasitology_samples', 'ras_parasite_prevalence', 'ras_water_volume', 'stocking_audits', 'fry_transfers', 'fry_culling', 'egg_separation_ratings', 'egg_volumetric_jars', 'do_temp_drone', 'do_temp_mis_truck', 'egg_disinfection', 'egg_viability', 'day3_recounts', 'ibc_method_survival', 'biosecurity_audits', 'pond_flips', 'pond_prep_scoring', 'pond_feeding', 'hapa_wash_dispatch', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'hapa_cov_aerated', 'hapa_cov_unaerated', 'sr_efficiency', 'sex_reversal_feed', 'salt_bath', 'transfer_to_lake'];
 export const statKey = id => 'stat_' + id;

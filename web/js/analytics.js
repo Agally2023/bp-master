@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611270416';
+import { S } from './state.js?v=202611270425';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611270416';
-import { MONTHS, dayShort } from './period.js?v=202611270416';
+import { mean, sum, weekRange } from './util.js?v=202611270425';
+import { MONTHS, dayShort } from './period.js?v=202611270425';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -305,4 +305,29 @@ export function pickPondPhotos(data, y, w, photos) {
     out.push({ row: p, caption: [r.pond, p.stage || `${r.done} of ${r.total} stages done`, dmy(p.photo_date)].join(', ') });
   }
   return out;
+}
+
+// ---- Salt bath (parasites before / after, concentration) and terminal (22-day) survival at transfer to lake. Plain descriptive figures for the dashboard.
+const SB_SITES = [['tricho_skin', 'Tricho skin'], ['mono_skin', 'Mono skin'], ['tricho_gill', 'Tricho gills'], ['mono_gill', 'Mono gills']];   // Trichodina / Monogenea
+const fin = v => v != null && v !== '' && Number.isFinite(+v) ? +v : null;
+const fr = v => { const x = fin(v); return x == null ? null : x > 1.5 ? x / 100 : x; };      // survival is stored as a fraction; tolerate whole percentages
+const avg = a => { a = a.filter(x => x != null); return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null; };
+export const SB_BANDS = ['No bath', '1-10', '11-15', '16-20', '21-25', '26+'];
+const bandOf = c => c == null || c <= 0 ? 'No bath' : c <= 10 ? '1-10' : c <= 15 ? '11-15' : c <= 20 ? '16-20' : c <= 25 ? '21-25' : '26+';
+export function saltBath(data, y, w) {
+  const bath = yearRows(data.salt_bath, y, w), lake = yearRows(data.transfer_to_lake, y, w);
+  const paired = bath.filter(r => SB_SITES.some(([k]) => fin(r[`before_${k}_prev`]) != null && fin(r[`after_${k}_prev`]) != null));
+  const sites = SB_SITES.map(([k, lab]) => { const p = paired.filter(r => fin(r[`before_${k}_prev`]) != null && fin(r[`after_${k}_prev`]) != null);
+    return { lab, n: p.length, before: avg(p.map(r => fin(r[`before_${k}_prev`]))), after: avg(p.map(r => fin(r[`after_${k}_prev`]))) }; }).filter(s => s.n);
+  const all = (pre) => avg(paired.flatMap(r => SB_SITES.map(([k]) => fin(r[`${pre}_${k}_prev`]))));
+  const before = all('before'), after = all('after');
+  const hapas = paired.map(r => ({ id: `${r.pond}-${r.hapa_no}`, c: fin(r.bath_salinity), b: avg(SB_SITES.map(([k]) => fin(r[`before_${k}_prev`]))), a: avg(SB_SITES.map(([k]) => fin(r[`after_${k}_prev`]))) })).sort((p, q) => (p.c ?? 0) - (q.c ?? 0));
+  // terminal survival: the Masterfile (Transfer to Lake) is the source; the survival column of the salt-bath file fills in hapas not found there
+  const sv = lake.map(r => ({ pond: String(r.pond || '').toUpperCase(), s: fr(r.survival), wk: r.iso_week, key: `${String(r.pond).toUpperCase()}|${r.hapa_no}|${r.date_stocked_to_lake}` })).filter(r => r.s != null && r.s > 0 && r.s <= 1.2 && r.pond);
+  const known = new Map(sv.map(r => [r.key, r.s]));
+  const bands = SB_BANDS.map(b => { const v = bath.map(r => known.get(`${String(r.pond).toUpperCase()}|${r.hapa_no}|${r.transfer_date}`) ?? fr(r.terminal_survival)).map((s, i) => bandOf(fin(bath[i].bath_salinity)) === b ? s : null).filter(s => s != null && s > 0 && s <= 1.2);
+    return { band: b, n: v.length, mean: avg(v) }; }).filter(x => x.n);
+  const ponds = [...group(sv, r => r.pond)].map(([pond, g]) => ({ pond, n: g.length, mean: avg(g.map(r => r.s)) })).sort((p, q) => q.mean - p.mean);
+  const wk = [...group(sv, r => r.wk)].sort((p, q) => p[0] - q[0]).map(([x, g]) => ({ w: x, mean: avg(g.map(r => r.s)) }));
+  return { nBath: bath.length, nPaired: paired.length, nPonds: new Set(paired.map(r => r.pond)).size, sites, before, after, red: before ? (before - after) / before : null, hapas, bands, ponds, wk, nLake: sv.length, mean: avg(sv.map(r => r.s)) };
 }

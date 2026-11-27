@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611270416';
-import { lineChart, barChart } from '../charts.js?v=202611270416';
-import { table, kpi } from './common.js?v=202611270416';
-import * as A from '../analytics.js?v=202611270416';
+import { h, pct } from '../util.js?v=202611270425';
+import { lineChart, barChart } from '../charts.js?v=202611270425';
+import { table, kpi, card } from './common.js?v=202611270425';
+import * as A from '../analytics.js?v=202611270425';
 // Blocks shared by the dashboard and the report preview.
 const chunks = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const has = a => (a || []).some(v => v != null);
@@ -60,4 +60,25 @@ export function flipSummaryCharts(fl) {
     return h('div', {}, ...parts.map((P, i) => barChart({ title: `${label} pond flipping & preparation compliance: ${windowText}` + (parts.length > 1 ? ` (${i + 1}/${parts.length})` : ''), labels: st.map(x => x.name), labelLen: 13, w: 760, h: 240, xTitle: 'Stage', yTitle: 'Days',
       series: P.map(r => ({ name: r.pond, values: st.map(x => r.stage_days?.[x.name] ?? null) })), line: { name: 'Expected days/stage', values: st.map(x => x.expected), color: '#FFC000' }, fmt: v => String(Math.round(v)), min: 0 })));
   });
+}
+
+// Salt bath and terminal survival tiles (dashboard): one card per analysis, each with a graph and a one-line reading.
+export function saltBlocks(a) {
+  const pc = v => v == null ? '–' : (v * 100).toFixed(1) + '%', G = '#0E812E', R = '#CB8306', B = '#00BDF0', out = [];
+  const pctChart = (o) => barChart({ ...o, fmt: v => (v * 100).toFixed(0) + '%', min: 0 });
+  if (a.sites.length) out.push(card('Salt bath: parasite prevalence before and after',
+    h('div', { class: 'kpis' }, kpi('Before the bath', pc(a.before), { cls: 'red' }), kpi('After the bath', pc(a.after), { cls: 'green' }), kpi('Reduction', a.red == null ? '–' : (a.red * 100).toFixed(0) + '%'), kpi('Hapas sampled', `${a.nPaired} (${a.nPonds} ponds)`)),
+    pctChart({ labels: a.sites.map(s => s.lab), series: [{ name: 'Before bath', values: a.sites.map(s => s.before), color: R }, { name: 'After bath', values: a.sites.map(s => s.after), color: G }], xTitle: 'Parasite and site', yTitle: 'Mean prevalence (%)' }),
+    h('div', { class: 'note' }, a.nPaired < 10 ? `Only ${a.nPaired} hapas have parasite counts before and after the bath, so read this as an indication, not a conclusion.` : 'Mean prevalence of the sampled hapas, before and after the salt bath.')));
+  if (a.hapas.some(x => x.c != null)) out.push(card('Salt concentration and parasite prevalence',
+    pctChart({ labels: a.hapas.map(x => `${x.id} · ${x.c ?? '?'}`), series: [{ name: 'Before bath', values: a.hapas.map(x => x.b), color: R }, { name: 'After bath', values: a.hapas.map(x => x.a), color: G }], xTitle: 'Hapa · salt concentration (ppt)', yTitle: 'Mean prevalence (%)' }),
+    table(['Hapa', 'Concentration (ppt)', 'Before', 'After', 'Reduction'], a.hapas.map(x => [x.id, x.c ?? '–', pc(x.b), pc(x.a), x.b ? pc((x.b - x.a) / x.b) : '–']), { num: [1, 2, 3, 4] })));
+  if (a.bands.length) out.push(card('Salt concentration and terminal survival',
+    pctChart({ labels: a.bands.map(x => `${x.band} (n=${x.n})`), series: [{ name: 'Mean terminal survival', values: a.bands.map(x => x.mean), color: G }], xTitle: 'Salt concentration band (ppt)', yTitle: 'Terminal survival (%)' }),
+    h('div', { class: 'note' }, 'Terminal (22-day) survival of the hapas that had a salt bath, grouped by the concentration used.')));
+  if (a.ponds.length) out.push(card('Pond performance at terminal survival (22 days)',
+    h('div', { class: 'kpis' }, kpi('Mean terminal survival', pc(a.mean), { cls: 'green' }), kpi('Best pond', `${a.ponds[0].pond} ${pc(a.ponds[0].mean)}`), kpi('Lowest pond', `${a.ponds.at(-1).pond} ${pc(a.ponds.at(-1).mean)}`, { cls: 'red' }), kpi('Hapas transferred', a.nLake)),
+    pctChart({ labels: a.ponds.slice(0, 30).map(x => `${x.pond} (${x.n})`), series: [{ name: 'Mean terminal survival', values: a.ponds.slice(0, 30).map(x => x.mean), color: G }], xTitle: 'Pond (hapas)', yTitle: 'Terminal survival (%)' }),
+    a.wk.length > 1 ? lineChart({ labels: a.wk.map(x => String(x.w)), series: [{ name: 'Mean terminal survival', values: a.wk.map(x => x.mean), color: B }], xTitle: 'ISO week of transfer', yTitle: 'Terminal survival (%)', fmt: v => (v * 100).toFixed(0) + '%', min: 0 }) : null));
+  return out;
 }
