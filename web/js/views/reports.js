@@ -1,16 +1,16 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611270912';
-import { S, ensure } from '../state.js?v=202611270912';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611270912';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611270912';
-import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611270912';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611270923';
+import { S, ensure } from '../state.js?v=202611270923';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611270923';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611270923';
+import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611270923';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611270912';
-import { statSection } from './statistics.js?v=202611270912';
-import * as A from '../analytics.js?v=202611270912';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611270912';
+import { db } from '../db.js?v=202611270923';
+import { statSection } from './statistics.js?v=202611270923';
+import * as A from '../analytics.js?v=202611270923';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611270923';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611270912';
-import { zipLib } from '../xlsx.js?v=202611270912';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611270923';
+import { zipLib } from '../xlsx.js?v=202611270923';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
 const CFG = window.BPM_CONFIG || {};
@@ -96,7 +96,7 @@ export async function render({ view, ctx }) {
       const prev = h('div', { class: 'slide' }, h('h3', {}, s.title), h('div', { class: 'sbody' }, s.photos ? photoGrid(R, s, locked || !canEdit, draw) : h('div', {}, ...s.body(a)), ...(s.photos ? [] : [h('div', {}, h('div', { class: 'sbox' }, h('ul', {}, (st.comment ?? draft).split('\n').filter(Boolean).map(l => h('li', {}, l)))))])),
         h('img', { class: 'slogo', src: 'assets/victoryfarms-logo.png', alt: '' }), h('div', { class: 'sfoot' }, 'Victory Farms Confidential'), h('div', { class: 'sno' }, s.slide));
       const graph = R.images.find(i => i.section_key === s.key && i.kind === 'analysed_graph');
-      slides.append(h('details', { class: 'sec', open: s.key === 'workstation' }, h('summary', {}, h('span', {}, `Slide ${s.slide}: ${s.title}`), h('span', { class: 'sp' }), h('label', { class: 'muted', onclick: e => e.stopPropagation() }, inc, ' include')),
+      slides.append(h('details', { class: 'sec', open: s.key === 'workstation' || !!s.photos }, h('summary', {}, h('span', {}, `Slide ${s.slide}: ${s.title}`), h('span', { class: 'sp' }), h('label', { class: 'muted', onclick: e => e.stopPropagation() }, inc, ' include')),
         h('div', { class: 'inner' }, prev, s.photos ? reviewGallery(R, s) : null, s.photos ? null : h('div', {}, h('label', { class: 'f' }, 'Comment (editable, auto-drafted from the data)', text),
           h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
     }

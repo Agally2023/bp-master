@@ -1,5 +1,5 @@
 // Registry-driven import/derive/validate engine. Same rules as the Python report engine.
-import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611270912';
+import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611270923';
 
 export const ERR = /^#(REF!|VALUE!|DIV\/0!|N\/A|NAME\?|NUM!|NULL!)$/;
 const norm = s => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
