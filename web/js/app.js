@@ -1,9 +1,9 @@
-import { setPonds } from './engine.js?v=202611270900';
-import { h, $, clear, toast } from './util.js?v=202611270900';
-import { db, isDemo } from './db.js?v=202611270900';
-import { S, currentWeek, setWeek } from './state.js?v=202611270900';
-import { weeksAvailable } from './analytics.js?v=202611270900';
-import { ensure, cacheClear } from './state.js?v=202611270900';
+import { setPonds } from './engine.js?v=202611270907';
+import { h, $, clear, toast } from './util.js?v=202611270907';
+import { db, isDemo } from './db.js?v=202611270907';
+import { S, currentWeek, setWeek } from './state.js?v=202611270907';
+import { weeksAvailable } from './analytics.js?v=202611270907';
+import { ensure, cacheClear } from './state.js?v=202611270907';
 
 const CFG = window.BPM_CONFIG || {};
 const ICON = {
@@ -18,13 +18,13 @@ const ICON = {
 };
 const svg = p => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = p; return s; };
 const ROUTES = [
-  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270900') },
-  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270900') },
-  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270900') },
-  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270900') },
-  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270900') },
-  { id: 'updates', label: 'App updates', title: 'App updates', icon: 'upd', load: () => import('./views/updates.js?v=202611270900') },
-  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270900') },
+  { id: 'dashboard', label: 'Dashboard', title: 'Dashboard', icon: 'dash', load: () => import('./views/dashboard.js?v=202611270907') },
+  { id: 'entry', label: 'Data Entry', title: 'Data Entry & Import', icon: 'entry', load: () => import('./views/entry.js?v=202611270907') },
+  { id: 'users', label: 'Users', title: 'User management', icon: 'users', admin: true, load: () => import('./views/users.js?v=202611270907') },
+  { id: 'statistics', label: 'Statistics', title: 'Statistics', icon: 'dash', load: () => import('./views/statistics.js?v=202611270907') },
+  { id: 'reports', label: 'Reports', title: 'Weekly Report', icon: 'rep', load: () => import('./views/reports.js?v=202611270907') },
+  { id: 'updates', label: 'App updates', title: 'App updates', icon: 'upd', load: () => import('./views/updates.js?v=202611270907') },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: 'gear', load: () => import('./views/settings.js?v=202611270907') },
 ];
 let idleT;
 function idleReset() { clearTimeout(idleT); idleT = setTimeout(signOut, (window.bpmPrefs?.get().idle || CFG.IDLE_LOGOUT_MINUTES || 15) * 60000); }
@@ -135,13 +135,18 @@ let updTimer;
 async function watchUpdates() {
   const check = async () => {
     try {
-      const U = await import('./views/updates.js?v=202611270900'); const v = await U.latestWeb(); const box = $('#banner'); box.querySelector('.updbar')?.remove();
+      const U = await import('./views/updates.js?v=202611270907'); const v = await U.latestWeb(); const box = $('#banner'); box.querySelector('.updbar')?.remove();
       if (v && v > U.runningWeb()) box.append(h('div', { class: 'demo updbar' }, 'A new version of BP Master is available. ', h('button', { class: 'btn sm', onclick: e => U.applyWeb(e.currentTarget) }, 'Update now')));
     } catch { }
   };
   check(); clearInterval(updTimer); updTimer = setInterval(check, 15 * 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
 }
 export async function init() {
+  // Launch-time self-update: if a newer website version is deployed, load it before the sign-in screen (once per minute at most, so it can never loop)
+  try {
+    const U = await import('./views/updates.js?v=202611270907'); const last = Number(sessionStorage.getItem('bpm_autoupd') || 0);
+    if (Date.now() - last > 60000) { const v = await Promise.race([U.latestWeb(), new Promise((_, no) => setTimeout(no, 4000))]); if (v && v > U.runningWeb()) { sessionStorage.setItem('bpm_autoupd', String(Date.now())); await U.applyWeb(); return; } }
+  } catch { }
   S.reg = await (await fetch('modules.json')).json();
   try {   // pond list: every pond-name field becomes a required drop-down of these ponds
     S.ponds = (await (await fetch('ponds.json')).json()).map(p => p.pond); setPonds(S.ponds);

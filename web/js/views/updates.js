@@ -1,6 +1,6 @@
-import { h, clear, toast } from '../util.js?v=202611270900';
-import { cacheClear } from '../state.js?v=202611270900';
-import { db } from '../db.js?v=202611270900';
+import { h, clear, toast } from '../util.js?v=202611270907';
+import { cacheClear } from '../state.js?v=202611270907';
+import { db } from '../db.js?v=202611270907';
 const REPO = 'Agally2023/bp-master';
 const WEB = (/[?&]v=(\d+)/.exec(import.meta.url) || [])[1] || 'unknown';
 const UA = navigator.userAgent;
@@ -40,7 +40,7 @@ export async function render({ view }) {
       h('tr', {}, h('th', {}, 'You are using'), h('td', {}, where)),
       h('tr', {}, h('th', {}, 'Website version'), h('td', {}, fmtWeb(WEB))),
       (isAndroidApp || isWindowsApp) ? h('tr', {}, h('th', {}, 'Installed app build'), h('td', {}, appVer || 'older build (before the Updates menu)')) : null)),
-    h('div', { class: 'row mt' }, h('button', { class: 'btn', onclick: () => draw() }, 'Check for updates'), h('button', { class: 'btn sec', onclick: e => refreshWeb(e.currentTarget) }, 'Force refresh')), webMsg), h('div', { class: 'card' }, h('h2', { style: 'margin:0 0 6px' }, 'Install or update the app'), result));
+    h('div', { class: 'row mt' }, h('button', { class: 'btn', onclick: () => draw() }, 'Check for updates'), h('button', { class: 'btn sec', onclick: e => refreshWeb(e.currentTarget) }, 'Force refresh')), webMsg), h('div', { class: 'card' }, h('h2', { style: 'margin:0 0 6px' }, 'Reinstall (only if ever needed)'), result));
   async function checkWebNow() {
     clear(webMsg); webMsg.className = 'muted'; webMsg.style.marginTop = '8px'; webMsg.append('Checking the website…');
     try {
@@ -55,10 +55,10 @@ export async function render({ view }) {
     let rel;
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
-      if (r.status === 404) { clear(result); result.append(h('div', {}, 'No app build has been published yet. Ask the administrator to run Actions > build-apps on GitHub.')); return; }
+      if (r.status === 404) { clear(result); result.append(h('div', { class: 'muted' }, 'No installer has been published, and none is needed: use Check for updates above to update the app directly.')); return; }
       if (!r.ok) throw new Error('GitHub answered ' + r.status);
       rel = await r.json();
-    } catch (e) { clear(result); result.append(h('div', { class: 'note stale' }, 'Could not check for updates: ' + e.message + '. Check the internet connection and try again.')); return; }
+    } catch (e) { clear(result); result.append(h('div', { class: 'muted' }, 'Installer information is not available right now. This does not affect updating: use Check for updates above.')); return; }
     const apk = (rel.assets || []).find(a => /\.apk$/i.test(a.name)), exe = (rel.assets || []).find(a => /\.exe$/i.test(a.name));
     const latest = build(rel.tag_name), mine = build(appVer), mb = a => a ? ` (${(a.size / 1048576).toFixed(0)} MB)` : '';
     const mineIs = isAndroidApp ? 'android' : isWindowsApp ? 'windows' : '';
