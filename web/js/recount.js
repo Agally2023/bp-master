@@ -1,7 +1,7 @@
 // Day-3 recounts vs terminal (22-day) survival of the same hapas, by month.
-// Day-3 survival: 3-Day Pond Survival (Recounts). Terminal survival: VF Hatchery Masterfile, Transfer to Lake tab (matched on pond + hapa, the transfer
+// Day-3 survival: 3-Day Pond Survival (Recounts). Terminal survival: VF Hatchery Masterfile, Fingerling Transfer Worksheet tab (matched on pond + hapa, the transfer
 // following the recount); the salt-bath file's terminal survival fills in hapas that are not in the Masterfile yet.
-import * as T from './stats.js?v=202611271011';
+import * as T from './stats.js?v=202611271202';
 const { fp, fn, fpc, describe } = T;
 const num = v => { if (v == null || v === '') return null; const x = Number(String(v).replace(/[^0-9.\-eE]/g, '')); return Number.isFinite(x) ? x : null; };
 const frac = v => { const x = num(v); return x == null ? null : x > 1.5 ? x / 100 : x; };
@@ -35,7 +35,7 @@ export function recountTerminal(D, ym) {
   const title = `Day-3 recount vs terminal survival, ${monthLabel(ym)}`, objective = 'Check whether hapas that survived well at the 3-day recount also survive well to the 22-day transfer, and measure the loss between the two counts.';
   const base = { id: 'recount_terminal', group: 'Nursery', title, objective, ym };
   if (ok.length < 3) return { ...base, n: ok.length, stats: [['Hapas recounted', recounted], ['Matched to terminal survival', matched.length]], chart: null, table: null,
-    comment: `Hypothesis: terminal survival follows day-3 survival. Too few records to test (${ok.length} matched hapas with survival between 0 and 100%). Hapas are matched when they appear in both the 3-Day Survival file and the Transfer to Lake tab; import both files to complete the month.` };
+    comment: `Hypothesis: terminal survival follows day-3 survival. Too few records to test (${ok.length} matched hapas with survival between 0 and 100%). Hapas are matched when they appear in both the 3-Day Survival file and the Fingerling Transfer Worksheet tab; import both files to complete the month.` };
   const d3 = ok.map(p => p.d3), tm = ok.map(p => p.term), loss = ok.map(p => p.d3 - p.term), wp = T.wilcoxonPaired(d3, tm), sp = T.spearman(d3, tm);
   const md3 = describe(d3).median, mtm = describe(tm).median, mloss = describe(loss).median;
   const sorted = [...ok].sort((a, b) => a.d3 - b.d3), cap = 40, shown = sorted.length > cap ? Array.from({ length: cap }, (_, i) => sorted[Math.round(i * (sorted.length - 1) / (cap - 1))]) : sorted;

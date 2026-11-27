@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611271011';
+import { S } from './state.js?v=202611271202';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611271011';
-import { MONTHS, dayShort } from './period.js?v=202611271011';
+import { mean, sum, weekRange } from './util.js?v=202611271202';
+import { MONTHS, dayShort } from './period.js?v=202611271202';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -322,7 +322,7 @@ export function saltBath(data, y, w) {
   const all = (pre) => avg(paired.flatMap(r => SB_SITES.map(([k]) => fin(r[`${pre}_${k}_prev`]))));
   const before = all('before'), after = all('after');
   const hapas = paired.map(r => ({ id: `${r.pond}-${r.hapa_no}`, c: fin(r.bath_salinity), b: avg(SB_SITES.map(([k]) => fin(r[`before_${k}_prev`]))), a: avg(SB_SITES.map(([k]) => fin(r[`after_${k}_prev`]))) })).sort((p, q) => (p.c ?? 0) - (q.c ?? 0));
-  // terminal survival: the Masterfile (Transfer to Lake) is the source; the survival column of the salt-bath file fills in hapas not found there
+  // terminal survival: the Masterfile (Fingerling Transfer Worksheet tab) is the source; the survival column of the salt-bath file fills in hapas not found there
   const sv = lake.map(r => ({ pond: String(r.pond || '').toUpperCase(), s: fr(r.survival), wk: r.iso_week, key: `${String(r.pond).toUpperCase()}|${r.hapa_no}|${r.date_stocked_to_lake}` })).filter(r => r.s != null && r.s > 0 && r.s <= 1.2 && r.pond);
   const known = new Map(sv.map(r => [r.key, r.s]));
   const bands = SB_BANDS.map(b => { const v = bath.map(r => known.get(`${String(r.pond).toUpperCase()}|${r.hapa_no}|${r.transfer_date}`) ?? fr(r.terminal_survival)).map((s, i) => bandOf(fin(bath[i].bath_salinity)) === b ? s : null).filter(s => s != null && s > 0 && s <= 1.2);

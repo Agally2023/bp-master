@@ -1,8 +1,8 @@
-import { h, clear, toast } from '../util.js?v=202611271011';
-import { db } from '../db.js?v=202611271011';
-import { S, ensure } from '../state.js?v=202611271011';
-import { recountMonths, recountTerminal, monthLabel } from '../recount.js?v=202611271011';
-import { chartEl, specOf, statKey } from './statistics.js?v=202611271011';
+import { h, clear, toast } from '../util.js?v=202611271202';
+import { db } from '../db.js?v=202611271202';
+import { S, ensure } from '../state.js?v=202611271202';
+import { recountMonths, recountTerminal, monthLabel } from '../recount.js?v=202611271202';
+import { chartEl, specOf, statKey } from './statistics.js?v=202611271202';
 const KEYS = ['day3_recounts', 'transfer_to_lake', 'salt_bath'];
 const ID = 'recount_terminal';
 // One card: month picker, KPI chips, one graph (day-3 vs terminal survival per hapa) and an editable "Hypothesis:" comment.
@@ -16,7 +16,7 @@ export async function recountCard({ y, R = null, canEdit = false, locked = false
   const body = h('div', {});
   box.append(h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'Day-3 recount vs terminal survival'), h('span', { class: 'sp' }), months.length ? h('label', { class: 'muted' }, 'Month ', sel) : null), body);
   const draw = async () => {
-    clear(body); if (!months.length) { body.append(h('p', { class: 'muted' }, 'No hapas can be matched yet. Import the 3-Day Pond Survival file and the VF Hatchery Masterfile (Transfer to Lake tab, saved as .xlsx).')); return; }
+    clear(body); if (!months.length) { body.append(h('p', { class: 'muted' }, 'No hapas can be matched yet. Import the 3-Day Pond Survival file and the VF Hatchery Masterfile (Fingerling Transfer Worksheet tab, saved as .xlsx).')); return; }
     const ym = sel.value; S.recountMonth = ym; const a = recountTerminal(raw, ym), sv = saved(), useSaved = sv && sv.payload?.ym === ym;
     const text = h('textarea', { rows: 4, disabled: !editable, 'aria-label': 'Comment' }); text.value = useSaved && sv.comment ? sv.comment : a.comment;
     const inc = R ? h('input', { type: 'checkbox', checked: sv ? sv.include !== false : true, disabled: !editable }) : null;
