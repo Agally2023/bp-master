@@ -37,32 +37,35 @@ def move_slide(prs, old, new):
     lst = prs.slides._sldIdLst; el = list(lst)[old]; lst.remove(el); lst.insert(new, el)
 
 def photo_slide(prs, after_idx, title, photos, layout_from):
-    layout = prs.slides[layout_from].slide_layout; s = prs.slides.add_slide(layout)
-    if s.shapes.title is not None: s.shapes.title.text = title
+    layout = prs.slides[layout_from].slide_layout; s = prs.slides.add_slide(layout); W_, H_ = int(prs.slide_width), int(prs.slide_height)
+    top_ph = s.shapes.title if s.shapes.title is not None else next((ph for ph in s.placeholders if ph.top is not None and ph.top < Emu(914400) and ph.has_text_frame and ph.width > Emu(int(W_ * 0.5))), None)
+    if top_ph is not None: top_ph.text_frame.text = title               # the layout's own title box, exactly where the sample report has it
     else:
-        tb = s.shapes.add_textbox(Emu(int(prs.slide_width * 0.04)), Emu(int(prs.slide_height * 0.03)), Emu(int(prs.slide_width * 0.9)), Emu(int(prs.slide_height * 0.09)))
-        r = tb.text_frame.paragraphs[0].add_run(); r.text = title; r.font.size = Pt(28); r.font.bold = True; r.font.color.rgb = RGBColor(0x0E, 0x81, 0x2E)
+        tb = s.shapes.add_textbox(Emu(int(W_ * 0.5 / 13.333)), Emu(int(H_ * 0.17 / 7.5)), Emu(int(W_ * 12.33 / 13.333)), Emu(int(H_ * 0.47 / 7.5)))
+        r = tb.text_frame.paragraphs[0].add_run(); r.text = title; r.font.size = Pt(24); r.font.bold = True; r.font.color.rgb = RGBColor(0x0E, 0x81, 0x2E)
     # remove empty placeholders except the title/number/footer
     for ph in list(s.placeholders):
-        if ph.placeholder_format.type is not None and ph.has_text_frame and not ph.text_frame.text.strip() and ph != s.shapes.title and ph.placeholder_format.idx not in (12, 13, 11, 10):
+        if ph.placeholder_format.type is not None and ph.has_text_frame and not ph.text_frame.text.strip() and ph != top_ph and ph.placeholder_format.idx not in (12, 13, 11, 10):
             ph._element.getparent().remove(ph._element)
-    # 2x2 grid with the photos tight against the centre line: left column right-aligned, right column left-aligned
-    W, H = prs.slide_width, prs.slide_height; top = int(H * 0.13); gap = int(W * 0.012); cw = int(W * 0.46); chh = int(H * 0.31); pitch = int(H * 0.39); mid = int(W // 2)
+    # 2x2 grid laid out like the Week 46 sample report (Biosecurity Images / Images of Flipped Ponds Progress): four equal cells of 5.25 x 2.6 in,
+    # columns at x 0.95 and 6.44 in, rows at y 0.70 and 3.55 in. Every photo fills its cell (cropped, never stretched or shrunk), the caption sits bottom-right on the picture.
+    inch = lambda v, ref: Emu(int(ref * v / (13.333 if ref == W_ else 7.5)))
+    cw, chh = inch(5.25, W_), inch(2.6, H_)
     for i, (path, cap) in enumerate(photos[:4]):
         col, row = i % 2, i // 2
-        x0 = mid - gap // 2 - cw if col == 0 else mid + gap // 2
-        l, t, w, h = _fit(path, (x0, top + pitch * row, cw, chh))
-        x = (x0 + cw - w) if col == 0 else x0          # hug the centre line
-        y = top + pitch * row                           # all photos in a row share the top edge
-        s.shapes.add_picture(path, Emu(x), Emu(y), Emu(w), Emu(h))
+        x, y = inch((0.95, 6.44)[col], W_), inch((0.70, 3.55)[row], H_)
+        pic = s.shapes.add_picture(path, x, y, cw, chh)
+        iw, ih = pic.image.size; want = cw / chh; have = iw / ih                   # cover-crop to the cell
+        if have > want: c = (1 - want / have) / 2; pic.crop_left = pic.crop_right = c
+        else: c = (1 - have / want) / 2; pic.crop_top = pic.crop_bottom = c
         if cap:                                         # details (area/pond, status, date) in the bottom-right corner of the picture
-            pt = 11; bw = min(w, int(len(cap) * pt * 6400 + 160000)); bh = int(H * 0.042)
-            tb = s.shapes.add_textbox(Emu(x + w - bw), Emu(y + h - bh), Emu(bw), Emu(bh)); tf = tb.text_frame; tf.word_wrap = True
-            tf.margin_left = tf.margin_right = Emu(54000); tf.margin_top = tf.margin_bottom = Emu(18000); tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            pt = 14; bw = min(int(cw), int(len(cap) * pt * 7000 + 160000)); bh = int(H_ * 0.075) if len(cap) * pt * 7000 > cw * 0.9 else int(H_ * 0.045)
+            tb = s.shapes.add_textbox(Emu(x + cw - bw), Emu(y + chh - bh), Emu(bw), Emu(bh)); tf = tb.text_frame; tf.word_wrap = True
+            tf.margin_left = tf.margin_right = Emu(54000); tf.margin_top = tf.margin_bottom = Emu(18000); tf.vertical_anchor = MSO_ANCHOR.BOTTOM
             tb.fill.solid(); tb.fill.fore_color.rgb = RGBColor(0, 0, 0)
-            clr = tb.fill._xPr.find('.//' + qn('a:srgbClr')); al = clr.makeelement(qn('a:alpha'), {'val': '55000'}); clr.append(al)
+            clr = tb.fill._xPr.find('.//' + qn('a:srgbClr')); al = clr.makeelement(qn('a:alpha'), {'val': '45000'}); clr.append(al)
             p = tf.paragraphs[0]; p.alignment = PP_ALIGN.RIGHT
-            r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xFF, 0x00)
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
 
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'
