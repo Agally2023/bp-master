@@ -1,12 +1,12 @@
 // Statistics tab = a compact dashboard of the analyses (headline number, verdict, one line; tap a tile for its graph).
 // The full report format (objective, graph, table, editable Hypothesis comment, tick to include in the PowerPoint) is statSection(), shown on the Reports tab.
-import { h, clear, toast } from '../util.js?v=202611270417';
-import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611270417';
-import { db } from '../db.js?v=202611270417';
-import { card, kpi } from './common.js?v=202611270417';
-import { lineChart, barChart } from '../charts.js?v=202611270417';
-import { build } from '../statlist.js?v=202611270417';
-import * as T from '../stats.js?v=202611270417';
+import { h, clear, toast } from '../util.js?v=202611270416';
+import { S, ensure, setWeek, currentWeek } from '../state.js?v=202611270416';
+import { db } from '../db.js?v=202611270416';
+import { card, kpi } from './common.js?v=202611270416';
+import { lineChart, barChart } from '../charts.js?v=202611270416';
+import { build } from '../statlist.js?v=202611270416';
+import * as T from '../stats.js?v=202611270416';
 
 export const STAT_KEYS = ['workstation_audits', 'parasitology_samples', 'ras_parasite_prevalence', 'ras_water_volume', 'stocking_audits', 'fry_transfers', 'fry_culling', 'egg_separation_ratings', 'egg_volumetric_jars', 'do_temp_drone', 'do_temp_mis_truck', 'egg_disinfection', 'egg_viability', 'day3_recounts', 'ibc_method_survival', 'biosecurity_audits', 'pond_flips', 'pond_prep_scoring', 'pond_feeding', 'hapa_wash_dispatch', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'hapa_cov_aerated', 'hapa_cov_unaerated', 'sr_efficiency', 'sex_reversal_feed', 'salt_bath', 'transfer_to_lake'];
 export const statKey = id => 'stat_' + id;
@@ -32,22 +32,6 @@ const short = c => { const m = c.match(/^Hypothesis: (.*?\)\.)/); return m ? 'Hy
 
 export async function loadStats(y, w) { const raw = await ensure(STAT_KEYS, y, false); return build(raw, y, w); }
 
-// the grouped tiles (headline, verdict, graph, one-line comment); used by the Statistics tab and the main Dashboard
-export function statTiles(list) {
-  const out = [];
-    let grid = null, group = '';
-    for (const a of list) {
-      if (a.group !== group) { group = a.group; out.push(h('h2', { class: 'stat-group' }, group)); grid = h('div', { class: 'stat-grid' }); out.push(grid); }
-      const v = verdictOf(a), det = h('div', { class: 'tile-more', hidden: true }, h('p', {}, a.comment.replace(/^Hypothesis: .*?\)\.\s*/, '')), h('p', { class: 'muted' }, 'Objective: ' + a.objective));
-      const pic = a.chart ? h('div', { class: 'tile-chart' }, chartEl({ ...a.chart, title: '' })) : null;
-      const tile = h('div', { class: 'stat-tile ' + v, role: 'button', tabindex: 0, onclick: e => { if (e.target.closest('.chart-dl')) return; det.hidden = !det.hidden; tile.classList.toggle('open', !det.hidden); } },
-        h('div', { class: 'tt' }, a.title), h('div', { class: 'tv' }, a.stats[0] ? String(a.stats[0][1]) : '–'), h('div', { class: 'tl' }, a.stats[0] ? a.stats[0][0] : ''),
-        h('span', { class: 'vpill ' + v }, VERDICT[v][0]), pic, h('div', { class: 'tc' }, short(a.comment)), det);
-      grid.append(tile);
-    }
-  return out;
-}
-
 // ---- Statistics tab: dashboard
 export async function render({ view, ctx }) {
   const cur = currentWeek(); if (!S.week) S.week = cur;
@@ -62,7 +46,16 @@ export async function render({ view, ctx }) {
     body.append(h('div', { class: 'kpis' }, kpi('Analyses run', list.length), kpi('Significant findings', cnt('sig'), { cls: cnt('sig') ? 'red' : '' }), kpi('No significant difference', cnt('ns'), { cls: 'green' })));
     body.append(h('p', { class: 'muted' }, `Year-to-date records up to week ${w}. "Significant" means the data reject the hypothesis (p < 0.05). Every analysis shows its graph; tap a tile for the full comment and objective. Full wording, editing and ticking analyses for the PowerPoint is on the `, h('a', { href: '#/reports' }, 'Reports tab'), ' (Statistical analyses section).'));
     if (!list.length) body.append(card('Not enough data yet', h('p', {}, 'No analysis has enough records for this period. Import or enter more data, then press Refresh.')));
-    body.append(...statTiles(list));
+    let grid = null, group = '';
+    for (const a of list) {
+      if (a.group !== group) { group = a.group; body.append(h('h2', { class: 'stat-group' }, group)); grid = h('div', { class: 'stat-grid' }); body.append(grid); }
+      const v = verdictOf(a), det = h('div', { class: 'tile-more', hidden: true }, h('p', {}, a.comment.replace(/^Hypothesis: .*?\)\.\s*/, '')), h('p', { class: 'muted' }, 'Objective: ' + a.objective));
+      const pic = a.chart ? h('div', { class: 'tile-chart' }, chartEl({ ...a.chart, title: '' })) : null;
+      const tile = h('div', { class: 'stat-tile ' + v, role: 'button', tabindex: 0, onclick: e => { if (e.target.closest('.chart-dl')) return; det.hidden = !det.hidden; tile.classList.toggle('open', !det.hidden); } },
+        h('div', { class: 'tt' }, a.title), h('div', { class: 'tv' }, a.stats[0] ? String(a.stats[0][1]) : '–'), h('div', { class: 'tl' }, a.stats[0] ? a.stats[0][0] : ''),
+        h('span', { class: 'vpill ' + v }, VERDICT[v][0]), pic, h('div', { class: 'tc' }, short(a.comment)), det);
+      grid.append(tile);
+    }
   };
   view.append(body); await draw();
 }

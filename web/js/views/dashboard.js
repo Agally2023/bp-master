@@ -1,14 +1,13 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611270417';
-import { S, ensure, currentWeek } from '../state.js?v=202611270417';
-import { periodize, relabel } from '../period.js?v=202611270417';
-import { statTiles, loadStats } from './statistics.js?v=202611270417';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611270417';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611270416';
+import { S, ensure } from '../state.js?v=202611270416';
+import { periodize, relabel } from '../period.js?v=202611270416';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611270416';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611270417';
-import * as A from '../analytics.js?v=202611270417';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611270417';
+import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks } from './blocks.js?v=202611270416';
+import * as A from '../analytics.js?v=202611270416';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611270416';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611270417';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611270416';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
@@ -111,12 +110,6 @@ export async function render({ view, ctx }) {
       z.hapas.length ? table(['Pond', 'Hapa', 'Failed audit metrics (ropes)'], z.hapas.slice(0, 40).map(x => [x.pond, x.hapa, x.metrics.map(m => `${m[0]} (${m[1]})`).join(', ')]), { num: [1] }) : null); })));
     body.append(g(...['Nursery', 'Broodstock'].map(k => card(`Bottom rope non-conformance: ${k}`, has(br[k].trend) ? barChart({ labels: br[k].labels, series: [{ name: '% hapas failed the audit', values: br[k].trend }], xTitle: 'ISO week', yTitle: 'Hapas failed the audit (%)', min: 0, fmt: v => (v * 100).toFixed(0) + '%', maxLabels: 30 }) : noData(),
       br[k].ponds.length ? sn(br[k].asOf) : null, br[k].ponds.length ? table(['Pond', 'Hapas audited (no.)', 'Hapas failed (no.)'], br[k].ponds.map(p => [p.pond, p.audited, { v: p.failed, cls: p.failed ? 'poor' : 'good' }]), { num: [1, 2] }) : null))));
-    // Statistical analyses (hypothesis tests with graphs): year-to-date up to the chosen week (the current ISO week in monthly/daily views)
-    { const sw = S.period === 'week' ? w : currentWeek().w, box = h('div', { class: 'card' }, h('h2', { style: 'margin:0' }, 'Statistical analyses'), h('p', { class: 'muted' }, 'Calculating…'));
-      body.append(box);
-      loadStats(y, sw).then(list => { if (body._tok !== tok) return; box.replaceChildren(h('h2', { style: 'margin:0' }, 'Statistical analyses'),
-        h('p', { class: 'muted' }, `Hypothesis tests on year-to-date records up to week ${sw}. Orange = the data reject the hypothesis (p < 0.05). Wording and PowerPoint selection: Reports tab.`), ...(list.length ? statTiles(list) : [h('p', { class: 'muted' }, 'Not enough records yet.')])); })
-        .catch(e => { box.querySelector('.muted').textContent = 'Statistics could not be calculated: ' + e.message; }); }
     relabel(body, S.period);
   };
   const draw = async () => { try { await drawInner(); } catch (e) { console.error(e); body.append(h('div', { class: 'note stale' }, 'Part of the dashboard could not be drawn (' + (e && e.message || e) + '). Please send this message to the developer.')); } };
