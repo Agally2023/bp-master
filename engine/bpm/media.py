@@ -65,7 +65,7 @@ def photo_slide(prs, after_idx, title, photos, layout_from):
             tb.fill.solid(); tb.fill.fore_color.rgb = RGBColor(0, 0, 0)
             clr = tb.fill._xPr.find('.//' + qn('a:srgbClr')); al = clr.makeelement(qn('a:alpha'), {'val': '45000'}); clr.append(al)
             p = tf.paragraphs[0]; p.alignment = PP_ALIGN.RIGHT
-            r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xFF, 0x00)
+            r = p.add_run(); r.text = cap; r.font.size = Pt(pt); r.font.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xD7, 0x00)
     move_slide(prs, len(prs.slides) - 1, after_idx + 1)
 
 LOGO = Path(__file__).resolve().parent.parent / 'templates' / 'vf_logo.png'

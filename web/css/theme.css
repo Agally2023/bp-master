@@ -293,3 +293,6 @@ td.redtxt{color:#e00000;font-weight:700}
 .msel{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}.msel summary{cursor:pointer}.msel-list{display:grid;gap:6px;margin-top:8px}.msel-row{display:flex;align-items:center;gap:6px}input[readonly]{background:#F3F6F4}
 
 .stat-tile .tile-chart{margin-top:8px;pointer-events:auto}.stat-tile .tile-chart svg{width:100%;height:auto;display:block}.stat-tile .tile-chart .card{box-shadow:none;border:0;padding:0;margin:0}
+
+.ppitem .pwrap{position:relative}.ppitem .gcap{position:absolute;right:4px;bottom:4px;max-width:96%;text-align:right;font-size:12px;font-weight:700;line-height:1.25;color:#FFD700;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px;pointer-events:none}.slot .pcap{color:#FFD700}
+.ppgrid-note{font-size:12px}

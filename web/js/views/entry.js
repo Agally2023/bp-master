@@ -1,14 +1,14 @@
-import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611270429';
-import { S, ensure, invalidate, modByKey } from '../state.js?v=202611270429';
-import { db } from '../db.js?v=202611270429';
-import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611270429';
-import { importPanel, batchesPanel } from './import.js?v=202611270429';
-import { table } from './common.js?v=202611270429';
-import { zipLib } from '../xlsx.js?v=202611270429';
-import * as FS from '../folder-sync.js?v=202611270429';
-import * as GS from '../graph-sync.js?v=202611270429';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611270429';
-import { download } from '../util.js?v=202611270429';
+import { h, clear, todayIso, fmtDate, toast, num } from '../util.js?v=202611270739';
+import { S, ensure, invalidate, modByKey } from '../state.js?v=202611270739';
+import { db } from '../db.js?v=202611270739';
+import { coerce, normalizeRow, derive, withHashes, storedFields } from '../engine.js?v=202611270739';
+import { importPanel, batchesPanel } from './import.js?v=202611270739';
+import { table } from './common.js?v=202611270739';
+import { zipLib } from '../xlsx.js?v=202611270739';
+import * as FS from '../folder-sync.js?v=202611270739';
+import * as GS from '../graph-sync.js?v=202611270739';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611270739';
+import { download } from '../util.js?v=202611270739';
 
 const GROUPS = ['Incubation', 'Eggs', 'Fry', 'Nursery', 'Broodstock'];
 let current = 'ALL', tab = 'form';
@@ -131,10 +131,10 @@ function pondPhotos() {
   const draw = async () => {
     clear(list); let rows = []; try { rows = await db.pondPhotos(); } catch (e) { list.append(h('div', { class: 'muted' }, 'Could not load photos: ' + e.message)); return; }
     if (!rows.length) { list.append(h('div', { class: 'muted' }, 'No pond photos yet.')); return; }
-    for (const r of rows.slice(0, 24)) {
+    for (const r of rows.slice(0, 60)) {
       const img = h('img', { alt: r.pond }); db.pondPhotoUrl(r).then(u => { img.src = u; });
       const del = db.user.role === 'admin' ? h('button', { class: 'btn danger sm', onclick: async () => { if (confirm('Delete this photo?')) { await db.removePondPhoto(r); draw(); } } }, 'Delete') : null;
-      list.append(h('div', { class: 'ppitem' }, img, h('div', { class: 'cap' }, [r.pond, r.stage, fmtDate(r.photo_date)].filter(Boolean).join(', ')), del));
+      list.append(h('div', { class: 'ppitem' }, h('div', { class: 'pwrap' }, img, h('div', { class: 'gcap' }, [r.pond, r.stage, fmtDate(r.photo_date)].filter(Boolean).join(', '))), del));
     }
   };
   const form = h('form', { class: 'row', onsubmit: async e => {
@@ -256,10 +256,10 @@ function hygienePhotos() {
   const draw = async () => {
     clear(list); let rows = []; try { rows = await db.hygienePhotos(); } catch (e) { list.append(h('div', { class: 'muted' }, 'Could not load photos: ' + e.message)); return; }
     if (!rows.length) { list.append(h('div', { class: 'muted' }, 'No hygiene photos yet.')); return; }
-    for (const r of rows.slice(0, 24)) {
+    for (const r of rows.slice(0, 60)) {
       const img = h('img', { alt: r.area }); db.hygienePhotoUrl(r).then(u => { img.src = u; });
       const del = db.user.role === 'admin' ? h('button', { class: 'btn danger sm', onclick: async () => { if (confirm('Delete this photo?')) { await db.removeHygienePhoto(r); draw(); } } }, 'Delete') : null;
-      list.append(h('div', { class: 'ppitem' }, img, h('div', { class: 'cap' }, [r.area, r.item, r.status, fmtDate(r.photo_date)].filter(Boolean).join(', ')), del));
+      list.append(h('div', { class: 'ppitem' }, h('div', { class: 'pwrap' }, img, h('div', { class: 'gcap' }, [r.area, r.item, r.status, fmtDate(r.photo_date)].filter(Boolean).join(', '))), del));
     }
   };
   const form = h('form', { class: 'row', onsubmit: async e => {
