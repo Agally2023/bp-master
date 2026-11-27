@@ -1,15 +1,16 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611270741';
-import { S, ensure } from '../state.js?v=202611270741';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611270741';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611270741';
-import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611270741';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611270842';
+import { S, ensure } from '../state.js?v=202611270842';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611270842';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611270842';
+import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611270842';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611270741';
-import { statSection } from './statistics.js?v=202611270741';
-import * as A from '../analytics.js?v=202611270741';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611270741';
+import { db } from '../db.js?v=202611270842';
+import { statSection } from './statistics.js?v=202611270842';
+import * as A from '../analytics.js?v=202611270842';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611270842';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611270741';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611270842';
+import { zipLib } from '../xlsx.js?v=202611270842';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
 const CFG = window.BPM_CONFIG || {};
@@ -84,7 +85,7 @@ export async function render({ view, ctx }) {
     if (isAdmin && locked) nextBtns.push(h('button', { class: 'btn sec', onclick: () => step('draft') }, 'Re-open as draft'));
     async function step(st) { await db.setStatus(report.id, st); await db.audit(st === 'approved' ? 'approve' : 'status', 'report', `${y}-${w}`, { status: st }); draw(); }
     const gen = h('button', { class: 'btn', disabled: !isAdmin || report.status !== 'approved', title: isAdmin ? (report.status === 'approved' ? '' : 'Approve the report first') : 'Only an administrator can export', onclick: () => generate(report) }, 'Generate PPT');
-    body.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, `Week ${w} report`), h('span', { class: 'pill ' + (report.status === 'approved' || report.status === 'exported' ? 'ok' : 'warn') }, STATUS[report.status]), h('span', { class: 'sp' }), nextBtns, h('button', { class: 'btn sec', onclick: () => pack(R, calc) }, 'Download data pack (JSON)'), gen),
+    body.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, `Week ${w} report`), h('span', { class: 'pill ' + (report.status === 'approved' || report.status === 'exported' ? 'ok' : 'warn') }, STATUS[report.status]), h('span', { class: 'sp' }), nextBtns, h('button', { class: 'btn sec', onclick: () => pack(R, calc) }, 'Data pack (JSON)'), h('button', { class: 'btn sec', onclick: () => packZip(R, calc) }, 'Data pack + photos (ZIP)'), gen),
       h('p', { class: 'muted' }, 'Slides follow the weekly deck order. Edit the comment under each slide, add photos or attach your analysed graph; use the tick to leave a slide out. Only an administrator can approve and export.')));
     const slides = h('div', {}); body.append(slides);
     for (const s of SECTIONS) {
@@ -96,7 +97,7 @@ export async function render({ view, ctx }) {
         h('img', { class: 'slogo', src: 'assets/victoryfarms-logo.png', alt: '' }), h('div', { class: 'sfoot' }, 'Victory Farms Confidential'), h('div', { class: 'sno' }, s.slide));
       const graph = R.images.find(i => i.section_key === s.key && i.kind === 'analysed_graph');
       slides.append(h('details', { class: 'sec', open: s.key === 'workstation' }, h('summary', {}, h('span', {}, `Slide ${s.slide}: ${s.title}`), h('span', { class: 'sp' }), h('label', { class: 'muted', onclick: e => e.stopPropagation() }, inc, ' include')),
-        h('div', { class: 'inner' }, prev, s.photos ? null : h('div', {}, h('label', { class: 'f' }, 'Comment (editable, auto-drafted from the data)', text),
+        h('div', { class: 'inner' }, prev, s.photos ? reviewGallery(R, s) : null, s.photos ? null : h('div', {}, h('label', { class: 'f' }, 'Comment (editable, auto-drafted from the data)', text),
           h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
     }
     // Statistical analyses: own section in report format (objective, graph, table, editable Hypothesis comment, tick = PowerPoint slide)
@@ -174,7 +175,47 @@ async function generate(report) {
     download(`VF_BP_Week_${report.iso_week}.pptx`, await r.blob()); await db.setStatus(report.id, 'exported'); await db.audit('export', 'report', `${report.iso_year}-${report.iso_week}`); const wn = r.headers.get('X-Report-Warnings'); toast(wn ? 'PowerPoint downloaded, but some sections were skipped: ' + wn : 'PowerPoint downloaded', !!wn);
   } catch (e) { toast('Export failed: ' + e.message, true); }
 }
+
+// ---- Photo review: every photo of a picture section (manual and automatic) as thumbnails, tap to enlarge before approving/downloading ----
+function photoItems(R, key) {
+  const manual = R.images.filter(i => i.section_key === key && i.kind === 'photo').sort((a, b) => a.slot - b.slot).map(im => ({ caption: im.caption || '', get: () => db.imageUrl(im) }));
+  return [...manual, ...(R.auto?.[key] || []).map(a => ({ caption: a.caption || '', get: a.get }))];
+}
+function reviewGallery(R, s) {
+  const items = photoItems(R, s.key);
+  if (!items.length) return h('div', { class: 'muted', style: 'margin:6px 0' }, 'No photos for this week yet. Add them in Data entry (Pond flipping or Biosecurity audits).');
+  const grid = h('div', { class: 'rgal' });
+  items.forEach((it, i) => {
+    const img = h('img', { alt: it.caption || 'Photo ' + (i + 1), loading: 'lazy' }); it.get().then(u => { img.src = u; it.url = u; }).catch(() => { img.alt = 'Photo unavailable'; });
+    grid.append(h('button', { class: 'rthumb', type: 'button', onclick: () => lightbox(items, i) }, img, h('span', {}, it.caption || '')));
+  });
+  return h('details', { class: 'rgalbox', open: true }, h('summary', {}, `Review all photos (${items.length}), tap one to enlarge`), grid);
+}
+function lightbox(items, i) {
+  const img = h('img', { alt: '' }), cap = h('div', { class: 'lbcap' }), cnt = h('div', { class: 'lbcnt' });
+  const show = async n => { i = (n + items.length) % items.length; const it = items[i]; cap.textContent = it.caption || ''; cnt.textContent = `${i + 1} / ${items.length}`; img.removeAttribute('src'); try { img.src = it.url || (it.url = await it.get()); } catch { cap.textContent += ' (photo unavailable)'; } };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', key); };
+  const key = e => { if (e.key === 'Escape') close(); else if (e.key === 'ArrowRight') show(i + 1); else if (e.key === 'ArrowLeft') show(i - 1); };
+  const ov = h('div', { class: 'lb', onclick: e => { if (e.target === ov) close(); } }, h('button', { class: 'lbx', type: 'button', onclick: close, 'aria-label': 'Close' }, '✕'), h('button', { class: 'lbn lbp', type: 'button', onclick: () => show(i - 1), 'aria-label': 'Previous' }, '‹'), img, h('button', { class: 'lbn lbf', type: 'button', onclick: () => show(i + 1), 'aria-label': 'Next' }, '›'), cap, cnt);
+  document.addEventListener('keydown', key); document.body.append(ov); show(i);
+}
+async function packZip(R, calc) {
+  try {
+    toast('Building the data pack with photos…');
+    const out = packObj(R, calc), JSZip = await zipLib(), z = new JSZip(); let n = 0; out.photos = [];
+    for (const key of ['bio_photos', 'flip_photos']) for (const it of photoItems(R, key)) {
+      n++; const nm = `photos/${key}_${String(n).padStart(2, '0')}.jpg`;
+      try { const b = await (await fetch(await it.get())).blob(); z.file(nm, b); out.photos.push({ section: key, file: nm, caption: it.caption }); } catch { out.photos.push({ section: key, file: null, caption: it.caption, error: 'could not be downloaded' }); }
+    }
+    z.file(`BP_Week_${out.week}_${out.year}_datapack.json`, JSON.stringify(out, null, 1));
+    download(`BP_Week_${out.week}_${out.year}_datapack.zip`, await z.generateAsync({ type: 'blob', compression: 'DEFLATE' }));
+    toast(`Data pack saved with ${out.photos.filter(p => p.file).length} photo(s)`);
+  } catch (e) { toast('Data pack failed: ' + e.message, true); }
+}
+function packObj(R, calc) {
+  return { year: R.report.iso_year, week: R.report.iso_week, status: R.report.status, sections: SECTIONS.map(s => ({ key: s.key, title: s.title, include: (R.sections.find(x => x.section_key === s.key) || {}).include !== false, comment: (R.sections.find(x => x.section_key === s.key) || {}).comment ?? A.draftComment(s.key, calc[s.key]) })), photos: ['bio_photos', 'flip_photos'].flatMap(k => photoItems(R, k).map(p => ({ section: k, caption: p.caption }))), analytics: calc };
+}
 function pack(R, calc) {
-  const out = { year: R.report.iso_year, week: R.report.iso_week, status: R.report.status, sections: SECTIONS.map(s => ({ key: s.key, title: s.title, include: (R.sections.find(x => x.section_key === s.key) || {}).include !== false, comment: (R.sections.find(x => x.section_key === s.key) || {}).comment ?? A.draftComment(s.key, calc[s.key]) })), analytics: calc };
+  const out = packObj(R, calc);
   download(`BP_Week_${out.week}_${out.year}_datapack.json`, new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }));
 }

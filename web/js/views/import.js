@@ -1,12 +1,12 @@
-import { h, clear, num, download } from '../util.js?v=202611270741';
-import { openWorkbook, zipLib } from '../xlsx.js?v=202611270741';
-import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611270741';
-import { modByKey } from '../state.js?v=202611270741';
-import { toast } from '../util.js?v=202611270741';
-import { detectModules, parseSheet, validate, withHashes } from '../engine.js?v=202611270741';
-import { S, invalidate } from '../state.js?v=202611270741';
-import { db } from '../db.js?v=202611270741';
-import { sha256 } from '../util.js?v=202611270741';
+import { h, clear, num, download } from '../util.js?v=202611270842';
+import { openWorkbook, zipLib } from '../xlsx.js?v=202611270842';
+import { buildXlsx, moduleSheet } from '../xlsxwrite.js?v=202611270842';
+import { modByKey } from '../state.js?v=202611270842';
+import { toast } from '../util.js?v=202611270842';
+import { detectModules, parseSheet, validate, withHashes } from '../engine.js?v=202611270842';
+import { S, invalidate } from '../state.js?v=202611270842';
+import { db } from '../db.js?v=202611270842';
+import { sha256 } from '../util.js?v=202611270842';
 
 const SEV = { error: 'err', warning: 'warn', info: 'info' };
 // Excel import: drop any number of audit workbooks; every recognised sheet becomes a reviewable card.
