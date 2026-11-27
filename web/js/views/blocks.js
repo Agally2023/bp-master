@@ -1,7 +1,7 @@
-import { h, pct } from '../util.js?v=202611270425';
-import { lineChart, barChart } from '../charts.js?v=202611270425';
-import { table, kpi, card } from './common.js?v=202611270425';
-import * as A from '../analytics.js?v=202611270425';
+import { h, pct } from '../util.js?v=202611270429';
+import { lineChart, barChart } from '../charts.js?v=202611270429';
+import { table, kpi, card } from './common.js?v=202611270429';
+import * as A from '../analytics.js?v=202611270429';
 // Blocks shared by the dashboard and the report preview.
 const chunks = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 const has = a => (a || []).some(v => v != null);
@@ -68,8 +68,12 @@ export function saltBlocks(a) {
   const pctChart = (o) => barChart({ ...o, fmt: v => (v * 100).toFixed(0) + '%', min: 0 });
   if (a.sites.length) out.push(card('Salt bath: parasite prevalence before and after',
     h('div', { class: 'kpis' }, kpi('Before the bath', pc(a.before), { cls: 'red' }), kpi('After the bath', pc(a.after), { cls: 'green' }), kpi('Reduction', a.red == null ? '–' : (a.red * 100).toFixed(0) + '%'), kpi('Hapas sampled', `${a.nPaired} (${a.nPonds} ponds)`)),
+    h('div', { class: 'note' }, a.cur.nPaired ? `Selected period: prevalence ${pc(a.cur.before)} before and ${pc(a.cur.after)} after the bath (${a.cur.nPaired} hapas). The figures above are the year to date.` : 'No hapas were sampled before and after the bath in the selected period; the figures above are the year to date.'),
     pctChart({ labels: a.sites.map(s => s.lab), series: [{ name: 'Before bath', values: a.sites.map(s => s.before), color: R }, { name: 'After bath', values: a.sites.map(s => s.after), color: G }], xTitle: 'Parasite and site', yTitle: 'Mean prevalence (%)' }),
     h('div', { class: 'note' }, a.nPaired < 10 ? `Only ${a.nPaired} hapas have parasite counts before and after the bath, so read this as an indication, not a conclusion.` : 'Mean prevalence of the sampled hapas, before and after the salt bath.')));
+  if (a.per.before.some(v => v != null)) out.push(card('Parasite prevalence before and after the bath, by period',
+    lineChart({ labels: a.per.labels, series: [{ name: 'Before bath', values: a.per.before, color: R }, { name: 'After bath', values: a.per.after, color: G }], xTitle: 'ISO week', yTitle: 'Mean prevalence (%)', fmt: v => (v * 100).toFixed(0) + '%', min: 0 }),
+    h('div', { class: 'note' }, 'Mean prevalence of the hapas treated in each day, week or month (the Daily, Weekly and Monthly buttons above change the period).')));
   if (a.hapas.some(x => x.c != null)) out.push(card('Salt concentration and parasite prevalence',
     pctChart({ labels: a.hapas.map(x => `${x.id} · ${x.c ?? '?'}`), series: [{ name: 'Before bath', values: a.hapas.map(x => x.b), color: R }, { name: 'After bath', values: a.hapas.map(x => x.a), color: G }], xTitle: 'Hapa · salt concentration (ppt)', yTitle: 'Mean prevalence (%)' }),
     table(['Hapa', 'Concentration (ppt)', 'Before', 'After', 'Reduction'], a.hapas.map(x => [x.id, x.c ?? '–', pc(x.b), pc(x.a), x.b ? pc((x.b - x.a) / x.b) : '–']), { num: [1, 2, 3, 4] })));
@@ -77,8 +81,8 @@ export function saltBlocks(a) {
     pctChart({ labels: a.bands.map(x => `${x.band} (n=${x.n})`), series: [{ name: 'Mean terminal survival', values: a.bands.map(x => x.mean), color: G }], xTitle: 'Salt concentration band (ppt)', yTitle: 'Terminal survival (%)' }),
     h('div', { class: 'note' }, 'Terminal (22-day) survival of the hapas that had a salt bath, grouped by the concentration used.')));
   if (a.ponds.length) out.push(card('Pond performance at terminal survival (22 days)',
-    h('div', { class: 'kpis' }, kpi('Mean terminal survival', pc(a.mean), { cls: 'green' }), kpi('Best pond', `${a.ponds[0].pond} ${pc(a.ponds[0].mean)}`), kpi('Lowest pond', `${a.ponds.at(-1).pond} ${pc(a.ponds.at(-1).mean)}`, { cls: 'red' }), kpi('Hapas transferred', a.nLake)),
+    h('div', { class: 'kpis' }, kpi('Mean terminal survival', pc(a.mean), { cls: 'green' }), kpi('Best pond', `${a.ponds[0].pond} ${pc(a.ponds[0].mean)}`), kpi('Lowest pond', `${a.ponds.at(-1).pond} ${pc(a.ponds.at(-1).mean)}`, { cls: 'red' }), kpi('Hapas transferred', a.nLake), kpi('Selected period', a.cur.surv == null ? '–' : pc(a.cur.surv), { note: a.cur.nLake + ' hapas' })),
     pctChart({ labels: a.ponds.slice(0, 30).map(x => `${x.pond} (${x.n})`), series: [{ name: 'Mean terminal survival', values: a.ponds.slice(0, 30).map(x => x.mean), color: G }], xTitle: 'Pond (hapas)', yTitle: 'Terminal survival (%)' }),
-    a.wk.length > 1 ? lineChart({ labels: a.wk.map(x => String(x.w)), series: [{ name: 'Mean terminal survival', values: a.wk.map(x => x.mean), color: B }], xTitle: 'ISO week of transfer', yTitle: 'Terminal survival (%)', fmt: v => (v * 100).toFixed(0) + '%', min: 0 }) : null));
+    a.per.surv.filter(v => v != null).length > 1 ? lineChart({ labels: a.per.labels, series: [{ name: 'Mean terminal survival', values: a.per.surv, color: B }], xTitle: 'ISO week', yTitle: 'Terminal survival (%)', fmt: v => (v * 100).toFixed(0) + '%', min: 0 }) : null));
   return out;
 }

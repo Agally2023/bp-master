@@ -1,7 +1,7 @@
-import { S } from './state.js?v=202611270425';
+import { S } from './state.js?v=202611270429';
 // Weekly analytics for the dashboard & report preview. Mirrors engine/bpm/analytics.py.
-import { mean, sum, weekRange } from './util.js?v=202611270425';
-import { MONTHS, dayShort } from './period.js?v=202611270425';
+import { mean, sum, weekRange } from './util.js?v=202611270429';
+import { MONTHS, dayShort } from './period.js?v=202611270429';
 const inWeek = (rows, y, w) => (rows || []).filter(r => r.iso_year === y && r.iso_week === w);
 // Weekly tables that have no rows for the selected week show the latest earlier week that has some (flagged via asOf).
 const lastWk = (rows, y, w) => { rows = rows || []; if (rows.some(r => r.iso_year === y && r.iso_week === w)) return { y, w, stale: false }; const k = y * 1000 + w; const m = Math.max(0, ...rows.map(r => (r.iso_year || 0) * 1000 + (r.iso_week || 0)).filter(v => v < k)); return m ? { y: Math.floor(m / 1000), w: m % 1000, stale: true } : { y, w, stale: false }; };
@@ -329,5 +329,11 @@ export function saltBath(data, y, w) {
     return { band: b, n: v.length, mean: avg(v) }; }).filter(x => x.n);
   const ponds = [...group(sv, r => r.pond)].map(([pond, g]) => ({ pond, n: g.length, mean: avg(g.map(r => r.s)) })).sort((p, q) => q.mean - p.mean);
   const wk = [...group(sv, r => r.wk)].sort((p, q) => p[0] - q[0]).map(([x, g]) => ({ w: x, mean: avg(g.map(r => r.s)) }));
-  return { nBath: bath.length, nPaired: paired.length, nPonds: new Set(paired.map(r => r.pond)).size, sites, before, after, red: before ? (before - after) / before : null, hapas, bands, ponds, wk, nLake: sv.length, mean: avg(sv.map(r => r.s)) };
+  // per day / week / month (iso_week holds the period number, see period.js): trends over the period and the figures of the selected period itself
+  const first = Math.min(w, ...paired.map(r => r.iso_week), ...sv.map(r => r.wk)), weeks = weeksTo(w, Math.min(52, w - first + 1));
+  const pBy = group(paired, r => r.iso_week), sBy = group(sv, r => r.wk), pAvg = (g, pre) => g ? avg(g.flatMap(r => SB_SITES.map(([k]) => fin(r[`${pre}_${k}_prev`])))) : null;
+  const per = { labels: weeks.map(wl), before: weeks.map(x => pAvg(pBy.get(x), 'before')), after: weeks.map(x => pAvg(pBy.get(x), 'after')), surv: weeks.map(x => sBy.has(x) ? avg(sBy.get(x).map(r => r.s)) : null),
+    nHapas: weeks.map(x => (pBy.get(x) || []).length), nLake: weeks.map(x => (sBy.get(x) || []).length) };
+  const cur = { before: pAvg(pBy.get(w), 'before'), after: pAvg(pBy.get(w), 'after'), nPaired: (pBy.get(w) || []).length, surv: sBy.has(w) ? avg(sBy.get(w).map(r => r.s)) : null, nLake: (sBy.get(w) || []).length };
+  return { per, cur, nBath: bath.length, nPaired: paired.length, nPonds: new Set(paired.map(r => r.pond)).size, sites, before, after, red: before ? (before - after) / before : null, hapas, bands, ponds, wk, nLake: sv.length, mean: avg(sv.map(r => r.s)) };
 }
