@@ -205,8 +205,10 @@ class SupabaseDB {
   }
   async setCaption(im, caption) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'PATCH', body: JSON.stringify({ caption }) }); }
   async removeImage(im) { await this._f(`/rest/v1/${P}report_images?id=eq.${im.id}`, { method: 'DELETE' }); try { await this._f(`/storage/v1/object/${BUCKET}/${im.storage_path}`, { method: 'DELETE' }); } catch { } }
-  async imageUrl(im) { const j = await (await this._f(`/storage/v1/object/sign/${BUCKET}/${im.storage_path}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this.base + '/storage/v1' + j.signedURL; }
-  async _sign(bucket, path) { const j = await (await this._f(`/storage/v1/object/sign/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this.base + '/storage/v1' + j.signedURL; }
+  // Photos are downloaded through fetch (allowed by connect-src) and shown from a blob: URL, so they display whatever the page's image policy is and keep working after the 5-minute signed link expires
+  async _blob(url) { this._bl ||= new Map(); if (this._bl.has(url)) return this._bl.get(url); const r = await fetch(url); if (!r.ok) throw new Error('Photo could not be loaded (' + r.status + ')'); const u = URL.createObjectURL(await r.blob()); this._bl.set(url, u); return u; }
+  async imageUrl(im) { const j = await (await this._f(`/storage/v1/object/sign/${BUCKET}/${im.storage_path}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this._blob(this.base + '/storage/v1' + j.signedURL); }
+  async _sign(bucket, path) { const j = await (await this._f(`/storage/v1/object/sign/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', body: JSON.stringify({ expiresIn: 300 }) })).json(); return this._blob(this.base + '/storage/v1' + j.signedURL); }
   // Biosecurity dashboard photos (table bio_photos, private bucket biosecurity-photos) for a date range
   async bioPhotos(from, to) { return (await this._f(`/rest/v1/bio_photos?select=id,log_date,location,item,note,file_path&log_date=gte.${from}&log_date=lte.${to}&order=log_date.desc,id.desc`)).json(); }
   async bioPhotoUrl(path) { return this._sign('biosecurity-photos', path); }
