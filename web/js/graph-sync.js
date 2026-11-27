@@ -1,7 +1,7 @@
 // Automatic SharePoint sync from the browser. The person signs in with their own Microsoft account once (OAuth code + PKCE, read-only Files.Read.All);
 // afterwards the app renews its access silently, lists the Quality Control folder in SharePoint, downloads the workbooks that changed and loads their new rows
 // with the module markers of the registry. No folder to pick, no file to upload. Needs the one-time Entra app registration (see supabase/SYNC_SETUP.md, Option C).
-import { ingest, sha256Hex } from './folder-sync.js?v=202611270856';
+import { ingest, sha256Hex } from './folder-sync.js?v=202611270900';
 export const DEFAULT_FOLDER = 'https://victoryfarmsltd.sharepoint.com/sites/AquaData/Shared%20Documents/Aqua%20Quality%20Control';
 const SCOPE = 'Files.Read.All offline_access';
 const k = n => 'bpm-ms-' + n, get = n => { try { return localStorage.getItem(k(n)); } catch { return null; } }, set = (n, v) => { try { v == null ? localStorage.removeItem(k(n)) : localStorage.setItem(k(n), v); } catch { } };

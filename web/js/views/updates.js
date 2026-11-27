@@ -1,6 +1,6 @@
-import { h, clear, toast } from '../util.js?v=202611270856';
-import { cacheClear } from '../state.js?v=202611270856';
-import { db } from '../db.js?v=202611270856';
+import { h, clear, toast } from '../util.js?v=202611270900';
+import { cacheClear } from '../state.js?v=202611270900';
+import { db } from '../db.js?v=202611270900';
 const REPO = 'Agally2023/bp-master';
 const WEB = (/[?&]v=(\d+)/.exec(import.meta.url) || [])[1] || 'unknown';
 const UA = navigator.userAgent;
@@ -46,7 +46,7 @@ export async function render({ view }) {
     try {
       const v = await latestWeb(); clear(webMsg);
       if (v && v !== WEB && v > WEB) { webMsg.className = 'note'; webMsg.append(h('b', {}, 'Update available: '), `website version ${fmtWeb(v)}. No reinstall needed. `, h('button', { class: 'btn sm', onclick: e => refreshWeb(e.currentTarget) }, 'Update now')); }
-      else { webMsg.className = 'pill ok'; webMsg.append('The website is up to date. Dashboards, forms, statistics and reports are the latest version.'); }
+      else { webMsg.className = 'note'; webMsg.append('✓ The website is up to date. Dashboards, forms, statistics and reports are the latest version.'); }
     } catch (e) { clear(webMsg); webMsg.className = 'note stale'; webMsg.append('Could not check the website: ' + e.message); }
   }
   async function draw() {
@@ -68,7 +68,7 @@ export async function render({ view }) {
     else if (!appVer) status = `A newer app build (${rel.tag_name}) is available. Your installed app was built before the Updates menu, so please update it once.`;
     else if (mine < latest) status = `Update available: you have build ${mine}, the latest is ${latest}.`;
     else status = `You have the latest app build (${mine}).`;
-    result.append(h('p', { class: mineIs && appVer && mine >= latest ? 'pill ok' : 'note' }, status),
+    result.append(h('p', { class: 'note' }, status),
       h('p', { class: 'muted' }, `Latest build: ${rel.name || rel.tag_name}, published ${new Date(rel.published_at).toLocaleDateString('en-GB')}.`));
     const row = h('div', { class: 'row' });
     if (apk) row.append(h('button', { class: mineIs === 'android' ? 'btn' : 'btn sec', onclick: () => openExt(apk.browser_download_url) }, 'Download Android app (APK)' + mb(apk)));
