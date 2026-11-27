@@ -1,5 +1,5 @@
-import { h, clear, toast } from '../util.js?v=202611270845';
-import { cacheClear } from '../state.js?v=202611270845';
+import { h, clear, toast } from '../util.js?v=202611270853';
+import { cacheClear } from '../state.js?v=202611270853';
 const REPO = 'Agally2023/bp-master';
 const WEB = (/[?&]v=(\d+)/.exec(import.meta.url) || [])[1] || 'unknown';
 const UA = navigator.userAgent;
@@ -10,6 +10,13 @@ const build = v => Number((String(v).match(/(\d+)$/) || [])[1] || 0);
 const fmtWeb = v => /^\d{12}$/.test(v) ? `${v.slice(6, 8)}/${v.slice(4, 6)}/${v.slice(0, 4)} ${v.slice(8, 10)}:${v.slice(10)}` : v;
 function openExt(url) { window.open(url, '_blank', 'noopener'); }
 
+// The newest deployed website version, read from the live index.html (never from the cache)
+export async function latestWeb() {
+  const r = await fetch('index.html?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status);
+  return (/[?&]v=(\d{12})/.exec(await r.text()) || [])[1] || '';
+}
+export const runningWeb = () => WEB;
+export async function applyWeb(btn) { return refreshWeb(btn || {}); }
 async function refreshWeb(btn) {
   btn.disabled = true; btn.textContent = 'Updating…';
   try { await cacheClear(); } catch { }
@@ -20,15 +27,25 @@ async function refreshWeb(btn) {
 
 export async function render({ view }) {
   const where = isAndroidApp ? 'Android app' : isWindowsApp ? 'Windows app' : 'Web browser';
+  const webMsg = h('div', { class: 'muted', style: 'margin-top:8px' });
   const result = h('div', { class: 'muted' }, 'Checking for the latest app build…');
   view.append(h('div', { class: 'card' }, h('h2', { style: 'margin:0 0 6px' }, 'App updates'),
-    h('p', { class: 'muted' }, 'The dashboards, forms, statistics and reports update by themselves: every time you open the app it loads the latest version of the website. A new installer is only needed when the app itself changes (for example saving files on Android).'),
+    h('p', { class: 'muted' }, 'The dashboards, forms, statistics and reports update by themselves: every time you open the app it loads the latest version of the website. Tap Check for updates to get the newest version in one tap. A new installer is only needed when the app shell itself changes, which is rare.'),
     h('table', { class: 'kv' }, h('tbody', {},
       h('tr', {}, h('th', {}, 'You are using'), h('td', {}, where)),
       h('tr', {}, h('th', {}, 'Website version'), h('td', {}, fmtWeb(WEB))),
       (isAndroidApp || isWindowsApp) ? h('tr', {}, h('th', {}, 'Installed app build'), h('td', {}, appVer || 'older build (before the Updates menu)')) : null)),
-    h('div', { class: 'row mt' }, h('button', { class: 'btn', onclick: e => refreshWeb(e.currentTarget) }, 'Update website now'), h('button', { class: 'btn sec', onclick: () => draw() }, 'Check for app updates'))), h('div', { class: 'card' }, h('h2', { style: 'margin:0 0 6px' }, 'Install or update the app'), result));
+    h('div', { class: 'row mt' }, h('button', { class: 'btn', onclick: () => draw() }, 'Check for updates'), h('button', { class: 'btn sec', onclick: e => refreshWeb(e.currentTarget) }, 'Force refresh')), webMsg), h('div', { class: 'card' }, h('h2', { style: 'margin:0 0 6px' }, 'Install or update the app'), result));
+  async function checkWebNow() {
+    clear(webMsg); webMsg.className = 'muted'; webMsg.style.marginTop = '8px'; webMsg.append('Checking the website…');
+    try {
+      const v = await latestWeb(); clear(webMsg);
+      if (v && v !== WEB && v > WEB) { webMsg.className = 'note'; webMsg.append(h('b', {}, 'Update available: '), `website version ${fmtWeb(v)}. No reinstall needed. `, h('button', { class: 'btn sm', onclick: e => refreshWeb(e.currentTarget) }, 'Update now')); }
+      else { webMsg.className = 'pill ok'; webMsg.append('The website is up to date. Dashboards, forms, statistics and reports are the latest version.'); }
+    } catch (e) { clear(webMsg); webMsg.className = 'note stale'; webMsg.append('Could not check the website: ' + e.message); }
+  }
   async function draw() {
+    checkWebNow();
     clear(result); result.append(h('div', { class: 'muted' }, 'Checking for the latest app build…'));
     let rel;
     try {
