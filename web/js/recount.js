@@ -1,7 +1,7 @@
 // Day-3 recounts vs terminal (22-day) survival of the same hapas, by month.
 // Day-3 survival: 3-Day Pond Survival (Recounts). Terminal survival: VF Hatchery Masterfile, Transfer to Lake tab (matched on pond + hapa, the transfer
 // following the recount); the salt-bath file's terminal survival fills in hapas that are not in the Masterfile yet.
-import * as T from './stats.js?v=202611270945';
+import * as T from './stats.js?v=202611271011';
 const { fp, fn, fpc, describe } = T;
 const num = v => { if (v == null || v === '') return null; const x = Number(String(v).replace(/[^0-9.\-eE]/g, '')); return Number.isFinite(x) ? x : null; };
 const frac = v => { const x = num(v); return x == null ? null : x > 1.5 ? x / 100 : x; };

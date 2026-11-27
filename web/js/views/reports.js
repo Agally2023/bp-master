@@ -1,16 +1,16 @@
-import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611270945';
-import { S, ensure } from '../state.js?v=202611270945';
-import { periodize, periodLabel, relabel } from '../period.js?v=202611270945';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611270945';
-import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611270945';
+import { h, clear, pct, num, fmtDate, toast, download, weekRange } from '../util.js?v=202611271011';
+import { S, ensure } from '../state.js?v=202611271011';
+import { periodize, periodLabel, relabel } from '../period.js?v=202611271011';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611271011';
+import { sinkersBlock, srEffBlock, srFeedBlock, washBlock, flipMatrixBlocks, flipSummaryCharts, summaryKpis } from './blocks.js?v=202611271011';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { db } from '../db.js?v=202611270945';
-import { statSection } from './statistics.js?v=202611270945';
-import * as A from '../analytics.js?v=202611270945';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611270945';
+import { db } from '../db.js?v=202611271011';
+import { statSection } from './statistics.js?v=202611271011';
+import * as A from '../analytics.js?v=202611271011';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611271011';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, table, band, bioTable } from './common.js?v=202611270945';
-import { zipLib } from '../xlsx.js?v=202611270945';
+import { weekPicker, table, band, bioTable } from './common.js?v=202611271011';
+import { zipLib } from '../xlsx.js?v=202611271011';
 
 const KEYS = ['workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'broodstock_density', 'pond_prep_scoring', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
 const CFG = window.BPM_CONFIG || {};
@@ -101,7 +101,7 @@ export async function render({ view, ctx }) {
           h('div', { class: 'row mt' }, h('span', { class: 'muted' }, 'Analysed graph from PowerPoint/Excel (replaces the chart on the slide):'), uploadBtn(R, s.key, 1, 'analysed_graph', graph, locked || !canEdit, draw))))));
     }
     // Statistical analyses: own section in report format (objective, graph, table, editable Hypothesis comment, tick = PowerPoint slide)
-    try { const { recountCard } = await import('./recount.js?v=202611270945'); body.append(await recountCard({ y, R, canEdit, locked })); } catch (e) { console.error(e); }
+    try { const { recountCard } = await import('./recount.js?v=202611271011'); body.append(await recountCard({ y, R, canEdit, locked })); } catch (e) { console.error(e); }
     try { body.append(await statSection({ R, y, w, canEdit, locked })); } catch (e) { console.error(e); body.append(h('div', { class: 'note stale' }, 'Statistical analyses could not be loaded: ' + e.message)); }
   };
   weekPicker(ctx, raw, draw); view.append(body); await draw();

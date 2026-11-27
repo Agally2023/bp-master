@@ -1,8 +1,8 @@
-import { h, clear, toast } from '../util.js?v=202611270945';
-import { db } from '../db.js?v=202611270945';
-import { S, ensure } from '../state.js?v=202611270945';
-import { recountMonths, recountTerminal, monthLabel } from '../recount.js?v=202611270945';
-import { chartEl, specOf, statKey } from './statistics.js?v=202611270945';
+import { h, clear, toast } from '../util.js?v=202611271011';
+import { db } from '../db.js?v=202611271011';
+import { S, ensure } from '../state.js?v=202611271011';
+import { recountMonths, recountTerminal, monthLabel } from '../recount.js?v=202611271011';
+import { chartEl, specOf, statKey } from './statistics.js?v=202611271011';
 const KEYS = ['day3_recounts', 'transfer_to_lake', 'salt_bath'];
 const ID = 'recount_terminal';
 // One card: month picker, KPI chips, one graph (day-3 vs terminal survival per hapa) and an editable "Hypothesis:" comment.
