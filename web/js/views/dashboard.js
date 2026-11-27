@@ -1,13 +1,13 @@
-import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611270926';
-import { S, ensure } from '../state.js?v=202611270926';
-import { periodize, relabel } from '../period.js?v=202611270926';
-import { wsFrequencyBlock } from './wsfreq.js?v=202611270926';
+import { h, clear, pct, num, fmtDate, weekRange } from '../util.js?v=202611270945';
+import { S, ensure } from '../state.js?v=202611270945';
+import { periodize, relabel } from '../period.js?v=202611270945';
+import { wsFrequencyBlock } from './wsfreq.js?v=202611270945';
 const sinceYear = () => S.week.y - (S.week.w <= (S.period === 'week' ? 12 : S.period === 'month' ? 3 : 30) ? 1 : 0);   // trends read the selected year; the previous year is only needed in the first weeks
-import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks, saltBlocks } from './blocks.js?v=202611270926';
-import * as A from '../analytics.js?v=202611270926';
-import { lineChart, barChart, PAL } from '../charts.js?v=202611270926';
+import { srEffBlock, srFeedBlock, washBlock, flipSummaryCharts, flipMatrixBlocks, saltBlocks } from './blocks.js?v=202611270945';
+import * as A from '../analytics.js?v=202611270945';
+import { lineChart, barChart, PAL } from '../charts.js?v=202611270945';
 const shortD = d => { const t = new Date(d + 'T00:00:00Z'); return t.getUTCDate() + '/' + (t.getUTCMonth() + 1); };
-import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611270926';
+import { weekPicker, kpi, table, band, card, noData, bioTable } from './common.js?v=202611270945';
 
 const sn = a => { const t = A.asOfNote(a, S.week.w); return t ? h('div', { class: 'note stale' }, t) : null; };
 const KEYS = ['salt_bath', 'transfer_to_lake', 'pond_prep_scoring', 'workstation_audits', 'biosecurity_audits', 'parasitology_samples', 'ras_water_volume', 'ras_parasite_prevalence', 'day3_recounts', 'stocking_audits', 'fry_transfers', 'egg_separation_ratings', 'egg_volumetric_jars', 'pond_flips', 'bottom_rope_audits', 'hapa_exchanges', 'sr_efficiency', 'sex_reversal_feed', 'hapa_wash_dispatch'];
@@ -96,6 +96,7 @@ export async function render({ view, ctx }) {
     { const [c1, c2, t] = srFeedBlock(srf); body.append(card('Sex reversal feed audit', c1 ? h('div', { class: 'grid g2' }, c1, c2) : noData(), t, h('div', { class: 'note' }, A.draftComment('sr_feed', srf)))); }
     { const [c, t] = washBlock(hwd); body.append(card('Hapas received, washed and dispatched', c || noData(), t, h('div', { class: 'note' }, A.draftComment('hapa_wash', hwd)))); }
     body.append(h('h2', { class: 'stat-group' }, 'Salt bath and terminal survival'), ...saltBlocks(A.saltBath(data, y, w)));
+    { const slot = h('div', {}); body.append(slot); import('./recount.js?v=202611270945').then(m => m.recountCard({ y })).then(c => slot.append(c)).catch(e => console.warn('recount', e)); }
     body.append(h('div', { class: 'note', style: 'text-align:right;opacity:.6' }, 'App version: ' + (new URL(import.meta.url).searchParams.get('v') || 'dev')));
     const holder = h('div', {}, g(card('Broodstock sex ratio and stocking density', h('div', { class: 'note' }, 'Loading broodstock recounts…'))));   // loaded after the page appears so the dashboard opens fast
     body.append(holder); const tok = body._tok = (body._tok || 0) + 1;
