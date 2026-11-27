@@ -1,5 +1,5 @@
 // Registry-driven import/derive/validate engine. Same rules as the Python report engine.
-import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611261025';
+import { isoWeek, sha256, todayIso, iso } from './util.js?v=202611270351';
 
 export const ERR = /^#(REF!|VALUE!|DIV\/0!|N\/A|NAME\?|NUM!|NULL!)$/;
 const norm = s => String(s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -187,7 +187,7 @@ const PENDING = { day3_recounts: ['recount_date', 'recount_pcs', 'in_fish_no'], 
 // Bottom rope sheets leave a count blank when none was found (e.g. no untied ropes): that means 0, and the table columns are NOT NULL.
 const ZERO_FILL = { bottom_rope_audits: ['top_position', 'middle_position', 'bottom_position', 'not_tied', 'missing_hook', 'total_ropes', 'missing_posts', 'wrong_position_ropes'] };
 // Pre-formatted spare rows at the bottom of these sheets (no date, pond or hapa, only formula zeros) are skipped quietly, not reported as rejected.
-const SPARE_IF_EMPTY = { bottom_rope_audits: ['audit_date', 'pond_id', 'hapa_no'] };
+const SPARE_IF_EMPTY = { bottom_rope_audits: ['audit_date', 'pond_id', 'hapa_no'], salt_bath: ['pond', 'hapa_no'], transfer_to_lake: ['pond', 'date_stocked_to_lake'] };
 
 export function validate(m, spec, parsed, { today = todayIso() } = {}) {
   const issues = []; const add = (sev, msg, n, sample) => issues.push({ severity: sev, message: msg, count: n, sample: sample || [] });

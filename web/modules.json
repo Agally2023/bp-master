@@ -3721,6 +3721,412 @@
      }
     }
    ]
+  },
+  {
+   "key": "salt_bath",
+   "label": "Pond Fingerlings Salt Bath",
+   "group": "Nursery",
+   "dateField": "date_treated",
+   "fields": [
+    {
+     "name": "pond",
+     "label": "Pond",
+     "type": "text",
+     "req": true
+    },
+    {
+     "name": "hapa_no",
+     "label": "Hapa no.",
+     "type": "int",
+     "req": true
+    },
+    {
+     "name": "stocking_date",
+     "label": "Stocking date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "date_treated",
+     "label": "Date treated",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "do_before",
+     "label": "DO before salt (mg/l)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "do_in_bath",
+     "label": "DO in the bath (mg/l)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "bath_salinity",
+     "label": "Bath salinity / salt concentration",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "bath_time_min",
+     "label": "Bath time (min)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "doc",
+     "label": "Days of culture (DOC)",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "transfer_date",
+     "label": "Transfer date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "terminal_survival",
+     "label": "Terminal survival (22-day)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_tricho_skin_prev",
+     "label": "Before bath: Trichodina skin prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_tricho_skin_int",
+     "label": "Before bath: Trichodina skin intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_mono_skin_prev",
+     "label": "Before bath: Monogenea skin prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_mono_skin_int",
+     "label": "Before bath: Monogenea skin intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_tricho_gill_prev",
+     "label": "Before bath: Trichodina gills prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_tricho_gill_int",
+     "label": "Before bath: Trichodina gills intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_mono_gill_prev",
+     "label": "Before bath: Monogenea gills prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "before_mono_gill_int",
+     "label": "Before bath: Monogenea gills intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_tricho_skin_prev",
+     "label": "After bath: Trichodina skin prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_tricho_skin_int",
+     "label": "After bath: Trichodina skin intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_mono_skin_prev",
+     "label": "After bath: Monogenea skin prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_mono_skin_int",
+     "label": "After bath: Monogenea skin intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_tricho_gill_prev",
+     "label": "After bath: Trichodina gills prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_tricho_gill_int",
+     "label": "After bath: Trichodina gills intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_mono_gill_prev",
+     "label": "After bath: Monogenea gills prevalence",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "after_mono_gill_int",
+     "label": "After bath: Monogenea gills intensity score",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "isoweek",
+     "date": "date_treated"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "Sheet1",
+     "header": "Pond",
+     "exact": true,
+     "map": {
+      "pond": "pond",
+      "hapa_no": "hapa no.",
+      "stocking_date": "stockingdate",
+      "date_treated": "date treated",
+      "do_before": "d.o before salt",
+      "do_in_bath": "d.o in the bath",
+      "bath_salinity": "bath salinity",
+      "bath_time_min": "bath time(min)",
+      "doc": "doc",
+      "transfer_date": "transfer date",
+      "terminal_survival": "terminal survival",
+      "before_tricho_skin_prev": "tricho(skin)",
+      "before_tricho_skin_int": "column1",
+      "before_mono_skin_prev": "mono(skin)",
+      "before_mono_skin_int": "column2",
+      "before_tricho_gill_prev": "tricho(gills)",
+      "before_tricho_gill_int": "column3",
+      "before_mono_gill_prev": "mono(gills)",
+      "before_mono_gill_int": "column4",
+      "after_tricho_skin_prev": "tricho(skin)6",
+      "after_tricho_skin_int": "column7",
+      "after_mono_skin_prev": "mono(skin)8",
+      "after_mono_skin_int": "column9",
+      "after_tricho_gill_prev": "tricho(gills)10",
+      "after_tricho_gill_int": "column11",
+      "after_mono_gill_prev": "mono(gills)12",
+      "after_mono_gill_int": "column13"
+     }
+    }
+   ]
+  },
+  {
+   "key": "transfer_to_lake",
+   "label": "Transfer to Lake (Fingerling Transfer)",
+   "group": "Nursery",
+   "dateField": "date_stocked_to_lake",
+   "fields": [
+    {
+     "name": "batch_code",
+     "label": "Batch code",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "date_stocked_to_lake",
+     "label": "Date stocked to lake",
+     "type": "date",
+     "req": true
+    },
+    {
+     "name": "pond",
+     "label": "Pond",
+     "type": "text",
+     "req": true
+    },
+    {
+     "name": "hapa_no",
+     "label": "Hapa",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "sample_size",
+     "label": "Sample size (pcs)",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "sample_weight_g",
+     "label": "Sample weight (g)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "bulk_weight_g",
+     "label": "Bulk weight (g)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "destination_cage",
+     "label": "Destination cage",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "transfer_type",
+     "label": "Transfer type",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "avg_weight_g",
+     "label": "Average weight (g)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "pcs_to_lake",
+     "label": "Stocked to lake (pcs)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "pcs_stocked",
+     "label": "Pcs stocked (initial)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "date_stocked",
+     "label": "Date stocked",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "pns2_date",
+     "label": "PNS 2 date",
+     "type": "date",
+     "req": false
+    },
+    {
+     "name": "overall_doc",
+     "label": "Overall DOC",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "pond_stage_doc",
+     "label": "Pond stage DOC",
+     "type": "int",
+     "req": false
+    },
+    {
+     "name": "survival",
+     "label": "Survival (terminal, 22-day)",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "days_overstayed",
+     "label": "Days overstayed",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "gpd",
+     "label": "GPD",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "source_pond",
+     "label": "Source pond",
+     "type": "text",
+     "req": false
+    },
+    {
+     "name": "hatch_rate",
+     "label": "Hatch rate",
+     "type": "num",
+     "req": false
+    },
+    {
+     "name": "iso_year",
+     "label": "ISO year",
+     "type": "int",
+     "derived": true
+    },
+    {
+     "name": "iso_week",
+     "label": "ISO week",
+     "type": "int",
+     "derived": true
+    }
+   ],
+   "derive": [
+    {
+     "fn": "isoweek",
+     "date": "date_stocked_to_lake"
+    }
+   ],
+   "imports": [
+    {
+     "sheet": "Fingerling Transfer Worksheet",
+     "header": "Batch Code",
+     "exact": true,
+     "map": {
+      "batch_code": "batch code",
+      "date_stocked_to_lake": "date stocked to lake",
+      "pond": "pond",
+      "hapa_no": "hapa",
+      "sample_size": "sample size, pcs",
+      "sample_weight_g": "sample weight, g",
+      "bulk_weight_g": "bulk weight, g",
+      "destination_cage": "destination cage",
+      "transfer_type": "transfer type",
+      "avg_weight_g": "average weight, g",
+      "pcs_to_lake": "stoked to lake",
+      "pcs_stocked": "pcs stocked",
+      "date_stocked": "date stocked",
+      "pns2_date": "pns 2 date",
+      "overall_doc": "overal doc",
+      "pond_stage_doc": "pond stage doc",
+      "survival": "survival",
+      "days_overstayed": "days overstayed",
+      "gpd": "gpd",
+      "source_pond": "source pond",
+      "hatch_rate": "hatch rate"
+     }
+    }
+   ]
   }
  ],
  "islands": [
